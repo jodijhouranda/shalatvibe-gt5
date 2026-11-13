@@ -30,6 +30,7 @@ import com.jadwalshalat.gt5.model.PrayerType;
 import com.jadwalshalat.gt5.notification.NotificationHelper;
 import com.jadwalshalat.gt5.prayer.PrayerEventPlanner;
 import com.jadwalshalat.gt5.prayer.PrayerTimeCalculator;
+import com.jadwalshalat.gt5.qibla.QiblaActivity;
 
 import java.time.Duration;
 import java.time.LocalDate;
@@ -120,6 +121,9 @@ public class MainActivity extends AppCompatActivity {
         binding.btnChooseCity.setOnClickListener(v -> showCityPickerDialog());
         binding.btnMethod.setOnClickListener(v -> showMethodPickerDialog());
         binding.btnUseGps.setOnClickListener(v -> onGpsClicked());
+        binding.btnQibla.setOnClickListener(v ->
+                startActivity(new Intent(this, QiblaActivity.class))
+        );
 
         binding.btnGrantNotification.setOnClickListener(v -> {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

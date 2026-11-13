@@ -41,6 +41,11 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".qibla.QiblaActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
         <receiver
             android:name=".alarm.PrayerAlarmReceiver"
             android:enabled="true"

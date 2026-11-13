@@ -7,6 +7,7 @@
     <string name="btn_choose_city">Pilih Kota</string>
     <string name="btn_gps">GPS</string>
     <string name="btn_method">Metode</string>
+    <string name="btn_qibla">Kiblat</string>
     <string name="btn_test_now">Tes Getar Sekarang</string>
     <string name="btn_test_delayed">Tes 5 Detik (Kunci Layar)</string>
     <string name="btn_grant_notification">Aktifkan Izin Notifikasi</string>

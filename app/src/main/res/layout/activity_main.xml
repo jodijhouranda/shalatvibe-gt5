@@ -107,7 +107,16 @@
                     style="@style/Widget.Material3.Button.TonalButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginEnd="6dp"
                     android:text="@string/btn_method"
+                    android:textSize="12sp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnQibla"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/btn_qibla"
                     android:textSize="12sp" />
             </LinearLayout>
         </LinearLayout>

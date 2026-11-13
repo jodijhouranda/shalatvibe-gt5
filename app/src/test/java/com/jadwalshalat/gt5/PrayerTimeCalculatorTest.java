@@ -5,6 +5,7 @@ import com.jadwalshalat.gt5.model.PrayerSchedule;
 import com.jadwalshalat.gt5.model.PrayerType;
 import com.jadwalshalat.gt5.prayer.PrayerEventPlanner;
 import com.jadwalshalat.gt5.prayer.PrayerTimeCalculator;
+import com.jadwalshalat.gt5.prayer.QiblaCalculator;
 
 import org.junit.Test;
 
@@ -72,5 +73,15 @@ public class PrayerTimeCalculatorTest {
         assertEquals(PrayerType.SUBUH, next.getPrayerType());
         assertEquals(LocalDate.of(2026, 11, 14), next.getTriggerTime().toLocalDate());
         assertTrue(next.isPreReminder());
+    }
+
+    @Test
+    public void qiblaBearingJakartaIsWestNorthwest() {
+        double bearing = QiblaCalculator.calculateBearingDegrees(-6.1754, 106.8272);
+        double distance = QiblaCalculator.calculateDistanceKm(-6.1754, 106.8272);
+
+        assertTrue(bearing > 294.0 && bearing < 296.0);
+        assertTrue(distance > 7800.0 && distance < 8100.0);
+        assertEquals("Barat Laut", QiblaCalculator.formatCardinalDirection(bearing));
     }
 }
