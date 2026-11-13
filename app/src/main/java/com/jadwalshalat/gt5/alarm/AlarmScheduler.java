@@ -5,7 +5,9 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
+import android.os.PowerManager;
 
+import com.jadwalshalat.gt5.MainActivity;
 import com.jadwalshalat.gt5.data.PreferencesManager;
 import com.jadwalshalat.gt5.model.PrayerType;
 import com.jadwalshalat.gt5.prayer.PrayerEventPlanner;
@@ -33,6 +35,11 @@ public final class AlarmScheduler {
         }
         AlarmManager alarmManager = context.getSystemService(AlarmManager.class);
         return alarmManager != null && alarmManager.canScheduleExactAlarms();
+    }
+
+    public static boolean isIgnoringBatteryOptimizations(Context context) {
+        PowerManager powerManager = context.getSystemService(PowerManager.class);
+        return powerManager != null && powerManager.isIgnoringBatteryOptimizations(context.getPackageName());
     }
 
     public static PrayerEventPlanner.ScheduledEvent scheduleNext(Context context) {
@@ -156,11 +163,27 @@ public final class AlarmScheduler {
         }
 
         if (canScheduleExactAlarms(context)) {
-            alarmManager.setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    triggerAtMillis,
-                    pendingIntent
-            );
+            PreferencesManager prefs = new PreferencesManager(context);
+            if (prefs.isUseAlarmClockMode()) {
+                Intent showIntent = new Intent(context, MainActivity.class);
+                showIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                PendingIntent showPendingIntent = PendingIntent.getActivity(
+                        context,
+                        9900,
+                        showIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+                );
+                alarmManager.setAlarmClock(
+                        new AlarmManager.AlarmClockInfo(triggerAtMillis, showPendingIntent),
+                        pendingIntent
+                );
+            } else {
+                alarmManager.setExactAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
+                        triggerAtMillis,
+                        pendingIntent
+                );
+            }
         } else {
             alarmManager.setAndAllowWhileIdle(
                     AlarmManager.RTC_WAKEUP,

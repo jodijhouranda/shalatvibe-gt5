@@ -11,6 +11,7 @@
     <string name="btn_test_delayed">Tes 5 Detik (Kunci Layar)</string>
     <string name="btn_grant_notification">Aktifkan Izin Notifikasi</string>
     <string name="btn_grant_exact_alarm">Aktifkan Alarm Tepat Waktu</string>
+    <string name="btn_grant_battery">Matikan Pembatasan Baterai (Wajib)</string>
     <string name="btn_battery_settings">Buka Pengaturan Baterai</string>
 
     <string name="section_schedule">Jadwal Shalat Hari Ini</string>

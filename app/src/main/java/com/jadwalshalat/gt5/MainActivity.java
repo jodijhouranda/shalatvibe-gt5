@@ -104,6 +104,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         refreshPermissionBanner();
+        AlarmScheduler.scheduleNext(this);
         refreshDashboard();
         countdownHandler.removeCallbacks(countdownTicker);
         countdownHandler.postDelayed(countdownTicker, 30_000L);
@@ -127,7 +128,8 @@ public class MainActivity extends AppCompatActivity {
         });
 
         binding.btnGrantExactAlarm.setOnClickListener(v -> openExactAlarmSettings());
-        binding.btnBatterySettings.setOnClickListener(v -> openBatterySettings());
+        binding.btnGrantBattery.setOnClickListener(v -> requestIgnoreBatteryOptimization());
+        binding.btnBatterySettings.setOnClickListener(v -> requestIgnoreBatteryOptimization());
 
         binding.btnTestNow.setOnClickListener(v -> {
             if (!NotificationHelper.hasNotificationPermission(this)) {
@@ -180,6 +182,12 @@ public class MainActivity extends AppCompatActivity {
             prefs.setUseIhtiyat(isChecked);
             rescheduleAndNotifyStatus();
         });
+
+        binding.switchAlarmClockMode.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isBindingUi) return;
+            prefs.setUseAlarmClockMode(isChecked);
+            rescheduleAndNotifyStatus();
+        });
     }
 
     private void bindSettingsControls() {
@@ -189,6 +197,7 @@ public class MainActivity extends AppCompatActivity {
             binding.switchOnTime.setChecked(prefs.isNotifyOnTime());
             binding.switchDoublePing.setChecked(prefs.isDoublePing());
             binding.switchIhtiyat.setChecked(prefs.isUseIhtiyat());
+            binding.switchAlarmClockMode.setChecked(prefs.isUseAlarmClockMode());
             selectMinuteChip(prefs.getPreReminderMinutes());
         } finally {
             isBindingUi = false;
@@ -227,8 +236,9 @@ public class MainActivity extends AppCompatActivity {
     private void refreshPermissionBanner() {
         boolean hasNotif = NotificationHelper.hasNotificationPermission(this);
         boolean hasExact = AlarmScheduler.canScheduleExactAlarms(this);
+        boolean ignoringBattery = AlarmScheduler.isIgnoringBatteryOptimizations(this);
 
-        if (hasNotif && hasExact) {
+        if (hasNotif && hasExact && ignoringBattery) {
             binding.cardPermissions.setVisibility(View.GONE);
             return;
         }
@@ -236,6 +246,7 @@ public class MainActivity extends AppCompatActivity {
         binding.cardPermissions.setVisibility(View.VISIBLE);
         binding.btnGrantNotification.setVisibility(hasNotif ? View.GONE : View.VISIBLE);
         binding.btnGrantExactAlarm.setVisibility(hasExact ? View.GONE : View.VISIBLE);
+        binding.btnGrantBattery.setVisibility(ignoringBattery ? View.GONE : View.VISIBLE);
 
         StringBuilder status = new StringBuilder("Agar GT 5 selalu bergetar tepat waktu:");
         if (!hasNotif) {
@@ -243,6 +254,9 @@ public class MainActivity extends AppCompatActivity {
         }
         if (!hasExact) {
             status.append("\n• Izin Alarm Tepat Waktu (Android 12+) belum diaktifkan.");
+        }
+        if (!ignoringBattery) {
+            status.append("\n• Optimasi Baterai masih membatasi aplikasi di background.");
         }
         binding.tvPermissionStatus.setText(status.toString());
     }
@@ -310,6 +324,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         renderPrayerRows(todaySchedule, nextPrayer, now);
+        binding.tvLastAlarmLog.setText("Log alarm terakhir: " + prefs.getLastAlarmLog());
     }
 
     private void renderPrayerRows(PrayerSchedule schedule, PrayerType nextPrayer, ZonedDateTime now) {
@@ -430,6 +445,16 @@ public class MainActivity extends AppCompatActivity {
             } catch (Exception e) {
                 openAppDetailsSettings();
             }
+        }
+    }
+
+    private void requestIgnoreBatteryOptimization() {
+        try {
+            Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+            intent.setData(Uri.parse("package:" + getPackageName()));
+            startActivity(intent);
+        } catch (Exception e) {
+            openBatterySettings();
         }
     }
 

@@ -28,6 +28,8 @@ public final class PreferencesManager {
     private static final String KEY_NOTIFY_ON_TIME = "notify_on_time";
     private static final String KEY_DOUBLE_PING = "double_ping";
     private static final String KEY_REMINDER_ACTIVE = "reminder_active";
+    private static final String KEY_ALARM_CLOCK_MODE = "alarm_clock_mode";
+    private static final String KEY_LAST_ALARM_LOG = "last_alarm_log";
     private static final String KEY_PRAYER_PREFIX = "prayer_enabled_";
 
     private final SharedPreferences prefs;
@@ -126,6 +128,22 @@ public final class PreferencesManager {
 
     public void setReminderActive(boolean active) {
         prefs.edit().putBoolean(KEY_REMINDER_ACTIVE, active).apply();
+    }
+
+    public boolean isUseAlarmClockMode() {
+        return prefs.getBoolean(KEY_ALARM_CLOCK_MODE, true);
+    }
+
+    public void setUseAlarmClockMode(boolean enabled) {
+        prefs.edit().putBoolean(KEY_ALARM_CLOCK_MODE, enabled).apply();
+    }
+
+    public String getLastAlarmLog() {
+        return prefs.getString(KEY_LAST_ALARM_LOG, "Belum ada alarm otomatis yang tereksekusi.");
+    }
+
+    public void setLastAlarmLog(String log) {
+        prefs.edit().putString(KEY_LAST_ALARM_LOG, log).apply();
     }
 
     public boolean isPrayerEnabled(PrayerType type) {
