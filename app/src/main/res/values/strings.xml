@@ -5,9 +5,9 @@
     <string name="notification_channel_desc">Notifikasi prioritas tinggi sebelum dan saat waktu shalat agar Huawei Watch GT 5 otomatis bergetar.</string>
 
     <string name="btn_choose_city">Pilih Kota</string>
-    <string name="btn_gps">GPS</string>
+    <string name="btn_gps">Deteksi GPS</string>
     <string name="btn_method">Metode</string>
-    <string name="btn_qibla">Kiblat</string>
+    <string name="btn_qibla">Kompas Kiblat</string>
     <string name="btn_test_now">Tes Getar Sekarang</string>
     <string name="btn_test_delayed">Tes 5 Detik (Kunci Layar)</string>
     <string name="btn_grant_notification">Aktifkan Izin Notifikasi</string>

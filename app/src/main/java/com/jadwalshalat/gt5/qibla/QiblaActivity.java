@@ -11,6 +11,9 @@ import android.view.HapticFeedbackConstants;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import com.jadwalshalat.gt5.data.PreferencesManager;
 import com.jadwalshalat.gt5.databinding.ActivityQiblaBinding;
@@ -48,6 +51,20 @@ public class QiblaActivity extends AppCompatActivity implements SensorEventListe
         super.onCreate(savedInstanceState);
         binding = ActivityQiblaBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+        final int baseLeft = binding.getRoot().getPaddingLeft();
+        final int baseTop = binding.getRoot().getPaddingTop();
+        final int baseRight = binding.getRoot().getPaddingRight();
+        final int baseBottom = binding.getRoot().getPaddingBottom();
+        ViewCompat.setOnApplyWindowInsetsListener(binding.getRoot(), (v, windowInsets) -> {
+            Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(
+                    baseLeft + insets.left,
+                    baseTop + insets.top,
+                    baseRight + insets.right,
+                    baseBottom + insets.bottom
+            );
+            return windowInsets;
+        });
 
         PreferencesManager prefs = new PreferencesManager(this);
         double lat = prefs.getLatitude();
