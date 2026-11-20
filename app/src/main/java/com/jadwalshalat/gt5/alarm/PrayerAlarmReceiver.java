@@ -8,6 +8,7 @@ import android.os.PowerManager;
 import com.jadwalshalat.gt5.data.PreferencesManager;
 import com.jadwalshalat.gt5.model.PrayerType;
 import com.jadwalshalat.gt5.notification.NotificationHelper;
+import com.jadwalshalat.gt5.widget.PrayerWidgetProvider;
 
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -48,7 +49,11 @@ public class PrayerAlarmReceiver extends BroadcastReceiver {
             PreferencesManager prefs = new PreferencesManager(context);
 
             if (ACTION_TEST_NOTIFICATION.equals(intent.getAction())) {
-                NotificationHelper.showTestNotification(context, prefs.getCityName());
+                NotificationHelper.showTestNotification(
+                        context,
+                        prefs.getCityName(),
+                        prefs.isCompactGt5Format()
+                );
                 return;
             }
 
@@ -56,7 +61,10 @@ public class PrayerAlarmReceiver extends BroadcastReceiver {
                 String prayerKey = intent.getStringExtra(EXTRA_PRAYER_KEY);
                 PrayerType prayerType = PrayerType.fromPrefKey(prayerKey);
                 boolean isPreReminder = intent.getBooleanExtra(EXTRA_IS_PRE_REMINDER, true);
-                int minutesBefore = intent.getIntExtra(EXTRA_MINUTES_BEFORE, prefs.getPreReminderMinutes());
+                int minutesBefore = intent.getIntExtra(
+                        EXTRA_MINUTES_BEFORE,
+                        prefs.getEffectivePreReminderMinutes(prayerType)
+                );
                 String formattedTime = intent.getStringExtra(EXTRA_FORMATTED_TIME);
                 if (formattedTime == null) {
                     formattedTime = "--:--";
@@ -70,7 +78,8 @@ public class PrayerAlarmReceiver extends BroadcastReceiver {
                         prefs.getCityName(),
                         isPreReminder,
                         minutesBefore,
-                        isFollowUp
+                        isFollowUp,
+                        prefs.isCompactGt5Format()
                 );
 
                 String nowStr = ZonedDateTime.now(prefs.getZoneId()).format(LOG_FORMATTER);
@@ -85,6 +94,8 @@ public class PrayerAlarmReceiver extends BroadcastReceiver {
                         );
                     }
                     AlarmScheduler.scheduleNext(context);
+                } else {
+                    PrayerWidgetProvider.updateAllWidgets(context);
                 }
             }
         } finally {

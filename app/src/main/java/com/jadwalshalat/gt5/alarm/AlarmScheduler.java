@@ -11,6 +11,7 @@ import com.jadwalshalat.gt5.MainActivity;
 import com.jadwalshalat.gt5.data.PreferencesManager;
 import com.jadwalshalat.gt5.model.PrayerType;
 import com.jadwalshalat.gt5.prayer.PrayerEventPlanner;
+import com.jadwalshalat.gt5.widget.PrayerWidgetProvider;
 
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -47,6 +48,7 @@ public final class AlarmScheduler {
 
         PreferencesManager prefs = new PreferencesManager(context);
         if (!prefs.isReminderActive()) {
+            PrayerWidgetProvider.updateAllWidgets(context);
             return null;
         }
 
@@ -59,11 +61,12 @@ public final class AlarmScheduler {
                 prefs.getCalculationMethod(),
                 prefs.isUseIhtiyat(),
                 prefs.getEnabledPrayers(),
-                prefs.getPreReminderMinutes(),
+                prefs.getEffectivePreReminderMap(),
                 prefs.isNotifyOnTime()
         );
 
         if (nextEvent == null) {
+            PrayerWidgetProvider.updateAllWidgets(context);
             return null;
         }
 
@@ -84,6 +87,7 @@ public final class AlarmScheduler {
         );
 
         scheduleExactOrFallback(context, nextEvent.getTriggerTime().toInstant().toEpochMilli(), pendingIntent);
+        PrayerWidgetProvider.updateAllWidgets(context);
         return nextEvent;
     }
 

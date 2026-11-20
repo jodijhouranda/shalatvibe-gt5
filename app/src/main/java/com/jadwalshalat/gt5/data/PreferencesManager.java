@@ -8,7 +8,9 @@ import com.jadwalshalat.gt5.model.CityPreset;
 import com.jadwalshalat.gt5.model.PrayerType;
 
 import java.time.ZoneId;
+import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -31,6 +33,12 @@ public final class PreferencesManager {
     private static final String KEY_ALARM_CLOCK_MODE = "alarm_clock_mode";
     private static final String KEY_LAST_ALARM_LOG = "last_alarm_log";
     private static final String KEY_PRAYER_PREFIX = "prayer_enabled_";
+    private static final String KEY_PRAYER_PRE_PREFIX = "prayer_pre_minutes_";
+    private static final String KEY_THEME_MODE = "theme_mode";
+    private static final String KEY_COMPACT_GT5_FORMAT = "compact_gt5_format";
+    private static final String KEY_HUAWEI_STEP_PREFIX = "huawei_step_done_";
+
+    public static final int PRE_MINUTES_FOLLOW_GLOBAL = -1;
 
     private final SharedPreferences prefs;
 
@@ -106,6 +114,35 @@ public final class PreferencesManager {
         prefs.edit().putInt(KEY_PRE_MINUTES, minutes).apply();
     }
 
+    /**
+     * Mengembalikan override jeda getar per waktu shalat, atau {@link #PRE_MINUTES_FOLLOW_GLOBAL} (-1)
+     * jika mengikuti pengaturan global. Nilai 0 berarti menonaktifkan pre-reminder khusus shalat ini.
+     */
+    public int getPrayerPreReminderOverride(PrayerType type) {
+        return prefs.getInt(KEY_PRAYER_PRE_PREFIX + type.getPrefKey(), PRE_MINUTES_FOLLOW_GLOBAL);
+    }
+
+    public void setPrayerPreReminderOverride(PrayerType type, int minutesOrFollowGlobal) {
+        if (minutesOrFollowGlobal < 0) {
+            prefs.edit().remove(KEY_PRAYER_PRE_PREFIX + type.getPrefKey()).apply();
+        } else {
+            prefs.edit().putInt(KEY_PRAYER_PRE_PREFIX + type.getPrefKey(), minutesOrFollowGlobal).apply();
+        }
+    }
+
+    public int getEffectivePreReminderMinutes(PrayerType type) {
+        int override = getPrayerPreReminderOverride(type);
+        return override >= 0 ? override : getPreReminderMinutes();
+    }
+
+    public Map<PrayerType, Integer> getEffectivePreReminderMap() {
+        EnumMap<PrayerType, Integer> map = new EnumMap<>(PrayerType.class);
+        for (PrayerType type : PrayerType.values()) {
+            map.put(type, getEffectivePreReminderMinutes(type));
+        }
+        return map;
+    }
+
     public boolean isNotifyOnTime() {
         return prefs.getBoolean(KEY_NOTIFY_ON_TIME, true);
     }
@@ -136,6 +173,30 @@ public final class PreferencesManager {
 
     public void setUseAlarmClockMode(boolean enabled) {
         prefs.edit().putBoolean(KEY_ALARM_CLOCK_MODE, enabled).apply();
+    }
+
+    public boolean isCompactGt5Format() {
+        return prefs.getBoolean(KEY_COMPACT_GT5_FORMAT, true);
+    }
+
+    public void setCompactGt5Format(boolean compact) {
+        prefs.edit().putBoolean(KEY_COMPACT_GT5_FORMAT, compact).apply();
+    }
+
+    public String getThemeModeName() {
+        return prefs.getString(KEY_THEME_MODE, "SYSTEM");
+    }
+
+    public void setThemeModeName(String modeName) {
+        prefs.edit().putString(KEY_THEME_MODE, modeName).apply();
+    }
+
+    public boolean isHuaweiStepChecked(int stepIndex) {
+        return prefs.getBoolean(KEY_HUAWEI_STEP_PREFIX + stepIndex, false);
+    }
+
+    public void setHuaweiStepChecked(int stepIndex, boolean checked) {
+        prefs.edit().putBoolean(KEY_HUAWEI_STEP_PREFIX + stepIndex, checked).apply();
     }
 
     public String getLastAlarmLog() {

@@ -84,6 +84,22 @@ public final class NotificationHelper {
             int minutesBefore,
             boolean isFollowUpPing
     ) {
+        showPrayerReminder(
+                context, prayerType, formattedTime, cityName,
+                isPreReminder, minutesBefore, isFollowUpPing, false
+        );
+    }
+
+    public static void showPrayerReminder(
+            Context context,
+            PrayerType prayerType,
+            String formattedTime,
+            String cityName,
+            boolean isPreReminder,
+            int minutesBefore,
+            boolean isFollowUpPing,
+            boolean compactGt5Format
+    ) {
         if (!hasNotificationPermission(context)) {
             return;
         }
@@ -91,19 +107,34 @@ public final class NotificationHelper {
 
         String title;
         String body;
-        if (isPreReminder) {
-            if (isFollowUpPing) {
-                title = prayerType.getDisplayName() + " Sebentar Lagi";
-                body = "Bersiap menuju waktu " + prayerType.getDisplayName()
-                        + " (" + formattedTime + ") • " + cityName;
+        if (compactGt5Format) {
+            if (isPreReminder) {
+                if (isFollowUpPing) {
+                    title = prayerType.getDisplayName() + " • Segera";
+                    body = "Adzan " + formattedTime + " • " + cityName;
+                } else {
+                    title = minutesBefore + " mnt • " + prayerType.getDisplayName();
+                    body = "Pukul " + formattedTime + " • " + cityName;
+                }
             } else {
-                title = minutesBefore + " Menit Lagi " + prayerType.getDisplayName();
-                body = "Jadwal " + prayerType.getDisplayName() + " pukul "
-                        + formattedTime + " • " + cityName;
+                title = "Adzan " + prayerType.getDisplayName();
+                body = formattedTime + " • " + cityName;
             }
         } else {
-            title = "Masuk Waktu " + prayerType.getDisplayName();
-            body = "Pukul " + formattedTime + " • " + cityName + " (Waktunya shalat)";
+            if (isPreReminder) {
+                if (isFollowUpPing) {
+                    title = prayerType.getDisplayName() + " Sebentar Lagi";
+                    body = "Bersiap menuju waktu " + prayerType.getDisplayName()
+                            + " (" + formattedTime + ") • " + cityName;
+                } else {
+                    title = minutesBefore + " Menit Lagi " + prayerType.getDisplayName();
+                    body = "Jadwal " + prayerType.getDisplayName() + " pukul "
+                            + formattedTime + " • " + cityName;
+                }
+            } else {
+                title = "Masuk Waktu " + prayerType.getDisplayName();
+                body = "Pukul " + formattedTime + " • " + cityName + " (Waktunya shalat)";
+            }
         }
 
         int notificationId = (prayerType.ordinal() + 1) * 100
@@ -114,17 +145,20 @@ public final class NotificationHelper {
     }
 
     public static void showTestNotification(Context context, String cityName) {
+        showTestNotification(context, cityName, true);
+    }
+
+    public static void showTestNotification(Context context, String cityName, boolean compactGt5Format) {
         if (!hasNotificationPermission(context)) {
             return;
         }
         ensureChannel(context);
         int uniqueId = (int) (System.currentTimeMillis() % 100000);
-        dispatchNotification(
-                context,
-                900000 + uniqueId,
-                "Tes Getar Huawei GT 5",
-                "Jika jam Anda bergetar sekarang, sinkronisasi Huawei Health berhasil (" + cityName + ")."
-        );
+        String title = compactGt5Format ? "Tes Getar GT 5 ✓" : "Tes Getar Huawei GT 5";
+        String body = compactGt5Format
+                ? "Sinkronisasi aktif • " + cityName
+                : "Jika jam Anda bergetar sekarang, sinkronisasi Huawei Health berhasil (" + cityName + ").";
+        dispatchNotification(context, 900000 + uniqueId, title, body);
     }
 
     private static void dispatchNotification(Context context, int id, String title, String body) {

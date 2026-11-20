@@ -5,6 +5,8 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 
+import com.jadwalshalat.gt5.widget.PrayerWidgetProvider;
+
 /**
  * Menjadwalkan ulang alarm shalat setelah HP dinyalakan ulang, zona waktu berubah,
  * atau izin alarm tepat waktu diberikan.
@@ -24,6 +26,7 @@ public class BootReceiver extends BroadcastReceiver {
                 || Intent.ACTION_TIMEZONE_CHANGED.equals(action)
                 || AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED.equals(action)) {
             AlarmScheduler.scheduleNext(context);
+            PrayerWidgetProvider.updateAllWidgets(context);
         }
     }
 }

@@ -3,21 +3,6 @@
     <string name="app_name">ShalatVibe GT5</string>
     <string name="notification_channel_name">Pengingat Shalat GT 5</string>
     <string name="notification_channel_desc">Notifikasi prioritas tinggi sebelum dan saat waktu shalat agar Huawei Watch GT 5 otomatis bergetar.</string>
-
-    <string name="btn_choose_city">Pilih Kota</string>
-    <string name="btn_gps">Deteksi GPS</string>
-    <string name="btn_method">Metode</string>
-    <string name="btn_qibla">Kompas Kiblat</string>
-    <string name="btn_test_now">Tes Getar Sekarang</string>
-    <string name="btn_test_delayed">Tes 5 Detik (Kunci Layar)</string>
-    <string name="btn_grant_notification">Aktifkan Izin Notifikasi</string>
-    <string name="btn_grant_exact_alarm">Aktifkan Alarm Tepat Waktu</string>
-    <string name="btn_grant_battery">Matikan Pembatasan Baterai (Wajib)</string>
-    <string name="btn_battery_settings">Buka Pengaturan Baterai</string>
-
-    <string name="section_schedule">Jadwal Shalat Hari Ini</string>
-    <string name="section_reminder_settings">Pengaturan Getar &amp; Pengingat</string>
-    <string name="section_huawei_guide">Sinkronisasi Huawei Watch GT 5</string>
-
-    <string name="huawei_guide_steps">1. Buka aplikasi Huawei Health di HP Anda.\n2. Masuk ke Perangkat → HUAWEI WATCH GT 5 → Notifikasi.\n3. Aktifkan Notifikasi, lalu centang aplikasi \"ShalatVibe GT5\".\n4. Nonaktifkan \"Bisukan notifikasi saat memakai ponsel\" jika ingin jam tetap bergetar saat layar HP menyala.\n5. Tekan \"Tes 5 Detik\", lalu segera kunci layar HP untuk memastikan jam GT 5 bergetar.</string>
+    <string name="widget_label">Jadwal Shalat GT 5</string>
+    <string name="widget_description">Hitung mundur waktu shalat berikutnya, status getar GT 5, dan ringkasan 5 waktu shalat.</string>
 </resources>
