@@ -1,2 +1,6 @@
-# Keep app classes unobfuscated if ProGuard is enabled later
+# Pertahankan kelas aplikasi dan JavascriptInterface untuk YouTube IFrame Bridge
 -keep class com.jadwalshalat.gt5.** { *; }
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+-keepattributes *Annotation*

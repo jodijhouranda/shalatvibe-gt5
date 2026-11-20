@@ -1,11 +1,15 @@
-name: Build ShalatVibe GT5 APK
+name: Build & Release Jadwal APK
 
 on:
   push:
     branches: [ "main" ]
+    tags: [ "v*" ]
   pull_request:
     branches: [ "main" ]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -26,12 +30,51 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Run unit tests and build Debug APK
-        run: gradle testDebugUnitTest assembleDebug --stacktrace
+      - name: Decode Release Keystore
+        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 --decode > /tmp/jadwal-release.jks
+          echo "KEYSTORE_FILE=/tmp/jadwal-release.jks" >> "$GITHUB_ENV"
 
-      - name: Upload ShalatVibe GT5 Debug APK
+      - name: Run unit tests and build Release APK
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: gradle testDebugUnitTest assembleRelease --stacktrace
+
+      - name: Rename Release APK
+        run: |
+          TAG_NAME="${GITHUB_REF_NAME:-latest}"
+          cp app/build/outputs/apk/release/app-release.apk "Jadwal-${TAG_NAME}-release.apk"
+          ls -lh "Jadwal-${TAG_NAME}-release.apk"
+
+      - name: Upload Jadwal Release APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ShalatVibeGT5-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: Jadwal-release-apk
+          path: Jadwal-*-release.apk
           retention-days: 30
+
+      - name: Publish GitHub Release on version tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          APK_FILE="Jadwal-${TAG}-release.apk"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$APK_FILE" --clobber
+          else
+            gh release create "$TAG" "$APK_FILE" \
+              --title "Jadwal ${TAG}" \
+              --notes "Rilis resmi **Jadwal ${TAG}** (Release APK teroptimasi R8 + signed keystore permanen):
+          - Desain modern Kotlin + Jetpack Compose + Material 3 (*AMOLED Dark* & *Serene Light*)
+          - Tab **Jadwal**: Dynamic Atmosphere Hero Card, *Solar Arc*, *live countdown* 1 detik, Kalender Hijriah offline, 52 kota Indonesia, override getar per shalat, & Home Screen Widget
+          - Tab **Belajar**: Modul Bahasa Arab harian (TAFL) Split-View YouTube presisi menit + sub-segmen + Auto-Loop + PDF Viewer native + Hybrid Sync (`lessons/catalog.json`)
+          - Tab **Kiblat**: Kompas presisi bergaya bezel Huawei Watch GT 5
+          - Tab **GT 5 Hub**: Pratinjau layar bulat GT 5, Readiness Check 4-poin, Tes Getar 5 detik, & checklist Huawei Health
+          - Ikon baru **Jadwal** (huruf **ج** + sabit & matahari emas)"
+          fi
