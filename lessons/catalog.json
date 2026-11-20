@@ -3,6 +3,44 @@
   "updatedAt": "2026-11-20",
   "lessons": [
     {
+      "id": "video_krisis_iklim_cuaca_ekstrem",
+      "category": "VIDEO_ANALYSIS",
+      "dayLabel": "Video 06",
+      "dateLabel": "20 Nov 2026",
+      "title": "Krisis Iklim & Fenomena Cuaca Ekstrem Global",
+      "subtitle": "Meteorologi, bencana alam, dan dialog kebijakan iklim bersama pakar UNESCO",
+      "sourceName": "DW عربية",
+      "level": "CEFR B2–C1",
+      "youtubeVideoId": "q2ECofsEeYQ",
+      "startSeconds": 1,
+      "endSeconds": 141,
+      "pdfFileName": "Bahasa_Arab_Analisis_Video_Krisis_Iklim_TAFL.pdf",
+      "pdfUrl": "https://raw.githubusercontent.com/jodijhouranda/shalatvibe-gt5/main/lessons/pdfs/Bahasa_Arab_Analisis_Video_Krisis_Iklim_TAFL.pdf",
+      "driveFileId": "1conrK_o2W-tdRJTpJhNvJwJSNP5VuNRX",
+      "segments": [
+        {
+          "label": "00:01 – 00:28",
+          "startSec": 1,
+          "endSec": 28
+        },
+        {
+          "label": "00:28 – 00:49",
+          "startSec": 28,
+          "endSec": 49
+        },
+        {
+          "label": "01:06 – 01:42",
+          "startSec": 66,
+          "endSec": 102
+        },
+        {
+          "label": "01:42 – 02:21",
+          "startSec": 102,
+          "endSec": 141
+        }
+      ]
+    },
+    {
       "id": "video_sains_ketidakpastian_agnotologi",
       "category": "VIDEO_ANALYSIS",
       "dayLabel": "Video 05",
