@@ -166,4 +166,17 @@ public class PrayerTimeCalculatorTest {
         assertTrue(distance > 7800.0 && distance < 8100.0);
         assertEquals("Barat Laut", QiblaCalculator.formatCardinalDirection(bearing));
     }
+
+    @Test
+    public void arabicTimestampAndDriveUrlHelpersWorkCorrectly() {
+        assertEquals("06:08", com.jadwalshalat.gt5.arabic.ArabicCatalogParser.INSTANCE.formatTimestamp(368));
+        assertEquals("08:15", com.jadwalshalat.gt5.arabic.ArabicCatalogParser.INSTANCE.formatTimestamp(495));
+        assertEquals("1:01:05", com.jadwalshalat.gt5.arabic.ArabicCatalogParser.INSTANCE.formatTimestamp(3665));
+
+        String sharedDrive = "https://drive.google.com/file/d/1u356ZGCsizgkf6uxCfIaRUZsxd7ImsHq/view?usp=sharing";
+        assertEquals(
+                "https://drive.google.com/uc?export=download&id=1u356ZGCsizgkf6uxCfIaRUZsxd7ImsHq",
+                com.jadwalshalat.gt5.arabic.ArabicCatalogParser.INSTANCE.normalizeDownloadUrl(sharedDrive)
+        );
+    }
 }

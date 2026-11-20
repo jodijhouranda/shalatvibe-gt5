@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "updatedAt": "2026-11-19",
+  "lessons": [
+    {
+      "id": "video_sejarah_yunani",
+      "category": "VIDEO_ANALYSIS",
+      "dayLabel": "Video 04",
+      "dateLabel": "19 Nov 2026",
+      "title": "Jejak Peradaban Islam & Pertukaran Ilmu di Yunani",
+      "subtitle": "Sejarah Peradaban, Catatan Pengembara, & Pertukaran Budaya",
+      "sourceName": "Al Jazeera Documentary",
+      "level": "CEFR B2–C1",
+      "youtubeVideoId": "fVHkKXvQvF4",
+      "startSeconds": 121,
+      "endSeconds": 278,
+      "pdfFileName": "Bahasa_Arab_Analisis_Video_Sejarah_Yunani_TAFL.pdf",
+      "pdfUrl": "https://raw.githubusercontent.com/jodijhouranda/shalatvibe-gt5/main/lessons/pdfs/Bahasa_Arab_Analisis_Video_Sejarah_Yunani_TAFL.pdf",
+      "driveFileId": "14ELYq42u-B_fTtl0zDY0fKtZw7O7J0if",
+      "segments": [
+        { "label": "02:01 – 02:38", "startSec": 121, "endSec": 158 },
+        { "label": "03:02 – 03:35", "startSec": 182, "endSec": 215 },
+        { "label": "03:44 – 04:13", "startSec": 224, "endSec": 253 },
+        { "label": "04:13 – 04:38", "startSec": 253, "endSec": 278 }
+      ]
+    },
+    {
+      "id": "video_ai_informasi",
+      "category": "VIDEO_ANALYSIS",
+      "dayLabel": "Video 03",
+      "dateLabel": "18 Nov 2026",
+      "title": "Ekosistem Informasi & Rekayasa Jawaban AI",
+      "subtitle": "Ekosistem Pencarian Digital, Sitasi AI, & Riset Media",
+      "sourceName": "DW عربية",
+      "level": "CEFR B2–C1",
+      "youtubeVideoId": "5keXMJpaUXI",
+      "startSeconds": 368,
+      "endSeconds": 495,
+      "pdfFileName": "Bahasa_Arab_Analisis_Video_AI_Informasi_TAFL.pdf",
+      "pdfUrl": "https://raw.githubusercontent.com/jodijhouranda/shalatvibe-gt5/main/lessons/pdfs/Bahasa_Arab_Analisis_Video_AI_Informasi_TAFL.pdf",
+      "driveFileId": "1u356ZGCsizgkf6uxCfIaRUZsxd7ImsHq",
+      "segments": [
+        { "label": "06:08 – 06:28", "startSec": 368, "endSec": 388 },
+        { "label": "06:28 – 06:55", "startSec": 388, "endSec": 415 },
+        { "label": "06:55 – 07:38", "startSec": 415, "endSec": 458 },
+        { "label": "07:38 – 08:15", "startSec": 458, "endSec": 495 }
+      ]
+    },
+    {
+      "id": "video_ekonomi_jerman",
+      "category": "VIDEO_ANALYSIS",
+      "dayLabel": "Video 02",
+      "dateLabel": "17 Nov 2026",
+      "title": "Kebangkitan Ekonomi Jerman: Robotika atau Otomotif?",
+      "subtitle": "Ekspor Teknologi Tinggi, Semikonduktor, & Transformasi Industri",
+      "sourceName": "DW عربية",
+      "level": "CEFR B2–C1",
+      "youtubeVideoId": "kaft-z_-mkw",
+      "startSeconds": 0,
+      "endSeconds": 144,
+      "pdfFileName": "Bahasa_Arab_Analisis_Video_Ekonomi_Jerman_TAFL.pdf",
+      "pdfUrl": "https://raw.githubusercontent.com/jodijhouranda/shalatvibe-gt5/main/lessons/pdfs/Bahasa_Arab_Analisis_Video_Ekonomi_Jerman_TAFL.pdf",
+      "driveFileId": "12qLCnCUaG8jzDNVXY8hGg6f5vmitfldp",
+      "segments": [
+        { "label": "00:00 – 00:20", "startSec": 0, "endSec": 20 },
+        { "label": "00:28 – 01:08", "startSec": 28, "endSec": 68 },
+        { "label": "01:08 – 01:51", "startSec": 68, "endSec": 111 },
+        { "label": "01:51 – 02:24", "startSec": 111, "endSec": 144 }
+      ]
+    },
+    {
+      "id": "video_dominasi_ekonomi",
+      "category": "VIDEO_ANALYSIS",
+      "dayLabel": "Video 01",
+      "dateLabel": "14 Nov 2026",
+      "title": "Rahasia Dominasi Ekonomi Amerika (Bretton Woods)",
+      "subtitle": "Perjanjian Bretton Woods 1944 & Hegemoni Dolar AS",
+      "sourceName": "Al Jazeera Arabic — سياق",
+      "level": "CEFR B2–C1",
+      "youtubeVideoId": "R6-yh9nteXs",
+      "startSeconds": 0,
+      "endSeconds": 138,
+      "pdfFileName": "Bahasa_Arab_Analisis_Video_Dominasi_Ekonomi_TAFL.pdf",
+      "pdfUrl": "https://raw.githubusercontent.com/jodijhouranda/shalatvibe-gt5/main/lessons/pdfs/Bahasa_Arab_Analisis_Video_Dominasi_Ekonomi_TAFL.pdf",
+      "driveFileId": "1FFdsK5opkzlFU-aX7kLsDoKTGElRFkS3",
+      "segments": [
+        { "label": "00:00 – 00:25", "startSec": 0, "endSec": 25 },
+        { "label": "00:26 – 00:56", "startSec": 26, "endSec": 56 },
+        { "label": "00:57 – 01:23", "startSec": 57, "endSec": 83 },
+        { "label": "01:24 – 01:48", "startSec": 84, "endSec": 108 },
+        { "label": "01:49 – 02:18", "startSec": 109, "endSec": 138 }
+      ]
+    }
+  ]
+}

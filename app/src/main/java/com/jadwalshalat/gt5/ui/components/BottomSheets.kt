@@ -774,3 +774,131 @@ fun QiblaCalibrationBottomSheet(
         }
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ArabicSyncSettingsBottomSheet(
+    currentUrl: String,
+    lastSyncLabel: String,
+    onSaveAndSync: (String) -> Unit,
+    onResetDefault: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val palette = LocalShalatVibePalette.current
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var urlInput by remember(currentUrl) { mutableStateOf(currentUrl) }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = palette.cardSurface,
+        contentColor = palette.textPrimary
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 24.dp)
+        ) {
+            Text(
+                text = "Sinkronisasi Modul (Opsi 1)",
+                color = palette.textPrimary,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "Status terakhir: $lastSyncLabel",
+                color = palette.textSecondary,
+                fontSize = 12.sp
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = "URL Manifest catalog.json (GitHub Raw atau link Google Drive publik):",
+                color = palette.textPrimary,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+
+            OutlinedTextField(
+                value = urlInput,
+                onValueChange = { urlInput = it },
+                singleLine = false,
+                maxLines = 3,
+                shape = RoundedCornerShape(14.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = palette.emeraldPrimary,
+                    unfocusedBorderColor = palette.cardBorder,
+                    focusedTextColor = palette.textPrimary,
+                    unfocusedTextColor = palette.textPrimary
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Text(
+                text = "Tips: Saat ada PDF harian baru, tambahkan file PDF ke folder lessons/pdfs/ dan entri JSON ke lessons/catalog.json di GitHub (atau file catalog.json di Google Drive yang di-share Viewer), lalu tekan tombol Sync (↻) di tab Belajar — tanpa perlu build ulang APK.",
+                color = palette.textSecondary,
+                fontSize = 11.sp,
+                lineHeight = 16.sp
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Surface(
+                    onClick = {
+                        onResetDefault()
+                        onDismiss()
+                    },
+                    shape = RoundedCornerShape(14.dp),
+                    color = palette.pillBg,
+                    border = BorderStroke(1.dp, palette.cardBorder),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Box(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Reset Default",
+                            color = palette.textPrimary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+
+                Surface(
+                    onClick = {
+                        onSaveAndSync(urlInput)
+                        onDismiss()
+                    },
+                    shape = RoundedCornerShape(14.dp),
+                    color = palette.emeraldPrimary,
+                    modifier = Modifier.weight(1.3f)
+                ) {
+                    Box(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Simpan & Sync",
+                            color = if (palette.isDark) Color(0xFF03231D) else Color.White,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+

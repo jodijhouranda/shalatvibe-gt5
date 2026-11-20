@@ -11,9 +11,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Explore
+import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Watch
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Explore
+import androidx.compose.material.icons.rounded.MenuBook
 import androidx.compose.material.icons.rounded.Watch
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -36,13 +38,18 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.jadwalshalat.gt5.arabic.ArabicStudyUiState
+import com.jadwalshalat.gt5.arabic.ArabicStudyViewModel
 import com.jadwalshalat.gt5.model.PrayerType
+import com.jadwalshalat.gt5.ui.components.ArabicSyncSettingsBottomSheet
 import com.jadwalshalat.gt5.ui.components.CityPickerBottomSheet
 import com.jadwalshalat.gt5.ui.components.HuaweiGuideBottomSheet
 import com.jadwalshalat.gt5.ui.components.MethodPickerBottomSheet
 import com.jadwalshalat.gt5.ui.components.PrayerDetailBottomSheet
 import com.jadwalshalat.gt5.ui.components.QiblaCalibrationBottomSheet
 import com.jadwalshalat.gt5.ui.components.ThemePickerBottomSheet
+import com.jadwalshalat.gt5.ui.screens.ArabicCatalogScreen
+import com.jadwalshalat.gt5.ui.screens.ArabicStudyRoomScreen
 import com.jadwalshalat.gt5.ui.screens.Gt5HubScreen
 import com.jadwalshalat.gt5.ui.screens.QiblaScreen
 import com.jadwalshalat.gt5.ui.screens.ScheduleScreen
@@ -53,6 +60,8 @@ import kotlinx.coroutines.launch
 fun ShalatVibeApp(
     state: ShalatVibeUiState,
     viewModel: ShalatVibeViewModel,
+    arabicState: ArabicStudyUiState,
+    arabicViewModel: ArabicStudyViewModel,
     onRequestNotificationPermission: () -> Unit,
     onOpenExactAlarmSettings: () -> Unit,
     onRequestIgnoreBattery: () -> Unit,
@@ -68,7 +77,25 @@ fun ShalatVibeApp(
     var showThemeSheet by remember { mutableStateOf(false) }
     var showHuaweiGuideSheet by remember { mutableStateOf(false) }
     var showCalibrationSheet by remember { mutableStateOf(false) }
+    var showArabicSyncSheet by remember { mutableStateOf(false) }
     var detailPrayerType by remember { mutableStateOf<PrayerType?>(null) }
+
+    // Jika pengguna sedang membuka Ruang Belajar (Video YouTube + PDF), tampilkan penuh tanpa bottom bar
+    val openLesson = arabicState.activeLesson
+    if (openLesson != null) {
+        ArabicStudyRoomScreen(
+            lesson = openLesson,
+            pdfFile = arabicState.activePdfFile,
+            isLoadingPdf = arabicState.isLoadingPdf,
+            pdfErrorMessage = arabicState.pdfErrorMessage,
+            isCompleted = arabicState.completedIds.contains(openLesson.id),
+            readingMode = arabicState.readingMode,
+            onCycleReadingMode = { arabicViewModel.cycleReadingMode() },
+            onToggleCompleted = { arabicViewModel.toggleCompleted(openLesson.id) },
+            onBack = { arabicViewModel.closeLesson() }
+        )
+        return
+    }
 
     Scaffold(
         containerColor = palette.background,
@@ -82,11 +109,13 @@ fun ShalatVibeApp(
                     val selected = tab == currentTab
                     val selectedIcon = when (tab) {
                         MainTab.SCHEDULE -> Icons.Rounded.CalendarMonth
+                        MainTab.ARABIC -> Icons.Rounded.MenuBook
                         MainTab.QIBLA -> Icons.Rounded.Explore
                         MainTab.GT5_HUB -> Icons.Rounded.Watch
                     }
                     val unselectedIcon = when (tab) {
                         MainTab.SCHEDULE -> Icons.Outlined.CalendarMonth
+                        MainTab.ARABIC -> Icons.Outlined.MenuBook
                         MainTab.QIBLA -> Icons.Outlined.Explore
                         MainTab.GT5_HUB -> Icons.Outlined.Watch
                     }
@@ -160,6 +189,22 @@ fun ShalatVibeApp(
                         onResetToToday = { viewModel.resetToToday() },
                         onTogglePrayer = { viewModel.togglePrayerEnabled(it) },
                         onOpenPrayerDetail = { detailPrayerType = it }
+                    )
+
+                    MainTab.ARABIC -> ArabicCatalogScreen(
+                        state = arabicState,
+                        onSelectFilter = { arabicViewModel.setFilter(it) },
+                        onSearchQueryChange = { arabicViewModel.setSearchQuery(it) },
+                        onOpenLesson = { arabicViewModel.openLesson(it) },
+                        onToggleFavorite = { arabicViewModel.toggleFavorite(it) },
+                        onSyncNow = {
+                            arabicViewModel.syncCatalog { result ->
+                                scope.launch {
+                                    snackbarHostState.showSnackbar(result.message)
+                                }
+                            }
+                        },
+                        onOpenSyncSettings = { showArabicSyncSheet = true }
                     )
 
                     MainTab.QIBLA -> QiblaScreen(
@@ -252,6 +297,28 @@ fun ShalatVibeApp(
     if (showCalibrationSheet) {
         QiblaCalibrationBottomSheet(
             onDismiss = { showCalibrationSheet = false }
+        )
+    }
+
+    if (showArabicSyncSheet) {
+        ArabicSyncSettingsBottomSheet(
+            currentUrl = arabicState.syncManifestUrl,
+            lastSyncLabel = arabicState.lastSyncLabel,
+            onSaveAndSync = { newUrl ->
+                arabicViewModel.saveSyncManifestUrl(newUrl)
+                arabicViewModel.syncCatalog { result ->
+                    scope.launch {
+                        snackbarHostState.showSnackbar(result.message)
+                    }
+                }
+            },
+            onResetDefault = {
+                arabicViewModel.resetSyncManifestUrl()
+                scope.launch {
+                    snackbarHostState.showSnackbar("URL sinkronisasi dikembalikan ke default.")
+                }
+            },
+            onDismiss = { showArabicSyncSheet = false }
         )
     }
 
