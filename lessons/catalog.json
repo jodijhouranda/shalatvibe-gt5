@@ -1,7 +1,45 @@
 {
   "version": 1,
-  "updatedAt": "2026-11-19",
+  "updatedAt": "2026-11-20",
   "lessons": [
+    {
+      "id": "video_sains_ketidakpastian_agnotologi",
+      "category": "VIDEO_ANALYSIS",
+      "dayLabel": "Video 05",
+      "dateLabel": "20 Nov 2026",
+      "title": "Sains, Keraguan Ilmiah & Industri Ketidaktahuan (Agnotologi)",
+      "subtitle": "Epistemologi sains, strategi keraguan sistematis, dan studi agnotologi",
+      "sourceName": "Al Jazeera Documentary الجزيرة الوثائقية",
+      "level": "CEFR B2–C1",
+      "youtubeVideoId": "iM7xvoC_-WM",
+      "startSeconds": 1004,
+      "endSeconds": 1146,
+      "pdfFileName": "Bahasa_Arab_Analisis_Video_Sains_Ketidakpastian_TAFL.pdf",
+      "pdfUrl": "https://raw.githubusercontent.com/jodijhouranda/shalatvibe-gt5/main/lessons/pdfs/Bahasa_Arab_Analisis_Video_Sains_Ketidakpastian_TAFL.pdf",
+      "driveFileId": "17-dILrxQdZmaMYMq4ADciehju6ZiiIFV",
+      "segments": [
+        {
+          "label": "16:44 – 17:19",
+          "startSec": 1004,
+          "endSec": 1039
+        },
+        {
+          "label": "17:19 – 17:45",
+          "startSec": 1039,
+          "endSec": 1065
+        },
+        {
+          "label": "17:45 – 18:20",
+          "startSec": 1065,
+          "endSec": 1100
+        },
+        {
+          "label": "18:20 – 19:06",
+          "startSec": 1100,
+          "endSec": 1146
+        }
+      ]
+    },
     {
       "id": "video_sejarah_yunani",
       "category": "VIDEO_ANALYSIS",
@@ -18,10 +56,26 @@
       "pdfUrl": "https://raw.githubusercontent.com/jodijhouranda/shalatvibe-gt5/main/lessons/pdfs/Bahasa_Arab_Analisis_Video_Sejarah_Yunani_TAFL.pdf",
       "driveFileId": "14ELYq42u-B_fTtl0zDY0fKtZw7O7J0if",
       "segments": [
-        { "label": "02:01 – 02:38", "startSec": 121, "endSec": 158 },
-        { "label": "03:02 – 03:35", "startSec": 182, "endSec": 215 },
-        { "label": "03:44 – 04:13", "startSec": 224, "endSec": 253 },
-        { "label": "04:13 – 04:38", "startSec": 253, "endSec": 278 }
+        {
+          "label": "02:01 – 02:38",
+          "startSec": 121,
+          "endSec": 158
+        },
+        {
+          "label": "03:02 – 03:35",
+          "startSec": 182,
+          "endSec": 215
+        },
+        {
+          "label": "03:44 – 04:13",
+          "startSec": 224,
+          "endSec": 253
+        },
+        {
+          "label": "04:13 – 04:38",
+          "startSec": 253,
+          "endSec": 278
+        }
       ]
     },
     {
@@ -40,10 +94,26 @@
       "pdfUrl": "https://raw.githubusercontent.com/jodijhouranda/shalatvibe-gt5/main/lessons/pdfs/Bahasa_Arab_Analisis_Video_AI_Informasi_TAFL.pdf",
       "driveFileId": "1u356ZGCsizgkf6uxCfIaRUZsxd7ImsHq",
       "segments": [
-        { "label": "06:08 – 06:28", "startSec": 368, "endSec": 388 },
-        { "label": "06:28 – 06:55", "startSec": 388, "endSec": 415 },
-        { "label": "06:55 – 07:38", "startSec": 415, "endSec": 458 },
-        { "label": "07:38 – 08:15", "startSec": 458, "endSec": 495 }
+        {
+          "label": "06:08 – 06:28",
+          "startSec": 368,
+          "endSec": 388
+        },
+        {
+          "label": "06:28 – 06:55",
+          "startSec": 388,
+          "endSec": 415
+        },
+        {
+          "label": "06:55 – 07:38",
+          "startSec": 415,
+          "endSec": 458
+        },
+        {
+          "label": "07:38 – 08:15",
+          "startSec": 458,
+          "endSec": 495
+        }
       ]
     },
     {
@@ -62,10 +132,26 @@
       "pdfUrl": "https://raw.githubusercontent.com/jodijhouranda/shalatvibe-gt5/main/lessons/pdfs/Bahasa_Arab_Analisis_Video_Ekonomi_Jerman_TAFL.pdf",
       "driveFileId": "12qLCnCUaG8jzDNVXY8hGg6f5vmitfldp",
       "segments": [
-        { "label": "00:00 – 00:20", "startSec": 0, "endSec": 20 },
-        { "label": "00:28 – 01:08", "startSec": 28, "endSec": 68 },
-        { "label": "01:08 – 01:51", "startSec": 68, "endSec": 111 },
-        { "label": "01:51 – 02:24", "startSec": 111, "endSec": 144 }
+        {
+          "label": "00:00 – 00:20",
+          "startSec": 0,
+          "endSec": 20
+        },
+        {
+          "label": "00:28 – 01:08",
+          "startSec": 28,
+          "endSec": 68
+        },
+        {
+          "label": "01:08 – 01:51",
+          "startSec": 68,
+          "endSec": 111
+        },
+        {
+          "label": "01:51 – 02:24",
+          "startSec": 111,
+          "endSec": 144
+        }
       ]
     },
     {
@@ -84,11 +170,31 @@
       "pdfUrl": "https://raw.githubusercontent.com/jodijhouranda/shalatvibe-gt5/main/lessons/pdfs/Bahasa_Arab_Analisis_Video_Dominasi_Ekonomi_TAFL.pdf",
       "driveFileId": "1FFdsK5opkzlFU-aX7kLsDoKTGElRFkS3",
       "segments": [
-        { "label": "00:00 – 00:25", "startSec": 0, "endSec": 25 },
-        { "label": "00:26 – 00:56", "startSec": 26, "endSec": 56 },
-        { "label": "00:57 – 01:23", "startSec": 57, "endSec": 83 },
-        { "label": "01:24 – 01:48", "startSec": 84, "endSec": 108 },
-        { "label": "01:49 – 02:18", "startSec": 109, "endSec": 138 }
+        {
+          "label": "00:00 – 00:25",
+          "startSec": 0,
+          "endSec": 25
+        },
+        {
+          "label": "00:26 – 00:56",
+          "startSec": 26,
+          "endSec": 56
+        },
+        {
+          "label": "00:57 – 01:23",
+          "startSec": 57,
+          "endSec": 83
+        },
+        {
+          "label": "01:24 – 01:48",
+          "startSec": 84,
+          "endSec": 108
+        },
+        {
+          "label": "01:49 – 02:18",
+          "startSec": 109,
+          "endSec": 138
+        }
       ]
     }
   ]
