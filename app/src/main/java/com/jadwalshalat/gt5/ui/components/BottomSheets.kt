@@ -594,7 +594,7 @@ fun HuaweiGuideBottomSheet(
         listOf(
             "Buka Huawei Health di HP" to "Masuk ke tab Perangkat lalu pilih HUAWEI WATCH GT 5 Anda.",
             "Buka Menu Notifikasi" to "Pastikan saklar utama Notifikasi dalam keadaan aktif.",
-            "Centang ShalatVibe GT5" to "Gulir daftar aplikasi dan aktifkan toggle untuk ShalatVibe GT5.",
+            "Centang aplikasi Jadwal" to "Gulir daftar aplikasi dan aktifkan toggle untuk aplikasi Jadwal.",
             "Cek Opsi Saat Layar Menyala" to "Nonaktifkan \"Bisukan notifikasi saat memakai ponsel\" agar jam tetap bergetar meski HP sedang dipakai.",
             "Uji dengan Tes 5 Detik" to "Tekan tombol Tes Getar 5 Detik di GT 5 Hub lalu segera kunci layar HP untuk verifikasi getaran."
         )
