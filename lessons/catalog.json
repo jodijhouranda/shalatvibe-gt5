@@ -1,7 +1,40 @@
 {
   "version": 1,
-  "updatedAt": "2026-11-20",
+  "updatedAt": "2026-11-21",
   "lessons": [
+    {
+      "id": "video_poros_usus_otak_kedua",
+      "category": "VIDEO_ANALYSIS",
+      "dayLabel": "Video 07",
+      "dateLabel": "21 Nov 2026",
+      "title": "Poros Usus–Otak & Peran \"Otak Kedua\" Manusia",
+      "subtitle": "Neurobiologi, kesehatan pencernaan, dan psikologi klinis",
+      "sourceName": "DW Documentary وثائقية دي دبليو",
+      "level": "CEFR B2–C1",
+      "youtubeVideoId": "_98ItKGmIW8",
+      "startSeconds": 1779,
+      "endSeconds": 1901,
+      "pdfFileName": "Bahasa_Arab_Analisis_Video_Otak_Kedua_Usus_TAFL.pdf",
+      "pdfUrl": "https://raw.githubusercontent.com/jodijhouranda/shalatvibe-gt5/main/lessons/pdfs/Bahasa_Arab_Analisis_Video_Otak_Kedua_Usus_TAFL.pdf",
+      "driveFileId": "1ugfECpdNnVCJ--y49RZjlAiJOXJwFd2x",
+      "segments": [
+        {
+          "label": "29:39 – 30:07",
+          "startSec": 1779,
+          "endSec": 1807
+        },
+        {
+          "label": "30:07 – 30:39",
+          "startSec": 1807,
+          "endSec": 1839
+        },
+        {
+          "label": "30:39 – 31:41",
+          "startSec": 1839,
+          "endSec": 1901
+        }
+      ]
+    },
     {
       "id": "video_krisis_iklim_cuaca_ekstrem",
       "category": "VIDEO_ANALYSIS",
