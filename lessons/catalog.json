@@ -1,7 +1,45 @@
 {
   "version": 1,
-  "updatedAt": "2026-11-21",
+  "updatedAt": "2026-11-22",
   "lessons": [
+    {
+      "id": "video_revolusi_astronomi_teleskop",
+      "category": "VIDEO_ANALYSIS",
+      "dayLabel": "Video 08",
+      "dateLabel": "22 Nov 2026",
+      "title": "Revolusi Astronomi: Dari Geosentris ke Teleskop Galileo",
+      "subtitle": "Astronomi, sejarah sains, dan pergeseran paradigma heliosentris",
+      "sourceName": "Al Jazeera Documentary الجزيرة الوثائقية",
+      "level": "CEFR B2–C1",
+      "youtubeVideoId": "vjo1X9Cvvew",
+      "startSeconds": 77,
+      "endSeconds": 204,
+      "pdfFileName": "Bahasa_Arab_Analisis_Video_Astronomi_Teleskop_TAFL.pdf",
+      "pdfUrl": "https://raw.githubusercontent.com/jodijhouranda/shalatvibe-gt5/main/lessons/pdfs/Bahasa_Arab_Analisis_Video_Astronomi_Teleskop_TAFL.pdf",
+      "driveFileId": "1_A4cgw89gfT4cANxFYXxPVx-ILxDxfAh",
+      "segments": [
+        {
+          "label": "01:17 – 01:48",
+          "startSec": 77,
+          "endSec": 108
+        },
+        {
+          "label": "01:48 – 02:28",
+          "startSec": 108,
+          "endSec": 148
+        },
+        {
+          "label": "02:28 – 02:48",
+          "startSec": 148,
+          "endSec": 168
+        },
+        {
+          "label": "02:48 – 03:24",
+          "startSec": 168,
+          "endSec": 204
+        }
+      ]
+    },
     {
       "id": "video_poros_usus_otak_kedua",
       "category": "VIDEO_ANALYSIS",
