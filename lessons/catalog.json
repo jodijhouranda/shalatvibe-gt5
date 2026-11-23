@@ -1,7 +1,40 @@
 {
   "version": 1,
-  "updatedAt": "2026-11-22",
+  "updatedAt": "2026-11-23",
   "lessons": [
+    {
+      "id": "video_asal_usul_huruf_arab",
+      "category": "VIDEO_ANALYSIS",
+      "dayLabel": "Video 09",
+      "dateLabel": "23 Nov 2026",
+      "title": "Asal-Usul Huruf Arab & Revolusi Tulisan Fonetik",
+      "subtitle": "Linguistik historis, sistem aksara Fenisia, dan sejarah peradaban tulisan",
+      "sourceName": "AlJazeera Arabic قناة الجزيرة",
+      "level": "CEFR B2–C1",
+      "youtubeVideoId": "jK0jAeZhrYs",
+      "startSeconds": 835,
+      "endSeconds": 960,
+      "pdfFileName": "Bahasa_Arab_Analisis_Video_Asal_Usul_Huruf_Arab_TAFL.pdf",
+      "pdfUrl": "https://raw.githubusercontent.com/jodijhouranda/shalatvibe-gt5/main/lessons/pdfs/Bahasa_Arab_Analisis_Video_Asal_Usul_Huruf_Arab_TAFL.pdf",
+      "driveFileId": "10pb0pLKmRlDQwAYDCQBJQIYCbpH8wzNw",
+      "segments": [
+        {
+          "label": "13:55 – 14:20",
+          "startSec": 835,
+          "endSec": 860
+        },
+        {
+          "label": "14:20 – 15:00",
+          "startSec": 860,
+          "endSec": 900
+        },
+        {
+          "label": "15:00 – 16:00",
+          "startSec": 900,
+          "endSec": 960
+        }
+      ]
+    },
     {
       "id": "video_revolusi_astronomi_teleskop",
       "category": "VIDEO_ANALYSIS",
