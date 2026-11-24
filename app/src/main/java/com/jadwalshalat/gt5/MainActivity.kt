@@ -20,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.jadwalshalat.gt5.arabic.ArabicStudyViewModel
+import com.jadwalshalat.gt5.learning.LearningViewModel
 import com.jadwalshalat.gt5.location.LocationHelper
 import com.jadwalshalat.gt5.ui.ShalatVibeApp
 import com.jadwalshalat.gt5.ui.ShalatVibeViewModel
@@ -28,12 +29,13 @@ import com.jadwalshalat.gt5.ui.theme.ThemeMode
 import kotlinx.coroutines.launch
 
 /**
- * Activity utama ShalatVibe GT5 v2.1 berbasis Kotlin + Jetpack Compose + Material 3.
+ * Activity utama ShalatVibe GT5 v2.3 berbasis Kotlin + Jetpack Compose + Material 3.
  */
 class MainActivity : ComponentActivity() {
 
     private val viewModel: ShalatVibeViewModel by viewModels()
     private val arabicViewModel: ArabicStudyViewModel by viewModels()
+    private val learningViewModel: LearningViewModel by viewModels()
     private val snackbarHostState = SnackbarHostState()
 
     private val notificationPermissionLauncher =
@@ -67,6 +69,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val state by viewModel.uiState.collectAsStateWithLifecycle()
             val arabicState by arabicViewModel.uiState.collectAsStateWithLifecycle()
+            val learningState by learningViewModel.uiState.collectAsStateWithLifecycle()
             val systemDark = isSystemInDarkTheme()
             val isDark = when (state.themeMode) {
                 ThemeMode.SYSTEM -> systemDark
@@ -94,6 +97,8 @@ class MainActivity : ComponentActivity() {
                     viewModel = viewModel,
                     arabicState = arabicState,
                     arabicViewModel = arabicViewModel,
+                    learningState = learningState,
+                    learningViewModel = learningViewModel,
                     onRequestNotificationPermission = ::requestNotificationPermission,
                     onOpenExactAlarmSettings = ::openExactAlarmSettings,
                     onRequestIgnoreBattery = ::requestIgnoreBatteryOptimization,

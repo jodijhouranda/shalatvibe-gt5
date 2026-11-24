@@ -5,10 +5,12 @@ Aplikasi Android pendamping (**Companion App**) berbasis **Kotlin + Jetpack Comp
 ## Mengapa Pakai Aplikasi Android Pendamping?
 Huawei Watch GT 5 menjalankan sistem operasi **HarmonyOS LiteOS (Lite Wearable)** yang membatasi aplikasi pihak ketiga berjalan terus-menerus di *background* demi baterai tahan hingga 14 hari. Dengan memanfaatkan *Notification Mirroring* resmi dari **Huawei Health**, jam GT 5 Anda bisa bergetar 24/7 sebelum waktu shalat tanpa menguras baterai jam dan tanpa perlu akun developer Huawei.
 
-## Fitur Utama v2.1 (*Celestial Watchcraft*)
+## Fitur Utama v2.3.0 (*Pustaka Belajar & Fiqh Muamalah*)
 - **Desain Modern 4 Tab (Jetpack Compose & Material 3)**:
   - **Jadwal**: *Dynamic Atmosphere Hero Card* (gradien berubah mengikuti fase Subuh, Dzuhur, Ashar, Maghrib, Isya), busur matahari (*Solar Arc*), *live countdown* presisi tiap detik, tanggal Masehi & **Kalender Hijriah otomatis offline**, navigasi jadwal kemarin/besok, serta kartu jadwal dengan ikon celestial.
-  - **Belajar (Bahasa Arab TAFL)**: Ruang belajar terpadu (*Split-View*) yang memutar **video YouTube otomatis mulai dari menit yang ditentukan** (lengkap dengan *chip* sub-segmen, kecepatan `0.75×/1.0×/1.25×`, *auto-loop* segmen, dan *Mode Fokus PDF* tanpa memutus audio) berdampingan dengan **PDF Viewer native** (`Asli` / `Sepia` / `Gelap` + zoom). Mendukung **Opsi 1 (Hybrid Offline + Sync Manifest)** melalui `lessons/catalog.json` atau link publik Google Drive.
+  - **Belajar (Pustaka Belajar Multi-Track)**: Hub belajar berbentuk *grid* skalabel dengan pencarian global lintas materi & istilah, kartu *Lanjutkan Terakhir*, dan dukungan banyak bidang ilmu:
+    - **Bahasa Arab (TAFL)**: Modul harian video YouTube segmen otomatis berdampingan dengan PDF Viewer native.
+    - **Fiqh Al-Mu'amalat Al-Maliyah (Syaikh Abdussalam Asy-Syuwai'ir)**: 5 Seri episode dipecah menjadi **Blok Tema** per bahasan dengan *Dual-Mode Study Room* (**Teks Arab & Arti + Kamus Istilah interaktif ketuk-untuk-penjelasan** | **Kitab PDF 95 Halaman** otomatis lompat ke halaman tiap blok). Mendukung sinkronisasi jarak jauh via `lessons/courses.json`.
   - **Kiblat**: Kompas presisi bergaya *bezel* Huawei Watch GT 5 dengan koreksi deklinasi magnetik, halo penjajaran emerald + *haptic feedback*, dan panduan kalibrasi angka 8.
   - **GT 5 Hub**: Pratinjau langsung tampilan notifikasi di layar bulat GT 5, **Status Kesiapan Sistem 4-Poin** (Notifikasi, Alarm Presisi, Baterai Bebas, Anti-Tidur), uji getar dengan *countdown visual* 5 detik, dan checklist interaktif panduan Huawei Health.
 - **AMOLED Dark Mode, Serene Light Mode & Adaptive Launcher Icon**: Ikuti sistem atau kunci tema gelap pekat yang selaras dengan layar AMOLED Huawei Watch GT 5.

@@ -108,6 +108,7 @@ fun PdfDocumentViewer(
     pdfFile: File,
     readingMode: PdfReadingMode,
     modifier: Modifier = Modifier,
+    initialPage: Int = 1,
     bottomActionContent: @Composable () -> Unit = {}
 ) {
     val palette = LocalShalatVibePalette.current
@@ -136,6 +137,12 @@ fun PdfDocumentViewer(
     }
 
     val listState = rememberLazyListState()
+    LaunchedEffect(pdfFile.absolutePath, pageCount, initialPage) {
+        if (pageCount > 0) {
+            val targetIdx = (initialPage - 1).coerceIn(0, pageCount - 1)
+            listState.scrollToItem(targetIdx)
+        }
+    }
     val currentPageIndex by remember {
         derivedStateOf { (listState.firstVisibleItemIndex + 1).coerceAtLeast(1) }
     }

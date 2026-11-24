@@ -9,13 +9,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
+import androidx.compose.material.icons.automirrored.rounded.MenuBook
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Explore
-import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Watch
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Explore
-import androidx.compose.material.icons.rounded.MenuBook
 import androidx.compose.material.icons.rounded.Watch
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -40,6 +40,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jadwalshalat.gt5.arabic.ArabicStudyUiState
 import com.jadwalshalat.gt5.arabic.ArabicStudyViewModel
+import com.jadwalshalat.gt5.learning.LearningDestination
+import com.jadwalshalat.gt5.learning.LearningHubUiState
+import com.jadwalshalat.gt5.learning.LearningViewModel
 import com.jadwalshalat.gt5.model.PrayerType
 import com.jadwalshalat.gt5.ui.components.ArabicSyncSettingsBottomSheet
 import com.jadwalshalat.gt5.ui.components.CityPickerBottomSheet
@@ -50,7 +53,11 @@ import com.jadwalshalat.gt5.ui.components.QiblaCalibrationBottomSheet
 import com.jadwalshalat.gt5.ui.components.ThemePickerBottomSheet
 import com.jadwalshalat.gt5.ui.screens.ArabicCatalogScreen
 import com.jadwalshalat.gt5.ui.screens.ArabicStudyRoomScreen
+import com.jadwalshalat.gt5.ui.screens.CourseFullBookPdfScreen
+import com.jadwalshalat.gt5.ui.screens.CourseOverviewScreen
+import com.jadwalshalat.gt5.ui.screens.CourseStudyRoomScreen
 import com.jadwalshalat.gt5.ui.screens.Gt5HubScreen
+import com.jadwalshalat.gt5.ui.screens.LearningLibraryScreen
 import com.jadwalshalat.gt5.ui.screens.QiblaScreen
 import com.jadwalshalat.gt5.ui.screens.ScheduleScreen
 import com.jadwalshalat.gt5.ui.theme.LocalShalatVibePalette
@@ -62,6 +69,8 @@ fun ShalatVibeApp(
     viewModel: ShalatVibeViewModel,
     arabicState: ArabicStudyUiState,
     arabicViewModel: ArabicStudyViewModel,
+    learningState: LearningHubUiState,
+    learningViewModel: LearningViewModel,
     onRequestNotificationPermission: () -> Unit,
     onOpenExactAlarmSettings: () -> Unit,
     onRequestIgnoreBattery: () -> Unit,
@@ -80,7 +89,7 @@ fun ShalatVibeApp(
     var showArabicSyncSheet by remember { mutableStateOf(false) }
     var detailPrayerType by remember { mutableStateOf<PrayerType?>(null) }
 
-    // Jika pengguna sedang membuka Ruang Belajar (Video YouTube + PDF), tampilkan penuh tanpa bottom bar
+    // Jika pengguna sedang membuka Ruang Belajar Bahasa Arab (Video YouTube + PDF), tampilkan penuh tanpa bottom bar
     val openLesson = arabicState.activeLesson
     if (openLesson != null) {
         ArabicStudyRoomScreen(
@@ -97,6 +106,57 @@ fun ShalatVibeApp(
         return
     }
 
+    // Jika pengguna sedang membuka Blok Tema atau Kitab PDF dari Seri Kursus (mis. Fiqh Muamalah), tampilkan penuh tanpa bottom bar
+    when (val dest = learningState.destination) {
+        is LearningDestination.CourseStudyBlock -> {
+            val course = learningState.seriesCourses[dest.courseId]
+            val found = course?.findEpisodeAndBlock(dest.blockId)
+            if (course != null && found != null) {
+                val (episode, block) = found
+                val flat = course.allBlocks
+                val currentIdx = flat.indexOfFirst { (_, b) -> b.id == block.id }
+                val hasNextBlock = currentIdx >= 0 && currentIdx + 1 < flat.size
+                CourseStudyRoomScreen(
+                    course = course,
+                    episode = episode,
+                    block = block,
+                    initialTimeSec = dest.initialTimeSec,
+                    pdfFile = learningState.activeCoursePdfFile,
+                    isLoadingPdf = learningState.isLoadingCoursePdf,
+                    pdfError = learningState.coursePdfError,
+                    isCompleted = learningState.completedBlockIds.contains(block.id),
+                    hasNextBlock = hasNextBlock,
+                    readingMode = arabicState.readingMode,
+                    onCycleReadingMode = { arabicViewModel.cycleReadingMode() },
+                    onToggleBlockCompleted = { learningViewModel.toggleBlockCompleted(block.id) },
+                    onCompleteAndNext = { learningViewModel.markCompletedAndOpenNext(course.id, block.id) },
+                    onSelectOtherBlock = { epId, blkId, seekSec ->
+                        learningViewModel.openTopicBlock(course.id, epId, blkId, seekSec)
+                    },
+                    onBack = { learningViewModel.navigateBack() }
+                )
+                return
+            }
+        }
+        is LearningDestination.CourseBookPdf -> {
+            val course = learningState.seriesCourses[dest.courseId]
+            if (course != null) {
+                CourseFullBookPdfScreen(
+                    course = course,
+                    pdfFile = learningState.activeCoursePdfFile,
+                    isLoadingPdf = learningState.isLoadingCoursePdf,
+                    pdfError = learningState.coursePdfError,
+                    initialPage = dest.initialPage,
+                    readingMode = arabicState.readingMode,
+                    onCycleReadingMode = { arabicViewModel.cycleReadingMode() },
+                    onBack = { learningViewModel.navigateBack() }
+                )
+                return
+            }
+        }
+        else -> Unit
+    }
+
     Scaffold(
         containerColor = palette.background,
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
@@ -109,13 +169,13 @@ fun ShalatVibeApp(
                     val selected = tab == currentTab
                     val selectedIcon = when (tab) {
                         MainTab.SCHEDULE -> Icons.Rounded.CalendarMonth
-                        MainTab.ARABIC -> Icons.Rounded.MenuBook
+                        MainTab.ARABIC -> Icons.AutoMirrored.Rounded.MenuBook
                         MainTab.QIBLA -> Icons.Rounded.Explore
                         MainTab.GT5_HUB -> Icons.Rounded.Watch
                     }
                     val unselectedIcon = when (tab) {
                         MainTab.SCHEDULE -> Icons.Outlined.CalendarMonth
-                        MainTab.ARABIC -> Icons.Outlined.MenuBook
+                        MainTab.ARABIC -> Icons.AutoMirrored.Outlined.MenuBook
                         MainTab.QIBLA -> Icons.Outlined.Explore
                         MainTab.GT5_HUB -> Icons.Outlined.Watch
                     }
@@ -191,21 +251,80 @@ fun ShalatVibeApp(
                         onOpenPrayerDetail = { detailPrayerType = it }
                     )
 
-                    MainTab.ARABIC -> ArabicCatalogScreen(
-                        state = arabicState,
-                        onSelectFilter = { arabicViewModel.setFilter(it) },
-                        onSearchQueryChange = { arabicViewModel.setSearchQuery(it) },
-                        onOpenLesson = { arabicViewModel.openLesson(it) },
-                        onToggleFavorite = { arabicViewModel.toggleFavorite(it) },
-                        onSyncNow = {
-                            arabicViewModel.syncCatalog { result ->
-                                scope.launch {
-                                    snackbarHostState.showSnackbar(result.message)
+                    MainTab.ARABIC -> {
+                        when (val dest = learningState.destination) {
+                            LearningDestination.ArabicCatalog -> ArabicCatalogScreen(
+                                state = arabicState,
+                                onSelectFilter = { arabicViewModel.setFilter(it) },
+                                onSearchQueryChange = { arabicViewModel.setSearchQuery(it) },
+                                onOpenLesson = { arabicViewModel.openLesson(it) },
+                                onToggleFavorite = { arabicViewModel.toggleFavorite(it) },
+                                onSyncNow = {
+                                    arabicViewModel.syncCatalog { result ->
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar(result.message)
+                                        }
+                                    }
+                                },
+                                onOpenSyncSettings = { showArabicSyncSheet = true },
+                                onBack = { learningViewModel.navigateBack() }
+                            )
+                            is LearningDestination.CourseOverview -> {
+                                val course = learningState.seriesCourses[dest.courseId]
+                                if (course != null) {
+                                    CourseOverviewScreen(
+                                        course = course,
+                                        completedBlockIds = learningState.completedBlockIds,
+                                        onBack = { learningViewModel.navigateBack() },
+                                        onOpenBlock = { epId, blkId, seekSec ->
+                                            learningViewModel.openTopicBlock(course.id, epId, blkId, seekSec)
+                                        },
+                                        onOpenFullBookPdf = { page ->
+                                            learningViewModel.openFullBookPdf(course.id, page)
+                                        },
+                                        onToggleBlockCompleted = { blkId ->
+                                            learningViewModel.toggleBlockCompleted(blkId)
+                                        }
+                                    )
+                                } else {
+                                    LearningLibraryScreen(
+                                        hubState = learningState,
+                                        arabicState = arabicState,
+                                        onSearchQueryChange = { learningViewModel.setSearchQuery(it) },
+                                        onOpenTrack = { learningViewModel.openTrack(it) },
+                                        onOpenArabicLesson = { arabicViewModel.openLesson(it) },
+                                        onOpenTopicBlock = { cid, epId, blkId, seekSec ->
+                                            learningViewModel.openTopicBlock(cid, epId, blkId, seekSec)
+                                        },
+                                        onSyncAll = {
+                                            arabicViewModel.syncCatalog {}
+                                            learningViewModel.syncCourses { result ->
+                                                scope.launch { snackbarHostState.showSnackbar(result.message) }
+                                            }
+                                        },
+                                        onOpenSyncSettings = { showArabicSyncSheet = true }
+                                    )
                                 }
                             }
-                        },
-                        onOpenSyncSettings = { showArabicSyncSheet = true }
-                    )
+                            else -> LearningLibraryScreen(
+                                hubState = learningState,
+                                arabicState = arabicState,
+                                onSearchQueryChange = { learningViewModel.setSearchQuery(it) },
+                                onOpenTrack = { learningViewModel.openTrack(it) },
+                                onOpenArabicLesson = { arabicViewModel.openLesson(it) },
+                                onOpenTopicBlock = { cid, epId, blkId, seekSec ->
+                                    learningViewModel.openTopicBlock(cid, epId, blkId, seekSec)
+                                },
+                                onSyncAll = {
+                                    arabicViewModel.syncCatalog {}
+                                    learningViewModel.syncCourses { result ->
+                                        scope.launch { snackbarHostState.showSnackbar(result.message) }
+                                    }
+                                },
+                                onOpenSyncSettings = { showArabicSyncSheet = true }
+                            )
+                        }
+                    }
 
                     MainTab.QIBLA -> QiblaScreen(
                         state = state,

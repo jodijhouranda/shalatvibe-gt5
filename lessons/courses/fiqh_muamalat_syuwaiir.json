@@ -1,0 +1,736 @@
+{
+  "id": "fiqh_muamalah_syuwaiir",
+  "title": "Fiqh Al-Mu'amalat Al-Maliyah",
+  "arabicTitle": "فقه المعاملات المالية",
+  "instructor": "Syaikh Prof. Dr. Abdussalam Asy-Syuwai'ir",
+  "subtitle": "Daurah Tabuk 1439H • 5 Seri Video & Kitab 95 Halaman",
+  "bookTitle": "Tafrigh Durus Fiqh Al-Mu'amalat Al-Maliyah (Tabuk 1439H)",
+  "bookPdfFileName": "fiqh_muamalat_syuwaiir.pdf",
+  "bookPdfUrl": "https://raw.githubusercontent.com/jodijhouranda/shalatvibe-gt5/main/lessons/courses/fiqh_muamalat_syuwaiir.pdf",
+  "bookTotalPages": 95,
+  "glossary": [
+    {
+      "id": "furu_fiqhiyyah",
+      "arabic": "الفروع الفقهية",
+      "transliteration": "Al-Furu' Al-Fiqhiyyah",
+      "term": "Cabang Masalah Fikih",
+      "meaning": "Kasus-kasus transaksi harian yang sangat banyak dan selalu muncul bentuk baru di setiap zaman.",
+      "fiqhNote": "Syaikh menekankan jangan hanya menghafal cabang kasus karena jumlahnya tak terbatas; kuasai kaidah induknya agar mampu membedah transaksi baru.",
+      "exampleInVideo": "Transaksi e-commerce, cicilan bertingkat, dan akad-akad modern yang tidak tertulis secara eksplisit dalam kitab klasik.",
+      "episodeNumber": 1,
+      "blockId": "s1_b1",
+      "exampleTimeSec": 180
+    },
+    {
+      "id": "tanzil_qaedah",
+      "arabic": "التنزيل على القاعدة",
+      "transliteration": "At-Tanzil 'ala Al-Qa'idah",
+      "term": "Penerapan Kaidah ke Realitas",
+      "meaning": "Proses mencocokkan fakta kasus di lapangan (manath) dengan kaidah syariat induk yang sudah disepakati ulama.",
+      "fiqhNote": "Banyak perbedaan fatwa ulama sebenarnya bukan karena beda kaidah, melainkan karena perbedaan fakta/manfaat benda ketika kaidah diterapkan di tempat dan zaman yang berbeda.",
+      "exampleInVideo": "Kasus jual beli serangga: kaidahnya sepakat (yang tak bermanfaat haram dijual), namun penerapannya berubah saat serangga dipakai untuk pakan atau riset.",
+      "episodeNumber": 1,
+      "blockId": "s1_b4",
+      "exampleTimeSec": 3250
+    },
+    {
+      "id": "milk_ikhtishash",
+      "arabic": "المِلك والاختصاص",
+      "transliteration": "Al-Milk wal Ikhtishash",
+      "term": "Kepemilikan Penuh vs Hak Guna Khusus",
+      "meaning": "Al-Milk adalah hak milik penuh atas benda atau manfaatnya sehingga boleh diperjualbelikan; Al-Ikhtishash hanya hak memanfaatkan secara terbatas tanpa sah diperjualbelikan.",
+      "fiqhNote": "Contoh klasik Al-Ikhtishash adalah anjing penjaga atau pemburu: boleh dimiliki hak gunanya, tidak boleh dijualbelikan secara bebas menurut jumhur.",
+      "exampleInVideo": "Perbedaan hak memiliki mobil (milk al-'ain), menyewa rumah (milk al-manfa'ah sementara), dan hak menjaga anjing pemburu (ikhtishash).",
+      "episodeNumber": 1,
+      "blockId": "s1_b2",
+      "exampleTimeSec": 870
+    },
+    {
+      "id": "tamalluk_mubahat",
+      "arabic": "تملّك المباحات",
+      "transliteration": "Tamalluk Al-Mubahat",
+      "term": "Menguasai Benda Bebas Tak Bertuan",
+      "meaning": "Salah satu dari 3 jalur sah kepemilikan harta (selain waris dan akad), yaitu mengambil atau mengelola sumber daya bebas yang belum dimiliki siapa pun.",
+      "fiqhNote": "Contohnya air sungai, kayu di hutan belantara, ikan di laut bebas, dan menghidupkan tanah mati (ihya' al-mawat).",
+      "exampleInVideo": "Siapa yang lebih dulu mengambil ikan di laut atau kayu di padang terbuka, dialah pemilik sahnya selama tidak dilarang penguasa demi maslahat.",
+      "episodeNumber": 1,
+      "blockId": "s1_b2",
+      "exampleTimeSec": 1450
+    },
+    {
+      "id": "ridha_ilm",
+      "arabic": "لا رضا إلا بعد العلم",
+      "transliteration": "La Ridha illa ba'da Al-'Ilm",
+      "term": "Kerelaan Sah Harus Didahului Ilmu",
+      "meaning": "Prinsip inti akad bahwa 'suka sama suka' tidak dianggap sah secara syariat sebelum kedua pihak mengetahui hakikat barang dan syaratnya secara jelas.",
+      "fiqhNote": "Jika seseorang berkata 'saya ridha' padahal ia belum tahu kondisi barang (jahalah), atau ia ridha pada akad riba/gharar yang Allah haramkan, kerelaannya gugur secara syariat.",
+      "exampleInVideo": "Seseorang berkata 'saya ridha kok dipotong bunga' -> ridha ini tertolak karena tidak ada ridha di atas hal yang diharamkan Allah.",
+      "episodeNumber": 1,
+      "blockId": "s1_b3",
+      "exampleTimeSec": 2145
+    },
+    {
+      "id": "ibrah_haqaiq",
+      "arabic": "العبرة بحقيقة العقد لا بشكله",
+      "transliteration": "Al-'Ibrah bi Haqiqat Al-'Aqd",
+      "term": "Hakikat Akad Mengalahkan Labelnya",
+      "meaning": "Penilaian halal-haram sebuah transaksi ditentukan oleh substansi dan tujuan nyata akad tersebut, bukan oleh istilah syariah atau nama kontrak yang ditempelkan.",
+      "fiqhNote": "Jika akad berlabel 'jual beli' atau 'hadiah' ternyata substansinya meminjamkan uang dengan syarat tambahan, hukumnya tetap riba.",
+      "exampleInVideo": "Menukar nama bunga menjadi 'biaya administrasi proporsional' atau membungkus utang berbunga dengan akad jual beli fiktif.",
+      "episodeNumber": 1,
+      "blockId": "s1_b3",
+      "exampleTimeSec": 2760
+    },
+    {
+      "id": "muharram_lidzatihi",
+      "arabic": "المحرّم لذاته",
+      "transliteration": "Al-Muharram Lidzatihi",
+      "term": "Haram Karena Zat Bendanya",
+      "meaning": "Benda yang tidak sah menjadi objek transaksi karena zatnya najis, memabukkan, atau syariat mencabut nilai ekonomisnya karena tidak punya manfaat halal.",
+      "fiqhNote": "Contoh: khamr, babi, bangkai, dan benda yang sama sekali tidak bermanfaat. Namun benda najis/limbah yang memiliki manfaat halal olahan (seperti pupuk/industri) memiliki riwayat pendapat yang membolehkannya.",
+      "exampleInVideo": "Penjualan limbah kotoran/sisa produksi pabrik (al-fadhalat) atau budidaya serangga untuk pakan ternak dan bahan obat halal.",
+      "episodeNumber": 1,
+      "blockId": "s1_b4",
+      "exampleTimeSec": 3260
+    },
+    {
+      "id": "aqd_mauquf",
+      "arabic": "العقد الموقوف",
+      "transliteration": "Al-'Aqd Al-Mauquf",
+      "term": "Akad Menggantung (Menunggu Izin)",
+      "meaning": "Transaksi yang dilakukan oleh pihak yang tidak memiliki wewenang atas barang (fudhuli); sah atau batalnya bergantung pada persetujuan pemilik sah.",
+      "fiqhNote": "Menurut madzhab Hanbali yang masyhur jual beli barang orang lain tanpa izin langsung batal, sedangkan riwayat kedua (pilihan Syaikhul Islam Ibnu Taimiyah) statusnya mauquf sampai pemilik memberi izin.",
+      "exampleInVideo": "Menjualkan barang milik teman tanpa surat kuasa sebelumnya, lalu baru dilaporkan setelah ada pembeli.",
+      "episodeNumber": 1,
+      "blockId": "s1_b5",
+      "exampleTimeSec": 3910
+    },
+    {
+      "id": "qabdh",
+      "arabic": "القبض قبل التصرف",
+      "transliteration": "Al-Qabdh qabla At-Tasharruf",
+      "term": "Serah Terima Sebelum Dijual Lagi",
+      "meaning": "Kewajiban menerima barang secara fisik atau penguasaan resmi (qabdh hukmi) sebelum menjualnya kembali kepada pihak ketiga.",
+      "fiqhNote": "Tujuannya mencegah penipuan, ketidakjelasan barang, dan kerugian penjual pertama bila harga naik tiba-tiba lalu barang urung diserahkan.",
+      "exampleInVideo": "Membeli berkarung beras atau komoditas timbangan lalu langsung menjualnya ke orang lain sebelum barang benar-benar diserahterimakan.",
+      "episodeNumber": 1,
+      "blockId": "s1_b6",
+      "exampleTimeSec": 4695
+    },
+    {
+      "id": "ihtikar",
+      "arabic": "الاحتكار",
+      "transliteration": "Al-Ihtikar",
+      "term": "Penimbunan Barang Kebutuhan Publik",
+      "meaning": "Menahan barang pokok yang sangat dibutuhkan masyarakat dari peredaran dengan niat menunggu harga melonjak tinggi.",
+      "fiqhNote": "Diharamkan karena menzalimi dan menyulitkan kaum muslimin secara luas (al-idhrar bil muslimin).",
+      "exampleInVideo": "Memborong stok pangan atau bahan pokok saat krisis agar pasokan langka lalu menjualnya berkali lipat.",
+      "episodeNumber": 1,
+      "blockId": "s1_b6",
+      "exampleTimeSec": 4840
+    },
+    {
+      "id": "amwal_ribawiyyah",
+      "arabic": "الأموال الربوية",
+      "transliteration": "Al-Amwal Ar-Ribawiyyah",
+      "term": "Harta yang Terikat Hukum Riba Tukar",
+      "meaning": "Enam komoditas dalam hadis Nabi (emas, perak, gandum bur, gandum sya'ir, kurma, garam) beserta qiyasnya (mata uang dan bahan makanan pokok).",
+      "fiqhNote": "Riba Fadhl dan Riba Nasa' hanya berlaku pada pertukaran antar harta ribawi, sedangkan barang non-ribawi (mobil, rumah, pakaian) boleh ditukar lebih atau tempo.",
+      "exampleInVideo": "Tukar 1 kg kurma kualitas biasa dengan 0.5 kg kurma ajwa secara langsung -> jatuh ke Riba Fadhl.",
+      "episodeNumber": 1,
+      "blockId": "s1_b7",
+      "exampleTimeSec": 5110
+    },
+    {
+      "id": "riba_tiga",
+      "arabic": "ربا الفضل والنسأ والقرض",
+      "transliteration": "Riba Fadhl, Nasa', wa Qardh",
+      "term": "Tiga Jenis Riba",
+      "meaning": "Fadhl = selisih timbangan/nominal sejenis; Nasa' = penundaan serah terima sesama mata uang/makanan pokok; Qardh/Jahiliyyah = tambahan pengembalian atas utang.",
+      "fiqhNote": "Riba Qardh (riba utang) haramnya bersifat tujuan (tahrim maqashid) dan berlaku di SEMUA barang sepadan (mitsliyat), sedangkan Riba Fadhl/Nasa' bersifat pencegahan sarana (tahrim wasa'il).",
+      "exampleInVideo": "Contoh Syaikh di akhir sesi: menukar pecahan Rp 500 ribu dengan Rp 400 ribu sekarang + Rp 100 ribu besok -> mengandung unsur penundaan (sharf tidak tunai).",
+      "episodeNumber": 1,
+      "blockId": "s1_b7",
+      "exampleTimeSec": 5650
+    },
+    {
+      "id": "bai_inah",
+      "arabic": "بيع العينة",
+      "transliteration": "Bai' Al-'Inah",
+      "term": "Rekayasa Jual Beli Kredit Lalu Beli Tunai Lebih Murah",
+      "meaning": "Menjual barang secara kredit dengan harga tinggi, lalu penjual langsung membelinya kembali secara tunai dengan harga lebih rendah sebagai kedok pinjaman berbunga.",
+      "fiqhNote": "Diharamkan untuk menutup jalan menuju Riba Jahiliyyah (sadd adz-dzari'ah), baik dilakukan dua pihak (tsuna'iyyah) maupun bersekongkol dengan pihak ketiga (tsulatsiyyah).",
+      "exampleInVideo": "A jual barang Rp 12 juta tempo 1 tahun ke B, lalu seketika A beli lagi barang itu tunai Rp 10 juta dari B.",
+      "episodeNumber": 2,
+      "blockId": "s2_b1",
+      "exampleTimeSec": 570
+    },
+    {
+      "id": "gharar_yasir",
+      "arabic": "الغرر اليسير والكثير",
+      "transliteration": "Al-Gharar Al-Yasir wal Kabir",
+      "term": "Ketidakjelasan Ringan vs Berat",
+      "meaning": "Gharar adalah ketidakpastian sifat atau hasil akad. Gharar besar membatalkan akad komersial, sedangkan gharar ringan (yasir) ditoleransi.",
+      "fiqhNote": "4 Tolok Ukur Gharar Yasir: (1) kadarnya sedikit secara 'urf, (2) dibutuhkan mendesak, (3) sulit dihindari, dan (4) hanya mengikuti objek utama, bukan target akad.",
+      "exampleInVideo": "Membeli rumah beserta pondasinya yang tertanam di dalam tanah — tidak terlihat langsung, tapi dimaklumi sebagai gharar yasir.",
+      "episodeNumber": 2,
+      "blockId": "s2_b3",
+      "exampleTimeSec": 2650
+    },
+    {
+      "id": "tawarruq_munazzam",
+      "arabic": "التورق المنظم",
+      "transliteration": "At-Tawarruq Al-Munazzam",
+      "term": "Tawarruq Terorganisir oleh Bank",
+      "meaning": "Nasabah membeli komoditas secara kredit dari bank, lalu bank itu sendiri (melalui wakil/jaringannya) yang langsung menjualkan komoditas itu agar cair jadi uang tunai.",
+      "fiqhNote": "Berbeda dengan Tawarruq Fardi (tradisional) di mana pembeli memegang sendiri barang lalu menjualnya bebas ke pasar. Majma' Fiqh memfatwakan Tawarruq Munazzam tidak boleh karena menyerupai 'Inah.",
+      "exampleInVideo": "Pembiayaan tunai lewat perantara komoditas logam/gandum yang barangnya tidak pernah benar-benar dikuasai nasabah.",
+      "episodeNumber": 5,
+      "blockId": "s5_b1",
+      "exampleTimeSec": 410
+    },
+    {
+      "id": "bai_urbun",
+      "arabic": "بيع العربون",
+      "transliteration": "Bai' Al-'Urbun",
+      "term": "Jual Beli dengan Uang Muka Hangus",
+      "meaning": "Pembeli membayar DP terlebih dahulu: jika akad jadi dilanjutkan, DP dihitung sebagai bagian harga; jika batal sepihak oleh pembeli, DP menjadi hak penjual.",
+      "fiqhNote": "Dikuatkan dalam madzhab Hanbali (dan kaidah Ibnu Rajab tentang bolehnya kompensasi atas hak pembatalan akad).",
+      "exampleInVideo": "Memberi tanda jadi booking mobil/properti di mana penjual kehilangan peluang menjual ke pembeli lain selama menunggu kepastian.",
+      "episodeNumber": 4,
+      "blockId": "s4_b4",
+      "exampleTimeSec": 4850
+    }
+  ],
+  "episodes": [
+    {
+      "episodeNumber": 1,
+      "id": "seri_1",
+      "title": "Seri 1: Pondasi Kaidah, Kepemilikan, Haram Lidzatihi & Riba",
+      "arabicTitle": "المجلس الأول: القواعد الكلية والتملك والربا",
+      "youtubeVideoId": "p-wwtkRQz7A",
+      "durationSec": 6022,
+      "pdfStartPage": 1,
+      "pdfEndPage": 27,
+      "summary": "Pengantar mengapa fikih muamalah mudah dikuasai lewat kaidah induk, 3 sebab kepemilikan harta, syarat sah Ridha, barang haram lidzatihi & likasbihi, larangan jual sebelum qabdh, hingga peta lengkap 3 jenis riba.",
+      "blocks": [
+        {
+          "id": "s1_b1",
+          "order": 1,
+          "title": "Blok 1: Cara Menguasai Fikih Muamalah & Kaidah Pertama",
+          "startSec": 0,
+          "endSec": 787,
+          "pdfPageHint": 1,
+          "summary": "Dua penyebab fikih muamalah terasa sulit (cabang masalah tak terhitung & banyaknya perbedaan ulama), solusi meringkasnya ke dalam kaidah inti, serta Kaidah 1: manusia adalah pemegang amanah (mustakhlaf) atas harta.",
+          "keyTermIds": ["furu_fiqhiyyah", "tanzil_qaedah"],
+          "segments": [
+            {
+              "id": "s1_b1_seg1",
+              "startSec": 65,
+              "endSec": 260,
+              "arabic": "فإننا بمشيئة الله عز وجل في هذا اليوم وتاليه نجتمع في هذا المسجد لمذاكرة ما يتعلق بفقه المعاملات المالية؛ لأن العلماء يقسمون الفقه إلى أرباع أو أخماس، ومنها المعاملات المالية بيعاً وشراءً ونقضاً وإبراماً.",
+              "indonesian": "Dengan kehendak Allah pada hari ini dan esok kita berkumpul untuk mempelajari Fikih Muamalah Maliyah. Para ulama membagi kitab fikih menjadi beberapa bagian utama, di antaranya bab muamalah harta: jual beli, pembatalan, maupun pengikatan akad.",
+              "termIds": ["furu_fiqhiyyah"]
+            },
+            {
+              "id": "s1_b1_seg2",
+              "startSec": 320,
+              "endSec": 560,
+              "arabic": "صعوبة هذا الباب ترجع إلى سببين: كثرة الفروع الفقهية، وكثرة الخلاف بين العلماء. وإذا أتقن طالب العلم القواعد الكلية عرف الفرق بين الخلاف في أصل القاعدة والخلاف في التنزيل على القاعدة.",
+              "indonesian": "Kesulitan bab muamalah kembali pada dua sebab: amat banyaknya cabang kasus harian dan banyaknya khilaf ulama. Bila seorang penuntut ilmu menguasai kaidah induknya, ia akan sanggup membedakan mana perbedaan pada kaidah dasar dan mana yang hanya perbedaan saat menerapkan kaidah ke kasus lapangan.",
+              "termIds": ["furu_fiqhiyyah", "tanzil_qaedah"]
+            },
+            {
+              "id": "s1_b1_seg3",
+              "startSec": 580,
+              "endSec": 780,
+              "arabic": "القاعدة الأولى أن الإنسان مستخلف في هذا المال؛ فالمالك الحقيقي هو الله عز وجل، ولذلك لا يتصرف الإنسان في ماله إلا وفق ما أذن به المالك الحقيقي.",
+              "indonesian": "Kaidah pertama: manusia hanyalah pemegang amanah (mustakhlaf) atas hartanya. Pemilik sejati harta adalah Allah Ta'ala, sehingga manusia tidak bebas mempergunakan hartanya kecuali sesuai koridor yang diizinkan Pemilik sejatinya.",
+              "termIds": []
+            }
+          ]
+        },
+        {
+          "id": "s1_b2",
+          "order": 2,
+          "title": "Blok 2: Kepemilikan (Milk vs Ikhtishash) & 3 Jalan Memiliki Harta",
+          "startSec": 787,
+          "endSec": 2073,
+          "pdfPageHint": 5,
+          "summary": "Klasifikasi benda menjadi Milk (kepemilikan penuh atas zat atau manfaatnya), Ikhtishash (hak guna terbatas), dan Mubahat, dilanjutkan dengan 3 jalan sah memperoleh kepemilikan: waris, mengambil benda mubah, dan akad.",
+          "keyTermIds": ["milk_ikhtishash", "tamalluk_mubahat"],
+          "segments": [
+            {
+              "id": "s1_b2_seg1",
+              "startSec": 840,
+              "endSec": 1220,
+              "arabic": "المنافع هذه تملك مع العين وتملك منفكة عن العين؛ كعقود الإجارات فإن المستأجر ملك المنفعة من دون العين ملكاً مؤقتاً لمدة شهر أو سنة.",
+              "indonesian": "Manfaat suatu benda bisa dimiliki menyatu bersama zat barangnya, dan bisa pula dimiliki terpisah dari zatnya—seperti pada akad sewa-menyewa (ijarah): penyewa memiliki manfaat pakai selama sebulan atau setahun tanpa memiliki zat asetnya.",
+              "termIds": ["milk_ikhtishash"]
+            },
+            {
+              "id": "s1_b2_seg2",
+              "startSec": 1350,
+              "endSec": 1750,
+              "arabic": "أسباب التملك الشرعية محصورة في ثلاثة طرق: الميراث، وتملك المباحات كالصيد والاحتطاب وإحياء الموات، والعقود سواء كانت عقود معاوضة أو تبرع.",
+              "indonesian": "Sebab kepemilikan harta yang sah dalam syariat terbatas pada tiga jalur: (1) waris, (2) mengambil dan menguasai benda bebas tak bertuan (seperti berburu, mengambil kayu hutan, menghidupkan lahan mati), serta (3) akad komersial maupun akad sosial.",
+              "termIds": ["tamalluk_mubahat"]
+            }
+          ]
+        },
+        {
+          "id": "s1_b3",
+          "order": 3,
+          "title": "Blok 3: Syarat Sah Ridha & Hakikat Akad Mengalahkan Nama",
+          "startSec": 2073,
+          "endSec": 3123,
+          "pdfPageHint": 11,
+          "summary": "Penjelasan kaidah 'La ridha illa ba'da al-'ilm', posisi ridha di bawah kerelaan Allah, hukum asal semua akad adalah halal sampai ada dalil larangan, dan kaidah menilai substansi akad bukan label namanya.",
+          "keyTermIds": ["ridha_ilm", "ibrah_haqaiq"],
+          "segments": [
+            {
+              "id": "s1_b3_seg1",
+              "startSec": 2090,
+              "endSec": 2360,
+              "arabic": "إن الرضا من الآدميين لا يتحقق إلا برضا الله جل وعلا، ولا يمكن أن يتحقق الرضا بشيء أو بمعاقدة إلا بعد العلم؛ فلا رضا إلا بعد العلم، ومن زعم أنه رضي قبل العلم فليس براضٍ لأن الرضا فرع للعلم.",
+              "indonesian": "Kerelaan antar manusia tidak sah kecuali berada di bawah kerelaan Allah. Dan kerelaan terhadap suatu akad mustahil terwujud kecuali setelah mengetahuinya dengan jelas: 'Tidak ada ridha kecuali sesudah ilmu.' Siapa mengklaim ridha sebelum tahu hakikat barangnya, kerelaannya tidak dianggap sah.",
+              "termIds": ["ridha_ilm"]
+            },
+            {
+              "id": "s1_b3_seg2",
+              "startSec": 2580,
+              "endSec": 2920,
+              "arabic": "الأصل في العقود والمعاملات الإباحة إلا ما نهى الشرع عنه؛ وترجع أسباب التحريم غالباً إلى أربعة أمور: الربا والغرر والتغرير وما نص الشارع على تحريمه. والقاعدة المهمة جداً تجعل العبرة بحقيقة العقد والغرض منه بغض النظر عن شكله.",
+              "indonesian": "Hukum asal akad muamalah adalah mubah/halal kecuali yang dilarang syariat—dan larangan itu kembali pada empat pokok: riba, gharar, taghrir (penipuan), dan larangan nash khusus. Tolok ukurnya adalah hakikat dan tujuan nyata akad, bukan sekadar nama atau bungkus kontraknya.",
+              "termIds": ["ibrah_haqaiq"]
+            }
+          ]
+        },
+        {
+          "id": "s1_b4",
+          "order": 4,
+          "title": "Blok 4: Barang Haram Lidzatihi & Studi Kasus Limbah / Serangga",
+          "startSec": 3123,
+          "endSec": 3815,
+          "pdfPageHint": 17,
+          "summary": "Konsep harta yang dicabut nilai ekonomisnya oleh syariat karena najis atau nihil manfaat. Studi kasus perubahan fatwa modern tentang limbah industri (al-fadhalat) dan jual beli serangga.",
+          "keyTermIds": ["muharram_lidzatihi", "tanzil_qaedah"],
+          "segments": [
+            {
+              "id": "s1_b4_seg1",
+              "startSec": 3220,
+              "endSec": 3510,
+              "arabic": "الرواية الثانية في المذهب وهي التي عليها العمل أن هذه النجاسات والفضلات إذا وجدت فيها منفعة مباحة جاز بيعها لبعض الصناعات المعينة، أما إذا انتفت المنفعة فيمنع؛ فيكون الخلاف في التنزيل على القاعدة لا في القاعدة.",
+              "indonesian": "Riwayat kedua dalam madzhab—yang menjadi pegangan praktik—menyatakan bahwa benda najis atau limbah sisa industri (al-fadhalat) jika memiliki manfaat yang mubah maka boleh diperjualbelikan untuk industri halal. Jika manfaatnya nihil barulah terlarang; maka perbedaannya ada pada penerapan fakta, bukan pada kaidahnya.",
+              "termIds": ["muharram_lidzatihi", "tanzil_qaedah"]
+            },
+            {
+              "id": "s1_b4_seg2",
+              "startSec": 3520,
+              "endSec": 3790,
+              "arabic": "العلماء قديماً قالوا إن الحشرات لا يجوز بيعها إلا دود القز لأنهم لم يروا فيها منفعة؛ أما الآن فكثير من الحشرات يُنتفع بها، وهذا مثال تغير الفتوى بتغير الزمان مع بقاء القاعدة واحدة.",
+              "indonesian": "Ulama terdahulu melarang jual beli serangga kecuali ulat sutera karena saat itu serangga lain dinilai tidak bermanfaat. Namun sekarang banyak serangga bernilai manfaat halal—inilah contoh nyata berubahnya fatwa seiring perubahan zaman sementara kaidah bakunya tetap satu.",
+              "termIds": ["muharram_lidzatihi", "tanzil_qaedah"]
+            }
+          ]
+        },
+        {
+          "id": "s1_b5",
+          "order": 5,
+          "title": "Blok 5: Haram Likasbihi (Fudhuli / Mauquf) & Adzan Jumat",
+          "startSec": 3815,
+          "endSec": 4651,
+          "pdfPageHint": 19,
+          "summary": "Hukum menjual barang milik orang lain tanpa izin (fudhuli) — perbedaan batal seketika vs akad mauquf menunggu izin — serta transaksi yang diharamkan karena berdampak melalaikan shalat atau menzalimi sesama.",
+          "keyTermIds": ["aqd_mauquf"],
+          "segments": [
+            {
+              "id": "s1_b5_seg1",
+              "startSec": 3850,
+              "endSec": 4120,
+              "arabic": "ثبت عنه صلى الله عليه وسلم أنه قال: لا تبع ما ليس عندك، وبنى عليه العلماء أن من باع شيئاً لا يملكه فالبيع باطل، والرواية الثانية اختيار الشيخ تقي الدين أنه يقع عقداً موقوفاً على إجازة المالك.",
+              "indonesian": "Nabi bersabda: 'Janganlah engkau menjual barang yang bukan milikmu/tidak ada padamu.' Mayoritas madzhab menghukuminya batal, sementara riwayat kedua pilihan Syaikhul Islam Ibnu Taimiyah menjadikannya akad mauquf (menggantung) yang menunggu persetujuan pemilik sah.",
+              "termIds": ["aqd_mauquf"]
+            },
+            {
+              "id": "s1_b5_seg2",
+              "startSec": 4130,
+              "endSec": 4520,
+              "arabic": "الذي يشتري أو يبيع بعد النداء الثاني يوم الجمعة فإنه يفضي إلى ترك حضور الجمعة والخطبتين، وكذلك من يبيع أو يشتري في وقت يضيق إلا عن أداء الصلاة المفروضة.",
+              "indonesian": "Orang yang melakukan transaksi setelah adzan kedua shalat Jumat menjerumuskan pada tertinggalnya kewajiban Jumat dan dua khutbah. Demikian pula bertransaksi di waktu shalat wajib yang sudah sangat mepet sehingga shalat terlewatkan.",
+              "termIds": []
+            }
+          ]
+        },
+        {
+          "id": "s1_b6",
+          "order": 6,
+          "title": "Blok 6: Larangan Jual Sebelum Qabdh & Penimbunan (Ihtikar)",
+          "startSec": 4651,
+          "endSec": 4921,
+          "pdfPageHint": 22,
+          "summary": "Alasan syariat melarang menjual kembali barang takaran/timbangan/hitungan sebelum diserahterimakan (qabdh), serta bahaya penimbunan barang pokok (ihtikar).",
+          "keyTermIds": ["qabdh", "ihtikar"],
+          "segments": [
+            {
+              "id": "s1_b6_seg1",
+              "startSec": 4665,
+              "endSec": 4815,
+              "arabic": "كل مكيل أو موزون أو معدود أو مذروع لا يجوز بيعه أو التصرف به إلا بعد قبضه؛ لأجل عدم الإضرار بالغير. فإن رضي الذي بيده العين بنقل الملك فيها ولم تكن حيلة، جاز على قول ابن تيمية.",
+              "indonesian": "Setiap barang takaran, timbangan, hitungan, atau ukuran tidak boleh dijual kembali sebelum diterima (qabdh) demi mencegah kerugian pihak lain. Apabila penjual pertama yang memegang barang ridha melepaskannya tanpa rekayasa, sebagian ulama membolehkannya karena termasuk hak sesama manusia.",
+              "termIds": ["qabdh"]
+            },
+            {
+              "id": "s1_b6_seg2",
+              "startSec": 4820,
+              "endSec": 4920,
+              "arabic": "نهي عن الاحتكار، والاحتكار إنما حُرِّم للإضرار بالمسلمين.",
+              "indonesian": "Penimbunan (ihtikar) dilarang keras karena perbuatan itu menzalimi dan menyengsarakan kaum muslimin dalam memperoleh kebutuhan pokoknya.",
+              "termIds": ["ihtikar"]
+            }
+          ]
+        },
+        {
+          "id": "s1_b7",
+          "order": 7,
+          "title": "Blok 7: Peta Riba (Fadhl, Nasa', Qardh) & Kasus Tukar Uang",
+          "startSec": 4921,
+          "endSec": 6022,
+          "pdfPageHint": 23,
+          "summary": "Mengapa riba sangat ketat (termasuk hak Allah), perbedaan harta ribawi dan non-ribawi, penjelasan lengkap 3 jenis riba, hingga studi kasus penukaran uang tunai bercampur tempo.",
+          "keyTermIds": ["amwal_ribawiyyah", "riba_tiga"],
+          "segments": [
+            {
+              "id": "s1_b7_seg1",
+              "startSec": 4940,
+              "endSec": 5320,
+              "arabic": "تحريم الربا لحق الله سبحانه وتعالى، ولذلك حرم ولو كان هللة بهللتين. والأموال تنقسم إلى قسمين: أموال ربوية وأموال غير ربوية؛ والربا ثلاثة أنواع: ربا فضل، وربا نسأ، وربا جاهلية.",
+              "indonesian": "Pengharaman riba berkaitan langsung dengan hak Allah, sehingga tetap haram meski selisih satu sen (halalah). Harta dibagi menjadi harta ribawi dan non-ribawi, dan riba terbagi tiga jenis: Riba Fadhl, Riba Nasa', dan Riba Jahiliyyah/Utang.",
+              "termIds": ["amwal_ribawiyyah", "riba_tiga"]
+            },
+            {
+              "id": "s1_b7_seg2",
+              "startSec": 5460,
+              "endSec": 6010,
+              "arabic": "النوع الثالث وهو الأخطر: ربا الجاهلية ويسمى ربا الديون وربا القرض؛ تحريمه تحريم مقاصد بينما ربا الفضل المجرد تحريمه تحريم وسائل. وربا الديون يجري في كل المثليات؛ فكل قرض جر نفعاً فهو ربا.",
+              "indonesian": "Jenis ketiga yang paling berbahaya adalah Riba Jahiliyyah (disebut pula riba utang / riba qardh). Ia diharamkan pada zat tujuannya dan berlaku pada seluruh benda sepadan (mitsliyat), sehingga setiap pinjaman yang menarik manfaat bersyarat adalah riba.",
+              "termIds": ["riba_tiga"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "episodeNumber": 2,
+      "id": "seri_2",
+      "title": "Seri 2: Hiyal Riba ('Inah & Jual Piutang), Gharar, Tadlis & Syarat Akad",
+      "arabicTitle": "المجلس الثاني: بيع العينة والدين والغرر والشروط",
+      "youtubeVideoId": "tItFx4_yhQc",
+      "durationSec": 4255,
+      "pdfStartPage": 28,
+      "pdfEndPage": 53,
+      "summary": "Membahas rekayasa menuju riba (Bai' al-'Inah & jual beli piutang/Bai' ad-Dain), pondasi Gharar (dalam perlombaan vs transaksi bisnis), 4 parameter membedakan Gharar Yasir vs Kabir, Taghrir & Khiyar, serta kaidah syarat dalam akad.",
+      "blocks": [
+        {
+          "id": "s2_b1",
+          "order": 1,
+          "title": "Blok 1: Hiyal Riba — Bai' al-'Inah & Penjualan Piutang (Bai' ad-Dain)",
+          "startSec": 0,
+          "endSec": 1755,
+          "pdfPageHint": 28,
+          "summary": "Definisi Bai' al-'Inah dua pihak & tiga pihak (sadd adz-dzari'ah), perbedaan 'Inah dengan Tawarruq, dan 200+ varian jual beli piutang diringkas ke kaidah apakah berujung riba atau tidak.",
+          "keyTermIds": ["bai_inah"],
+          "segments": [
+            {
+              "id": "s2_b1_seg1",
+              "startSec": 450,
+              "endSec": 900,
+              "arabic": "من باع شيئاً بثمن مؤجل يحرم عليه أن يشتريه ممن باعه بأقل نقداً سداً للذريعة؛ لأن العينة تفضي إلى الربا المقصود ذاته وهو ربا الجاهلية، وقد تكون العينة ثنائية أو ثلاثية.",
+              "indonesian": "Siapa menjual barang secara kredit dilarang membelinya kembali secara tunai dengan harga lebih rendah sebagai langkah menutup celah riba; karena Bai' al-'Inah adalah jalan pintas menuju riba utang, baik dilakukan dua pihak maupun tiga pihak.",
+              "termIds": ["bai_inah"]
+            }
+          ]
+        },
+        {
+          "id": "s2_b2",
+          "order": 2,
+          "title": "Blok 2: Hakikat Gharar dalam Kompetisi vs Transaksi Komersial",
+          "startSec": 1755,
+          "endSec": 2610,
+          "pdfPageHint": 38,
+          "summary": "Definisi gharar (ketidakpastian wujud/sifat objek), status gharar dalam akad sosial (tabarru'at) vs akad bisnis (mu'awadhat), dan jual buah sebelum layak panen.",
+          "keyTermIds": ["gharar_yasir"],
+          "segments": [
+            {
+              "id": "s2_b2_seg1",
+              "startSec": 1820,
+              "endSec": 2150,
+              "arabic": "ليست كل العقود يحرم فيها الغرر، بل إنما يحرم الغرر في العقود التي تكون معاوضة، وأما عقود التبرعات فإنه يجوز فيها الغرر سواء كان جهالة أو غيره.",
+              "indonesian": "Tidak semua akad mengharamkan gharar. Gharar terlarang pada akad bisnis timbal balik (mu'awadhat), sedangkan pada akad sosial/hibah (tabarru'at) ketidakpastian seperti hadiah benda tak diketahui takarannya tetap sah.",
+              "termIds": ["gharar_yasir"]
+            }
+          ]
+        },
+        {
+          "id": "s2_b3",
+          "order": 3,
+          "title": "Blok 3: 4 Parameter Membedakan Gharar Yasir vs Gharar Kabir",
+          "startSec": 2610,
+          "endSec": 3180,
+          "pdfPageHint": 45,
+          "summary": "Cara mufti dan pelajar menentukan apakah ketidakjelasan dalam kontrak modern masih ditoleransi (yasir) atau sudah merusak akad (kabir).",
+          "keyTermIds": ["gharar_yasir"],
+          "segments": [
+            {
+              "id": "s2_b3_seg1",
+              "startSec": 2640,
+              "endSec": 2950,
+              "arabic": "الغرر اليسير جائز بإجماع أهل العلم إذا توفرت مناطاته الأربعة: أن يكون قليلاً عرفاً، ومحتاجاً إليه، ويعسر التحرز منه، وأن لا يكون مقصوداً بالعقد وإنما أتى تبعاً.",
+              "indonesian": "Gharar ringan disepakati kebolehannya bila memenuhi empat tolok ukur: kadarnya kecil menurut adat kebiasaan ('urf), ada kebutuhan nyata, sulit dihindari, dan ketidakjelasan itu hanya mengikuti objek inti akad, bukan menjadi target utamanya.",
+              "termIds": ["gharar_yasir"]
+            }
+          ]
+        },
+        {
+          "id": "s2_b4",
+          "order": 4,
+          "title": "Blok 4: Taghrir (Tadlis / 'Aib / Ghabn) & Hak Khiyar",
+          "startSec": 3180,
+          "endSec": 3760,
+          "pdfPageHint": 47,
+          "summary": "Perbedaan antara Gharar (batal awal) dan Taghrir/penipuan (akad tetap sah tetapi pihak tertipu berhak memilih lanjut, batalkan, atau minta ganti rugi selisih/arsy).",
+          "keyTermIds": [],
+          "segments": [
+            {
+              "id": "s2_b4_seg1",
+              "startSec": 3220,
+              "endSec": 3550,
+              "arabic": "الفرق بين الغرر والتغرير أن الغرر يقع باطلاً ابتداءً، أما التغرير فإنه يقع صحيحاً لكن يثبت للمغرر الخيار بين الإمضاء والفسخ وأخذ الأرش.",
+              "indonesian": "Perbedaan gharar dan taghrir: gharar berat membuat akad batal sejak awal, sedangkan pada taghrir (penipuan/cacat tersembunyi) akad tetap sah tetapi pihak yang dirugikan memiliki hak khiyar untuk meneruskan, membatalkan, atau mengambil ganti rugi selisih nilai (arsy).",
+              "termIds": []
+            }
+          ]
+        },
+        {
+          "id": "s2_b5",
+          "order": 5,
+          "title": "Blok 5: Kaidah Syarat dalam Akad & Hukum Pengecualian (Tsunya)",
+          "startSec": 3760,
+          "endSec": 4255,
+          "pdfPageHint": 51,
+          "summary": "Pembagian syarat berdasarkan waktu (syarat muqaranah saat akad vs mutarakhiyah setelah akad) serta aturan pengecualian sebagian objek akad (at-tsunya).",
+          "keyTermIds": [],
+          "segments": [
+            {
+              "id": "s2_b5_seg1",
+              "startSec": 3880,
+              "endSec": 4120,
+              "arabic": "الشرط باعتبار وقته: شروط مقارنة وهي الأصل فتلزم، وشروط متراخية بعد العقد ما دامت برضا الطرفين.",
+              "indonesian": "Syarat ditinjau dari waktunya ada yang menyertai akad sejak awal (muqaranah) yang hukum asalnya mengikat kedua pihak, dan syarat tambahan sesudah akad (mutarakhiyah) yang juga berlaku bila disepakati kedua belah pihak.",
+              "termIds": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "episodeNumber": 3,
+      "id": "seri_3",
+      "title": "Seri 3: Pembatalan Akad (Faskh vs Infisakh) & Bencana Gagal Panen",
+      "arabicTitle": "المجلس الثالث: الفسخ والانفساخ ووضع الجوائح",
+      "youtubeVideoId": "dadT07MTN_Q",
+      "durationSec": 704,
+      "pdfStartPage": 54,
+      "pdfEndPage": 57,
+      "summary": "Sesi ringkas membahas perbedaan pembatalan akad karena kesepakatan (faskh/iqalah) vs gugur otomatis karena kerusakan (infisakh), serta keringanan harga akibat bencana alam (wadh'ul jawa'ih).",
+      "blocks": [
+        {
+          "id": "s3_b1",
+          "order": 1,
+          "title": "Blok 1: Faskh vs Infisakh, Wadh'ul Jawa'ih & Barang Sewaan",
+          "startSec": 0,
+          "endSec": 704,
+          "pdfPageHint": 54,
+          "summary": "Akad yang sah tidak dapat dibatalkan sepihak kecuali dengan ridha kedua pihak (iqalah) atau munculnya sebab syar'i, beserta hukum pemilik yang menahan barang sewa.",
+          "keyTermIds": [],
+          "segments": [
+            {
+              "id": "s3_b1_seg1",
+              "startSec": 180,
+              "endSec": 500,
+              "arabic": "العقد إذا انبرم صحيحاً فإنه لا ينفسخ إلا بتراضي الطرفين أو بسبب شرعي، وقد أمر النبي صلى الله عليه وسلم بوضع الجوائح.",
+              "indonesian": "Akad yang telah diikat secara sah tidak gugur secara sepihak kecuali dengan kerelaan kedua belah pihak atau adanya sebab syar'i; dan Nabi memerintahkan pengurangan tanggungan apabila komoditas buah tertimpa bencana alam di luar kendali (wadh'ul jawa'ih).",
+              "termIds": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "episodeNumber": 4,
+      "id": "seri_4",
+      "title": "Seri 4: Akad Modern — Kartu Kredit, Pembiayaan Bank & Bai' al-'Urbun",
+      "arabicTitle": "المجلس الرابع: المعاملات المصرفية المعاصرة والعربون",
+      "youtubeVideoId": "rfa9-WXe3YY",
+      "durationSec": 5416,
+      "pdfStartPage": 58,
+      "pdfEndPage": 79,
+      "summary": "Bedah fikih transaksi keuangan modern: akad via internet/telepon, rekening giro bank, 4 skema kartu kredit, beda Tamwil vs Tawarruq, Murabahah lil Amir bis-Syira', Ijarah Muntahiyah bit-Tamlik, dan DP hangus ('Urbun).",
+      "blocks": [
+        {
+          "id": "s4_b1",
+          "order": 1,
+          "title": "Blok 1: Akad Elektronik/Online & Hukum Rekening Bank",
+          "startSec": 0,
+          "endSec": 3350,
+          "pdfPageHint": 58,
+          "summary": "Kapan hilangnya khiyar majelis pada transaksi via telepon atau tombol persetujuan aplikasi/web, serta status fikih tabungan giro bank konvensional maupun syariah.",
+          "keyTermIds": [],
+          "segments": [
+            {
+              "id": "s4_b1_seg1",
+              "startSec": 1810,
+              "endSec": 2150,
+              "arabic": "إذا كان التعاقد عبر الإنترنت بالضغط على الموافقة بعد قراءة الشروط فبمجرد التوقيع ينعقد العقد، ويجوز للمتعاقدين نفي خيار المجلس.",
+              "indonesian": "Pada transaksi daring dengan menekan tombol setuju setelah membaca syarat dan ketentuan, akad langsung mengikat saat konfirmasi dikirim, dan para pihak sah meniadakan masa tunggu khiyar majelis.",
+              "termIds": []
+            }
+          ]
+        },
+        {
+          "id": "s4_b2",
+          "order": 2,
+          "title": "Blok 2: 4 Skema Kartu Kredit (Bithaqat I'timan) & Hukumnya",
+          "startSec": 3350,
+          "endSec": 3920,
+          "pdfPageHint": 71,
+          "summary": "Membedakan kartu debit dari kartu kredit, serta membedah 3-4 jenis kartu kredit (prabayar, tertutup saldo penuh 100%, tanpa denda keterlambatan, dan konvensional berbunga).",
+          "keyTermIds": [],
+          "segments": [
+            {
+              "id": "s4_b2_seg1",
+              "startSec": 3420,
+              "endSec": 3740,
+              "arabic": "البطاقة الائتمانية إذا كانت مغطاة بنسبة مائة بالمائة ومربوطة بالحساب الجاري يجوز الشراء بها ولا تدخل في المحرم.",
+              "indonesian": "Kartu kredit yang dijamin 100% saldonya dari rekening pribadi (tanpa klausul bunga/denda ribawi) boleh dipakai untuk bertransaksi di merchant.",
+              "termIds": []
+            }
+          ]
+        },
+        {
+          "id": "s4_b3",
+          "order": 3,
+          "title": "Blok 3: Beda Tamwil vs Tawarruq & Murabahah lil Amir bis-Syira'",
+          "startSec": 3920,
+          "endSec": 4520,
+          "pdfPageHint": 73,
+          "summary": "Tamwil (pembiayaan pengadaan aset nyata seperti rumah/mobil) lebih aman dari Tawarruq (mencari uang tunai). Penjelasan syarat sah akad Murabahah di perbankan syariah.",
+          "keyTermIds": [],
+          "segments": [
+            {
+              "id": "s4_b3_seg1",
+              "startSec": 3945,
+              "endSec": 4250,
+              "arabic": "التمويل هو أن البنك يعطيك عروضاً كبيت أو سيارة أو بضائع، وأما التورق فمقصوده الحصول على النقد، فالتمويل أسلم وقيوده الشرعية أقل.",
+              "indonesian": "Tamwil (pembiayaan) adalah bank membelikan aset nyata seperti rumah, mobil, atau barang dagangan untuk dijual ke nasabah, sedangkan tawarruq bertujuan mendapatkan uang tunai; karena itu tamwil jauh lebih aman secara syar'i.",
+              "termIds": []
+            }
+          ]
+        },
+        {
+          "id": "s4_b4",
+          "order": 4,
+          "title": "Blok 4: Ijarah Muntahiyah bit-Tamlik & DP Hangus (Bai' al-'Urbun)",
+          "startSec": 4520,
+          "endSec": 5416,
+          "pdfPageHint": 75,
+          "summary": "Skema sewa berujung kepemilikan (IMBT) dalam madzhab Hanbali, hukum DP hangus ('Urbun) menurut riwayat Imam Ahmad & kaidah Ibnu Rajab, serta sekilas zakat piutang.",
+          "keyTermIds": ["bai_urbun"],
+          "segments": [
+            {
+              "id": "s4_b4_seg1",
+              "startSec": 4840,
+              "endSec": 5120,
+              "arabic": "بيع العربون من مفردات الإمام أحمد أنه يجوز، وكما قرر ابن رجب فإنه يجوز تعليق الفسخ على عوض مالي.",
+              "indonesian": "Kebolehan jual beli dengan uang muka hangus ('Urbun) merupakan pendapat khas madzhab Imam Ahmad; sebagaimana dirumuskan Ibnu Rajab bahwa membatalkan akad dengan imbalan kompensasi finansial diperbolehkan.",
+              "termIds": ["bai_urbun"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "episodeNumber": 5,
+      "id": "seri_5",
+      "title": "Seri 5: Tawarruq Munazzam, Reksa Dana, Saham & Akad Majemuk",
+      "arabicTitle": "المجلس الخامس: التورق المنظم والصناديق والأسهم والعقود المركبة",
+      "youtubeVideoId": "aCkcJATSLlw",
+      "durationSec": 3281,
+      "pdfStartPage": 80,
+      "pdfEndPage": 95,
+      "summary": "Penutup daurah: hukum patokan acuan suku bunga (LIBOR/SIBOR), bahaya Tawarruq Munazzam & Ilzami, 4 syarat halal Reksa Dana, investasi vs trading spekulatif di pasar saham, biaya admin pinjaman, dan dua akad dalam satu transaksi.",
+      "blocks": [
+        {
+          "id": "s5_b1",
+          "order": 1,
+          "title": "Blok 1: Benchmark Acuan Suku Bunga & Tawarruq Munazzam",
+          "startSec": 0,
+          "endSec": 840,
+          "pdfPageHint": 80,
+          "summary": "Hukum menjadikan suku bunga acuan sebagai patokan margin di awal kontrak yang tetap vs mengambang (gharar), serta beda Tawarruq Fardi yang mubah dengan Tawarruq Munazzam/Ilzami yang dilarang Majma' Fiqh.",
+          "keyTermIds": ["tawarruq_munazzam"],
+          "segments": [
+            {
+              "id": "s5_b1_seg1",
+              "startSec": 380,
+              "endSec": 620,
+              "arabic": "التورق التقليدي أن تشتري السلعة ثم تتولى أنت بيعها في السوق، أما التورق المنظم فتتولى جهة التمويل بيعها لك؛ ولذا صدر قرار مجمع الفقه أن التورق المنظم لا يجوز.",
+              "indonesian": "Tawarruq tradisional adalah pembeli menerima barang lalu menjualnya sendiri ke pasar bebas. Adapun pada Tawarruq Munazzam, pihak pembiaya atau jaringannya sendiri yang mengatur penjualan ulang secara serempak, sehingga Majma' Fiqh memutuskan hukumnya tidak boleh.",
+              "termIds": ["tawarruq_munazzam"]
+            }
+          ]
+        },
+        {
+          "id": "s5_b2",
+          "order": 2,
+          "title": "Blok 2: 4 Syarat Halal Reksa Dana & Saham (Investasi vs Spekulasi)",
+          "startSec": 840,
+          "endSec": 1950,
+          "pdfPageHint": 84,
+          "summary": "Empat syarat kebolehan unit penyertaan reksa dana (shanadiq istitsmar), serta garis pemisah antara membeli saham untuk investasi dividen tahunan vs spekulasi jangka pendek (mudharabah bil ashum).",
+          "keyTermIds": [],
+          "segments": [
+            {
+              "id": "s5_b2_seg1",
+              "startSec": 1360,
+              "endSec": 1680,
+              "arabic": "الذي يشتري الأسهم في الشركات المساهمة نوعان: أناس يشترون لأجل الاستثمار والأرباح السنوية وهذا جائز إذا انضبطت الشركة، والنوع الثاني الشراء لأجل المضاربة والتقلب السريع.",
+              "indonesian": "Pembeli saham perusahaan terbagi dua: pertama, untuk investasi jangka panjang mengejar bagi hasil laba tahunan (diperbolehkan pada emiten halal); kedua, untuk spekulasi jual-beli cepat (mudharabah fluktuasi harga) yang jauh lebih rawan penyimpangan informasi pasar.",
+              "termIds": []
+            }
+          ]
+        },
+        {
+          "id": "s5_b3",
+          "order": 3,
+          "title": "Blok 3: Biaya Administrasi Pinjaman, Bai'ataini fi Bai'ah & Penutup",
+          "startSec": 1950,
+          "endSec": 3281,
+          "pdfPageHint": 88,
+          "summary": "Aturan biaya administrasi nyata (bukan persentase utang) pada pinjaman, tafsir hadis larangan dua transaksi dalam satu akad (bai'ataini fi bai'ah), dan rangkuman akhir 5 majelis.",
+          "keyTermIds": [],
+          "segments": [
+            {
+              "id": "s5_b3_seg1",
+              "startSec": 2160,
+              "endSec": 2500,
+              "arabic": "نهى النبي صلى الله عليه وسلم عن بيعتين في بيعة، وليس كل اجتماع عقدين في عقد محرماً، وإنما الممنوع ما أفضى إلى الربا أو الغرر الفاحش.",
+              "indonesian": "Nabi melarang 'dua jual beli dalam satu transaksi' (bai'ataini fi bai'ah). Namun tidak setiap penggabungan dua akad dalam satu kontrak otomatis terlarang; yang terlarang ialah penggabungan yang bermuara pada riba terselubung atau gharar berat.",
+              "termIds": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

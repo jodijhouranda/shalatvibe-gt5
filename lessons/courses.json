@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "updatedAt": "2026-11-24",
+  "courses": [
+    {
+      "id": "arabic_tafl",
+      "type": "DAILY_MODULES",
+      "title": "Bahasa Arab (TAFL)",
+      "subtitle": "Analisis Video Berita & Leksikal Harian",
+      "badge": "Harian • 15 mnt",
+      "accentHex": "#10B981",
+      "iconName": "menu_book",
+      "manifestUrl": "https://raw.githubusercontent.com/jodijhouranda/shalatvibe-gt5/main/lessons/catalog.json"
+    },
+    {
+      "id": "fiqh_muamalah_syuwaiir",
+      "type": "SERIES_COURSE",
+      "title": "Fiqh Muamalah",
+      "subtitle": "Syaikh Prof. Dr. Abdussalam Asy-Syuwai'ir",
+      "badge": "5 Seri • Kitab 95 Hal",
+      "accentHex": "#F59E0B",
+      "iconName": "balance",
+      "manifestUrl": "https://raw.githubusercontent.com/jodijhouranda/shalatvibe-gt5/main/lessons/courses/fiqh_muamalat_syuwaiir.json",
+      "assetPath": "courses/fiqh_muamalat_syuwaiir.json"
+    }
+  ]
+}

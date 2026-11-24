@@ -1,5 +1,6 @@
 package com.jadwalshalat.gt5.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -23,6 +24,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material.icons.rounded.BookmarkBorder
 import androidx.compose.material.icons.rounded.CheckCircle
@@ -68,9 +70,13 @@ fun ArabicCatalogScreen(
     onToggleFavorite: (String) -> Unit,
     onSyncNow: () -> Unit,
     onOpenSyncSettings: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onBack: (() -> Unit)? = null
 ) {
     val palette = LocalShalatVibePalette.current
+    if (onBack != null) {
+        BackHandler(onBack = onBack)
+    }
 
     LazyColumn(
         modifier = modifier
@@ -85,6 +91,19 @@ fun ArabicCatalogScreen(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                if (onBack != null) {
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                            contentDescription = "Kembali ke Pustaka Belajar",
+                            tint = palette.textPrimary
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+                }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "Belajar Arab",

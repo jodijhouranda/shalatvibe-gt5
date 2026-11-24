@@ -179,4 +179,96 @@ public class PrayerTimeCalculatorTest {
                 com.jadwalshalat.gt5.arabic.ArabicCatalogParser.INSTANCE.normalizeDownloadUrl(sharedDrive)
         );
     }
+
+    @Test
+    public void courseAssetsAndCourseModelsWorkCleanly() throws Exception {
+        java.nio.file.Path coursesPath = java.nio.file.Paths.get("src/main/assets/courses/courses.json");
+        if (!java.nio.file.Files.exists(coursesPath)) {
+            coursesPath = java.nio.file.Paths.get("app/src/main/assets/courses/courses.json");
+        }
+        assertTrue(java.nio.file.Files.exists(coursesPath));
+        String indexJson = new String(
+                java.nio.file.Files.readAllBytes(coursesPath),
+                java.nio.charset.StandardCharsets.UTF_8
+        );
+        assertTrue(indexJson.contains("arabic_tafl"));
+        assertTrue(indexJson.contains("fiqh_muamalah_syuwaiir"));
+
+        java.nio.file.Path fiqhJsonPath = coursesPath.getParent().resolve("fiqh_muamalat_syuwaiir.json");
+        java.nio.file.Path fiqhPdfPath = coursesPath.getParent().resolve("fiqh_muamalat_syuwaiir.pdf");
+        assertTrue(java.nio.file.Files.exists(fiqhJsonPath));
+        assertTrue(java.nio.file.Files.exists(fiqhPdfPath));
+        assertTrue(java.nio.file.Files.size(fiqhPdfPath) > 500_000L);
+
+        String fiqhJson = new String(
+                java.nio.file.Files.readAllBytes(fiqhJsonPath),
+                java.nio.charset.StandardCharsets.UTF_8
+        );
+        assertTrue(fiqhJson.contains("p-wwtkRQz7A"));
+        assertTrue(fiqhJson.contains("tItFx4_yhQc"));
+        assertTrue(fiqhJson.contains("dadT07MTN_Q"));
+        assertTrue(fiqhJson.contains("rfa9-WXe3YY"));
+        assertTrue(fiqhJson.contains("aCkcJATSLlw"));
+
+        com.jadwalshalat.gt5.learning.TopicBlock block = new com.jadwalshalat.gt5.learning.TopicBlock(
+                "s1_b1",
+                1,
+                "Blok 1: Pengantar",
+                0,
+                787,
+                1,
+                "Ringkasan",
+                java.util.Collections.singletonList("furu_fiqhiyyah"),
+                java.util.Collections.emptyList()
+        );
+        assertEquals("00:00 – 13:07", block.getTimeRangeLabel());
+        assertEquals(13, block.getDurationMinutes());
+
+        com.jadwalshalat.gt5.learning.GlossaryTerm term = new com.jadwalshalat.gt5.learning.GlossaryTerm(
+                "furu_fiqhiyyah",
+                "الفروع الفقهية",
+                "Al-Furu' Al-Fiqhiyyah",
+                "Cabang Fikih",
+                "Makna",
+                "Catatan",
+                "Contoh",
+                1,
+                "s1_b1",
+                180
+        );
+        com.jadwalshalat.gt5.learning.CourseEpisode episode = new com.jadwalshalat.gt5.learning.CourseEpisode(
+                1,
+                "seri_1",
+                "Seri 1",
+                "المجلس الأول",
+                "p-wwtkRQz7A",
+                6022,
+                1,
+                27,
+                "Summary",
+                java.util.Collections.singletonList(block)
+        );
+        com.jadwalshalat.gt5.learning.SeriesCourse course = new com.jadwalshalat.gt5.learning.SeriesCourse(
+                "fiqh_muamalah_syuwaiir",
+                "Fiqh Muamalah",
+                "فقه المعاملات المالية",
+                "Syaikh Abdussalam",
+                "Subtitle",
+                "Book",
+                "fiqh_muamalat_syuwaiir.pdf",
+                "",
+                95,
+                java.util.Collections.singletonList(term),
+                java.util.Collections.singletonList(episode)
+        );
+        assertEquals(1, course.getTotalBlockCount());
+        assertNotNull(course.glossaryById("furu_fiqhiyyah"));
+        assertNotNull(course.findEpisodeAndBlock("s1_b1"));
+        assertEquals("1:40:22", episode.getDurationLabel());
+        assertEquals("Hal. 1–27", episode.getPdfRangeLabel());
+        assertEquals(
+                com.jadwalshalat.gt5.learning.LearningTrackType.SERIES_COURSE,
+                com.jadwalshalat.gt5.learning.LearningTrackType.Companion.fromRaw("SERIES_COURSE")
+        );
+    }
 }
