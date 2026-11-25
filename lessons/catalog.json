@@ -3,6 +3,39 @@
   "updatedAt": "2026-11-25",
   "lessons": [
     {
+      "id": "video_podcast_finjan_sejarah_sains_v2",
+      "category": "VIDEO_ANALYSIS",
+      "dayLabel": "Video 12",
+      "dateLabel": "25 Nov 2026",
+      "title": "Podcast Finjan: Narasi Alternatif Sejarah Sains & Peradaban Arab",
+      "subtitle": "Historiografi sains Arab-Islam, ekonomi perdagangan, dan wacana intelektual",
+      "sourceName": "إذاعة ثمانية (Podcast Finjan)",
+      "level": "CEFR B2–C1",
+      "youtubeVideoId": "Sl24jUcidN8",
+      "startSeconds": 49,
+      "endSeconds": 166,
+      "pdfFileName": "Bahasa_Arab_Analisis_Video_Podcast_Finjan_Peradaban_TAFL.pdf",
+      "pdfUrl": "https://raw.githubusercontent.com/jodijhouranda/shalatvibe-gt5/main/lessons/pdfs/Bahasa_Arab_Analisis_Video_Podcast_Finjan_Peradaban_TAFL.pdf",
+      "driveFileId": "15vw6tftjf6HbhORzRqIftzP0BRQ0SKJo",
+      "segments": [
+        {
+          "label": "00:49 – 01:25",
+          "startSec": 49,
+          "endSec": 85
+        },
+        {
+          "label": "01:25 – 02:11",
+          "startSec": 85,
+          "endSec": 131
+        },
+        {
+          "label": "02:11 – 02:46",
+          "startSec": 131,
+          "endSec": 166
+        }
+      ]
+    },
+    {
       "id": "video_jejak_digital_keamanan_siber",
       "category": "VIDEO_ANALYSIS",
       "dayLabel": "Video 11",
