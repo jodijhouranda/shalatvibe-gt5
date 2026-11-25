@@ -1,7 +1,12 @@
 package com.jadwalshalat.gt5.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -57,6 +62,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -74,6 +80,7 @@ fun Gt5HubScreen(
     onToggleMasterReminder: (Boolean) -> Unit,
     onSelectGlobalPreMinutes: (Int) -> Unit,
     onToggleNotifyOnTime: (Boolean) -> Unit,
+    onToggleAdzanTripleBurst: (Boolean) -> Unit,
     onToggleDoublePing: (Boolean) -> Unit,
     onToggleIhtiyat: (Boolean) -> Unit,
     onToggleAlarmClockMode: (Boolean) -> Unit,
@@ -147,6 +154,8 @@ fun Gt5HubScreen(
         item(key = "test_vibe") {
             TestVibeLabCard(
                 delayedCountdown = state.delayedTestCountdown,
+                adzanTripleBurst = state.adzanTripleBurst,
+                activeTestBurstPulse = state.activeTestBurstPulse,
                 onTestDelayed5s = onTestDelayed5s,
                 onTestImmediate = onTestImmediate
             )
@@ -159,6 +168,7 @@ fun Gt5HubScreen(
                 onToggleMasterReminder = onToggleMasterReminder,
                 onSelectGlobalPreMinutes = onSelectGlobalPreMinutes,
                 onToggleNotifyOnTime = onToggleNotifyOnTime,
+                onToggleAdzanTripleBurst = onToggleAdzanTripleBurst,
                 onToggleDoublePing = onToggleDoublePing,
                 onToggleIhtiyat = onToggleIhtiyat,
                 onToggleAlarmClockMode = onToggleAlarmClockMode,
@@ -465,6 +475,37 @@ private fun WatchGt5LivePreviewCard(state: ShalatVibeUiState) {
                 fontSize = 11.sp,
                 textAlign = TextAlign.Center
             )
+
+            AnimatedVisibility(
+                visible = state.notifyOnTime && state.adzanTripleBurst,
+                enter = fadeIn(tween(200)) + expandVertically(),
+                exit = fadeOut(tween(150)) + shrinkVertically()
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = palette.emeraldSoft,
+                    modifier = Modifier.padding(top = 8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Vibration,
+                            contentDescription = null,
+                            tint = palette.emeraldPrimary,
+                            modifier = Modifier.size(13.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Adzan: 3x Getar Mulus • Jeda 1,8 dtk",
+                            color = palette.emeraldPrimary,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -592,11 +633,14 @@ private fun HealthCheckTile(
 @Composable
 private fun TestVibeLabCard(
     delayedCountdown: Int,
+    adzanTripleBurst: Boolean,
+    activeTestBurstPulse: Int,
     onTestDelayed5s: () -> Unit,
     onTestImmediate: () -> Unit
 ) {
     val palette = LocalShalatVibePalette.current
     val isCounting = delayedCountdown > 0
+    val isBursting = activeTestBurstPulse > 0
 
     Surface(
         shape = RoundedCornerShape(22.dp),
@@ -621,7 +665,11 @@ private fun TestVibeLabCard(
             }
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Gunakan tes jeda 5 detik lalu segera kunci layar HP untuk memastikan getaran masuk ke jam.",
+                text = if (adzanTripleBurst) {
+                    "Uji pola 3x getar mulus (jeda 1,8 dtk). Tekan tes 5 detik lalu segera kunci layar HP untuk merasakan getaran di jam."
+                } else {
+                    "Gunakan tes jeda 5 detik lalu segera kunci layar HP untuk memastikan getaran masuk ke jam."
+                },
                 color = palette.textSecondary,
                 fontSize = 12.sp
             )
@@ -629,7 +677,7 @@ private fun TestVibeLabCard(
 
             Button(
                 onClick = onTestDelayed5s,
-                enabled = !isCounting,
+                enabled = !isCounting && !isBursting,
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = palette.emeraldPrimary,
@@ -640,12 +688,13 @@ private fun TestVibeLabCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp)
+                    .testTag("test_delayed_button")
             ) {
                 Text(
-                    text = if (isCounting) {
-                        "Segera kunci layar HP... ($delayedCountdown dtk)"
-                    } else {
-                        "Tes Getar 5 Detik (Kunci Layar)"
+                    text = when {
+                        isCounting -> "Segera kunci layar HP... ($delayedCountdown dtk)"
+                        adzanTripleBurst -> "Tes 3x Getar Adzan (5 dtk Kunci Layar)"
+                        else -> "Tes Getar 5 Detik (Kunci Layar)"
                     },
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
@@ -656,26 +705,32 @@ private fun TestVibeLabCard(
 
             Surface(
                 onClick = onTestImmediate,
+                enabled = !isBursting,
                 shape = RoundedCornerShape(16.dp),
-                color = palette.pillBg,
+                color = if (isBursting) palette.emeraldSoft else palette.pillBg,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(44.dp)
+                    .height(48.dp)
+                    .testTag("test_immediate_button")
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.Send,
+                        imageVector = if (isBursting) Icons.Rounded.Vibration else Icons.AutoMirrored.Rounded.Send,
                         contentDescription = null,
                         tint = palette.emeraldPrimary,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Kirim Notifikasi Tes Sekarang",
-                        color = palette.textPrimary,
+                        text = when {
+                            isBursting -> "Mengirim getar $activeTestBurstPulse/3..."
+                            adzanTripleBurst -> "Kirim Tes 3x Getar Sekarang"
+                            else -> "Kirim Notifikasi Tes Sekarang"
+                        },
+                        color = if (isBursting) palette.emeraldPrimary else palette.textPrimary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -691,6 +746,7 @@ private fun ReminderSettingsCard(
     onToggleMasterReminder: (Boolean) -> Unit,
     onSelectGlobalPreMinutes: (Int) -> Unit,
     onToggleNotifyOnTime: (Boolean) -> Unit,
+    onToggleAdzanTripleBurst: (Boolean) -> Unit,
     onToggleDoublePing: (Boolean) -> Unit,
     onToggleIhtiyat: (Boolean) -> Unit,
     onToggleAlarmClockMode: (Boolean) -> Unit,
@@ -773,14 +829,40 @@ private fun ReminderSettingsCard(
 
             SettingSwitchRow(
                 title = "Getar tepat saat Adzan tiba",
-                subtitle = "Kirim getaran tambahan ketika waktu shalat masuk",
+                subtitle = "Kirim getaran ketika waktu shalat masuk",
                 checked = state.notifyOnTime,
                 onCheckedChange = onToggleNotifyOnTime
             )
+
+            AnimatedVisibility(
+                visible = state.notifyOnTime,
+                enter = fadeIn(tween(200)) + expandVertically(),
+                exit = fadeOut(tween(150)) + shrinkVertically()
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = palette.emeraldSoft.copy(alpha = if (palette.isDark) 0.55f else 0.7f),
+                    border = BorderStroke(1.dp, palette.emeraldPrimary.copy(alpha = 0.25f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 10.dp)
+                ) {
+                    Box(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+                        SettingSwitchRow(
+                            title = "Getar 3x mulus saat Adzan",
+                            subtitle = "3 getaran beruntun (jeda 1,8 dtk) agar terasa menyambung & panjang di GT 5",
+                            checked = state.adzanTripleBurst,
+                            onCheckedChange = onToggleAdzanTripleBurst,
+                            switchTestTag = "adzan_triple_burst_switch"
+                        )
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(10.dp))
             SettingSwitchRow(
-                title = "Getar ganda (Double Ping)",
-                subtitle = "Kirim 2 notifikasi selang 30 detik agar tidak terlewat",
+                title = "Getar ganda sebelum shalat (Double Ping)",
+                subtitle = "Kirim 2 notifikasi pengingat sebelum waktu shalat selang 30 detik",
                 checked = state.doublePing,
                 onCheckedChange = onToggleDoublePing
             )
@@ -814,7 +896,8 @@ private fun SettingSwitchRow(
     title: String,
     subtitle: String,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    switchTestTag: String? = null
 ) {
     val palette = LocalShalatVibePalette.current
     Row(
@@ -843,6 +926,7 @@ private fun SettingSwitchRow(
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
+            modifier = if (switchTestTag != null) Modifier.testTag(switchTestTag) else Modifier,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.White,
                 checkedTrackColor = palette.emeraldPrimary,

@@ -28,6 +28,7 @@ public final class PreferencesManager {
     private static final String KEY_IHTIYAT = "use_ihtiyat";
     private static final String KEY_PRE_MINUTES = "pre_reminder_minutes";
     private static final String KEY_NOTIFY_ON_TIME = "notify_on_time";
+    private static final String KEY_ADZAN_TRIPLE_BURST = "adzan_triple_burst";
     private static final String KEY_DOUBLE_PING = "double_ping";
     private static final String KEY_REMINDER_ACTIVE = "reminder_active";
     private static final String KEY_ALARM_CLOCK_MODE = "alarm_clock_mode";
@@ -149,6 +150,14 @@ public final class PreferencesManager {
 
     public void setNotifyOnTime(boolean enabled) {
         prefs.edit().putBoolean(KEY_NOTIFY_ON_TIME, enabled).apply();
+    }
+
+    public boolean isAdzanTripleBurst() {
+        return prefs.getBoolean(KEY_ADZAN_TRIPLE_BURST, true);
+    }
+
+    public void setAdzanTripleBurst(boolean enabled) {
+        prefs.edit().putBoolean(KEY_ADZAN_TRIPLE_BURST, enabled).apply();
     }
 
     public boolean isDoublePing() {

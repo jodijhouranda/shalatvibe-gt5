@@ -67,6 +67,7 @@ data class ShalatVibeUiState(
     val reminderActive: Boolean = true,
     val globalPreReminderMinutes: Int = 10,
     val notifyOnTime: Boolean = true,
+    val adzanTripleBurst: Boolean = true,
     val doublePing: Boolean = false,
     val useAlarmClockMode: Boolean = true,
     val compactGt5Format: Boolean = true,
@@ -77,7 +78,8 @@ data class ShalatVibeUiState(
     val isIgnoringBatteryOptimizations: Boolean = true,
     val huaweiChecklistStates: List<Boolean> = List(5) { false },
     val lastAlarmLog: String = "",
-    val delayedTestCountdown: Int = 0
+    val delayedTestCountdown: Int = 0,
+    val activeTestBurstPulse: Int = 0
 ) {
     val missingCriticalPermissionCount: Int
         get() = listOf(

@@ -392,6 +392,7 @@ fun ShalatVibeApp(
                         onToggleMasterReminder = { viewModel.setReminderActive(it) },
                         onSelectGlobalPreMinutes = { viewModel.setGlobalPreReminderMinutes(it) },
                         onToggleNotifyOnTime = { viewModel.setNotifyOnTime(it) },
+                        onToggleAdzanTripleBurst = { viewModel.setAdzanTripleBurst(it) },
                         onToggleDoublePing = { viewModel.setDoublePing(it) },
                         onToggleIhtiyat = { viewModel.setUseIhtiyat(it) },
                         onToggleAlarmClockMode = { viewModel.setUseAlarmClockMode(it) },
@@ -400,8 +401,11 @@ fun ShalatVibeApp(
                             val ok = viewModel.sendImmediateTestNotification()
                             scope.launch {
                                 snackbarHostState.showSnackbar(
-                                    if (ok) "Notifikasi tes dikirim ke HP & GT 5."
-                                    else "Aktifkan izin Notifikasi terlebih dahulu."
+                                    when {
+                                        !ok -> "Aktifkan izin Notifikasi terlebih dahulu."
+                                        state.adzanTripleBurst -> "Mengirim 3x getar mulus Adzan ke HP & GT 5."
+                                        else -> "Notifikasi tes dikirim ke HP & GT 5."
+                                    }
                                 )
                             }
                         },
@@ -409,8 +413,11 @@ fun ShalatVibeApp(
                             val ok = viewModel.triggerDelayedTestNotification(5)
                             scope.launch {
                                 snackbarHostState.showSnackbar(
-                                    if (ok) "Notifikasi dikirim dalam 5 detik. Segera kunci layar HP!"
-                                    else "Aktifkan izin Notifikasi terlebih dahulu."
+                                    when {
+                                        !ok -> "Aktifkan izin Notifikasi terlebih dahulu."
+                                        state.adzanTripleBurst -> "3x getar mulus dikirim dalam 5 detik. Segera kunci layar HP!"
+                                        else -> "Notifikasi dikirim dalam 5 detik. Segera kunci layar HP!"
+                                    }
                                 )
                             }
                         },

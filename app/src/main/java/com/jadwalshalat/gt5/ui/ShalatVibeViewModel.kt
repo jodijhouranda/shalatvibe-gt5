@@ -44,6 +44,7 @@ class ShalatVibeViewModel(application: Application) : AndroidViewModel(applicati
     private var selectedDate: LocalDate = LocalDate.now(prefs.zoneId)
     private var tickerJob: Job? = null
     private var delayedTestJob: Job? = null
+    private var immediateBurstJob: Job? = null
 
     init {
         NotificationHelper.ensureChannel(appContext)
@@ -87,6 +88,7 @@ class ShalatVibeViewModel(application: Application) : AndroidViewModel(applicati
         val reminderActive = prefs.isReminderActive
         val globalPre = prefs.preReminderMinutes
         val notifyOnTime = prefs.isNotifyOnTime
+        val adzanTripleBurst = prefs.isAdzanTripleBurst
         val doublePing = prefs.isDoublePing
         val alarmClockMode = prefs.isUseAlarmClockMode
         val compactGt5 = prefs.isCompactGt5Format
@@ -140,7 +142,8 @@ class ShalatVibeViewModel(application: Application) : AndroidViewModel(applicati
                 val kind = if (nextEvent.isPreReminder) {
                     "${nextEvent.minutesBefore} mnt sebelum ${nextEvent.prayerType.displayName}"
                 } else {
-                    "Tepat waktu ${nextEvent.prayerType.displayName}"
+                    val burstSuffix = if (adzanTripleBurst) " (3x getar)" else ""
+                    "Tepat waktu ${nextEvent.prayerType.displayName}$burstSuffix"
                 }
                 "Getar GT 5 pukul $triggerStr • $kind"
             }
@@ -165,7 +168,10 @@ class ShalatVibeViewModel(application: Application) : AndroidViewModel(applicati
                     val customTag = if (hasCustom) " • Khusus" else ""
                     "Getar $effectivePre mnt sebelum ($preTimeStr)$customTag"
                 }
-                notifyOnTime -> "Getar tepat saat Adzan" + if (hasCustom) " • Khusus" else ""
+                notifyOnTime -> {
+                    val burstTag = if (adzanTripleBurst) " 3x" else ""
+                    "Getar$burstTag tepat saat Adzan" + if (hasCustom) " • Khusus" else ""
+                }
                 else -> "Hanya jadwal tampil"
             }
 
@@ -228,6 +234,7 @@ class ShalatVibeViewModel(application: Application) : AndroidViewModel(applicati
                 reminderActive = reminderActive,
                 globalPreReminderMinutes = globalPre,
                 notifyOnTime = notifyOnTime,
+                adzanTripleBurst = adzanTripleBurst,
                 doublePing = doublePing,
                 useAlarmClockMode = alarmClockMode,
                 compactGt5Format = compactGt5,
@@ -299,6 +306,11 @@ class ShalatVibeViewModel(application: Application) : AndroidViewModel(applicati
         refreshAll(rescheduleAlarm = true)
     }
 
+    fun setAdzanTripleBurst(enabled: Boolean) {
+        prefs.isAdzanTripleBurst = enabled
+        refreshAll(rescheduleAlarm = false)
+    }
+
     fun setDoublePing(enabled: Boolean) {
         prefs.isDoublePing = enabled
         refreshAll(rescheduleAlarm = false)
@@ -344,7 +356,32 @@ class ShalatVibeViewModel(application: Application) : AndroidViewModel(applicati
         if (!NotificationHelper.hasNotificationPermission(appContext)) {
             return false
         }
-        NotificationHelper.showTestNotification(appContext, prefs.cityName, prefs.isCompactGt5Format)
+        val cityName = prefs.cityName
+        val compactGt5 = prefs.isCompactGt5Format
+        if (prefs.isAdzanTripleBurst) {
+            immediateBurstJob?.cancel()
+            immediateBurstJob = viewModelScope.launch {
+                val baseId = 900000 + ((System.currentTimeMillis() / 10L) % 80000L).toInt()
+                val sentIds = IntArray(NotificationHelper.ADZAN_BURST_COUNT)
+                try {
+                    for (i in 0 until NotificationHelper.ADZAN_BURST_COUNT) {
+                        _uiState.update { it.copy(activeTestBurstPulse = i + 1) }
+                        sentIds[i] = NotificationHelper.showTestBurstPulse(
+                            appContext, cityName, compactGt5, baseId, i
+                        )
+                        if (i < NotificationHelper.ADZAN_BURST_COUNT - 1) {
+                            delay(NotificationHelper.ADZAN_BURST_INTERVAL_MS)
+                        }
+                    }
+                    delay(NotificationHelper.ADZAN_BURST_CLEANUP_DELAY_MS)
+                    NotificationHelper.cancelNotifications(appContext, sentIds[0], sentIds[1])
+                } finally {
+                    _uiState.update { it.copy(activeTestBurstPulse = 0) }
+                }
+            }
+        } else {
+            NotificationHelper.showTestNotification(appContext, cityName, compactGt5)
+        }
         return true
     }
 

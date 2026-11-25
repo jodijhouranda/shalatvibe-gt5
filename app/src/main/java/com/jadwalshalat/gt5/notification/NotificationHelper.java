@@ -26,6 +26,9 @@ import com.jadwalshalat.gt5.model.PrayerType;
 public final class NotificationHelper {
 
     public static final String CHANNEL_ID = "shalat_gt5_alert_v1";
+    public static final int ADZAN_BURST_COUNT = 3;
+    public static final long ADZAN_BURST_INTERVAL_MS = 1_800L;
+    public static final long ADZAN_BURST_CLEANUP_DELAY_MS = 1_400L;
     private static final long[] VIBRATION_PATTERN = new long[]{0, 450, 180, 450, 180, 450};
 
     private NotificationHelper() {
@@ -144,6 +147,58 @@ public final class NotificationHelper {
         dispatchNotification(context, notificationId, title, body);
     }
 
+    /**
+     * Mengirim satu denyut dari rangkaian 3x getar mulus saat Adzan tiba.
+     * Setiap denyut memakai ID unik dan teks yang sedikit bervariasi agar Huawei Health
+     * tidak menyaringnya sebagai duplikat dan getaran di GT 5 terasa menyambung.
+     */
+    public static int showAdzanBurstPulse(
+            Context context,
+            PrayerType prayerType,
+            String formattedTime,
+            String cityName,
+            boolean compactGt5Format,
+            int pulseIndex
+    ) {
+        if (!hasNotificationPermission(context)) {
+            return -1;
+        }
+        ensureChannel(context);
+
+        int safePulse = Math.max(0, Math.min(pulseIndex, ADZAN_BURST_COUNT - 1));
+        String prayerName = prayerType.getDisplayName();
+        String title;
+        String body;
+
+        if (compactGt5Format) {
+            if (safePulse == 0) {
+                title = "Adzan " + prayerName;
+                body = formattedTime + " • " + cityName;
+            } else if (safePulse == 1) {
+                title = "Masuk " + prayerName;
+                body = "Pukul " + formattedTime + " • " + cityName;
+            } else {
+                title = "Waktunya " + prayerName;
+                body = "Adzan " + formattedTime + " • " + cityName;
+            }
+        } else {
+            if (safePulse == 0) {
+                title = "Masuk Waktu " + prayerName;
+                body = "Pukul " + formattedTime + " • " + cityName + " (Waktunya shalat)";
+            } else if (safePulse == 1) {
+                title = "Adzan " + prayerName + " Berkumandang";
+                body = "Saatnya menunaikan shalat " + prayerName + " (" + formattedTime + ") • " + cityName;
+            } else {
+                title = "Waktunya Shalat " + prayerName;
+                body = "Pukul " + formattedTime + " • " + cityName;
+            }
+        }
+
+        int notificationId = (prayerType.ordinal() + 1) * 100 + 20 + safePulse;
+        dispatchNotification(context, notificationId, title, body);
+        return notificationId;
+    }
+
     public static void showTestNotification(Context context, String cityName) {
         showTestNotification(context, cityName, true);
     }
@@ -159,6 +214,60 @@ public final class NotificationHelper {
                 ? "Sinkronisasi aktif • " + cityName
                 : "Jika jam Anda bergetar sekarang, sinkronisasi Huawei Health berhasil (" + cityName + ").";
         dispatchNotification(context, 900000 + uniqueId, title, body);
+    }
+
+    public static int showTestBurstPulse(
+            Context context,
+            String cityName,
+            boolean compactGt5Format,
+            int baseId,
+            int pulseIndex
+    ) {
+        if (!hasNotificationPermission(context)) {
+            return -1;
+        }
+        ensureChannel(context);
+
+        int safePulse = Math.max(0, Math.min(pulseIndex, ADZAN_BURST_COUNT - 1));
+        String title;
+        String body;
+
+        if (compactGt5Format) {
+            if (safePulse == 0) {
+                title = "Tes Adzan GT 5 (1/3)";
+                body = "Getar mulus dimulai • " + cityName;
+            } else if (safePulse == 1) {
+                title = "Tes Adzan GT 5 (2/3)";
+                body = "Getar menyambung • " + cityName;
+            } else {
+                title = "Tes Adzan GT 5 ✓";
+                body = "3x getar mulus selesai • " + cityName;
+            }
+        } else {
+            if (safePulse == 0) {
+                title = "Tes Getar Adzan GT 5 (1/3)";
+                body = "Gelombang 1 dari 3 • " + cityName;
+            } else if (safePulse == 1) {
+                title = "Tes Getar Adzan GT 5 (2/3)";
+                body = "Gelombang 2 dari 3 • " + cityName;
+            } else {
+                title = "Tes Getar Adzan GT 5 (3/3) ✓";
+                body = "3x getar beruntun selesai dikirim ke Huawei Watch GT 5 (" + cityName + ").";
+            }
+        }
+
+        int notificationId = baseId + safePulse;
+        dispatchNotification(context, notificationId, title, body);
+        return notificationId;
+    }
+
+    public static void cancelNotifications(Context context, int... ids) {
+        NotificationManagerCompat manager = NotificationManagerCompat.from(context);
+        for (int id : ids) {
+            if (id > 0) {
+                manager.cancel(id);
+            }
+        }
     }
 
     private static void dispatchNotification(Context context, int id, String title, String body) {
@@ -181,6 +290,8 @@ public final class NotificationHelper {
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setVibrate(VIBRATION_PATTERN)
                 .setDefaults(NotificationCompat.DEFAULT_SOUND | NotificationCompat.DEFAULT_LIGHTS)
+                .setWhen(System.currentTimeMillis())
+                .setShowWhen(true)
                 .setAutoCancel(true)
                 .setOnlyAlertOnce(false)
                 .setContentIntent(contentIntent);
