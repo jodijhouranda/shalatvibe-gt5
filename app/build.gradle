@@ -2,7 +2,12 @@ plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
     id 'org.jetbrains.kotlin.plugin.compose'
-    id 'com.google.gms.google-services'
+}
+
+// Terapkan Google Services plugin otomatis saat app/google-services.json tersedia
+// (di AI Studio atau di GitHub Actions saat secret GOOGLE_SERVICES_JSON diisi)
+if (file('google-services.json').exists()) {
+    apply plugin: 'com.google.gms.google-services'
 }
 
 android {

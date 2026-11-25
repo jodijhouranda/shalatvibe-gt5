@@ -3,6 +3,7 @@ package com.jadwalshalat.gt5.arabic
 import android.content.Context
 import android.util.Log
 import com.google.firebase.Firebase
+import com.google.firebase.FirebaseApp
 import com.google.firebase.ai.ai
 import com.google.firebase.ai.type.Schema
 import com.google.firebase.ai.type.content
@@ -18,8 +19,9 @@ import java.io.File
  */
 class KamusAiRepository(context: Context) {
 
-    private val cacheFile = File(context.applicationContext.filesDir, CACHE_FILE_NAME)
-    private val tempFile = File(context.applicationContext.filesDir, "$CACHE_FILE_NAME.tmp")
+    private val appContext = context.applicationContext
+    private val cacheFile = File(appContext.filesDir, CACHE_FILE_NAME)
+    private val tempFile = File(appContext.filesDir, "$CACHE_FILE_NAME.tmp")
     private val cacheLock = Any()
 
     @Volatile
@@ -95,6 +97,12 @@ class KamusAiRepository(context: Context) {
 
         if (!forceRefresh) {
             getCached(cleanArabic, contextSentence)?.let { return it }
+        }
+
+        if (FirebaseApp.getApps(appContext).isEmpty()) {
+            throw IllegalStateException(
+                "Firebase AI belum aktif pada APK ini karena google-services.json tidak disertakan saat build."
+            )
         }
 
         val prompt = buildPrompt(
