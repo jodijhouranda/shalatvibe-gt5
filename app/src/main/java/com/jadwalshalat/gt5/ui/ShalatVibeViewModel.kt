@@ -10,10 +10,14 @@ import com.jadwalshalat.gt5.model.CalculationMethod
 import com.jadwalshalat.gt5.model.CityPreset
 import com.jadwalshalat.gt5.model.PrayerType
 import com.jadwalshalat.gt5.notification.NotificationHelper
+import com.jadwalshalat.gt5.notification.PhoneRingerState
+import com.jadwalshalat.gt5.notification.PhoneVibrationHelper
+import com.jadwalshalat.gt5.notification.PhoneVibrationPattern
 import com.jadwalshalat.gt5.prayer.HijriCalendarHelper
 import com.jadwalshalat.gt5.prayer.PrayerEventPlanner
 import com.jadwalshalat.gt5.prayer.PrayerTimeCalculator
 import com.jadwalshalat.gt5.ui.theme.ThemeMode
+import com.jadwalshalat.gt5.work.PrayerWorkScheduler
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -69,6 +73,7 @@ class ShalatVibeViewModel(application: Application) : AndroidViewModel(applicati
     fun refreshAll(rescheduleAlarm: Boolean = false) {
         if (rescheduleAlarm) {
             AlarmScheduler.scheduleNext(appContext)
+            PrayerWorkScheduler.ensureDailySyncScheduled(appContext)
         }
 
         val zoneId = prefs.zoneId
@@ -238,6 +243,14 @@ class ShalatVibeViewModel(application: Application) : AndroidViewModel(applicati
                 doublePing = doublePing,
                 useAlarmClockMode = alarmClockMode,
                 compactGt5Format = compactGt5,
+                phoneVibrateEnabled = prefs.isPhoneVibrateEnabled,
+                phoneVibrateOnSilent = prefs.isPhoneVibrateOnSilent,
+                phoneVibrateOnPreReminder = prefs.isPhoneVibrateOnPreReminder,
+                phoneVibratePattern = PhoneVibrationPattern.fromKey(prefs.phoneVibratePatternKey),
+                phoneRingerState = PhoneVibrationHelper.getRingerState(appContext),
+                hasDeviceVibrator = PhoneVibrationHelper.hasVibrator(appContext),
+                dailySummaryEnabled = prefs.isDailySummaryEnabled,
+                lastWorkSyncLog = prefs.lastWorkSyncLog,
                 hasNotificationPermission = NotificationHelper.hasNotificationPermission(appContext),
                 hasExactAlarmPermission = AlarmScheduler.canScheduleExactAlarms(appContext),
                 isIgnoringBatteryOptimizations = AlarmScheduler.isIgnoringBatteryOptimizations(appContext),
@@ -266,6 +279,9 @@ class ShalatVibeViewModel(application: Application) : AndroidViewModel(applicati
         prefs.setCityPreset(preset)
         selectedDate = LocalDate.now(prefs.zoneId)
         refreshAll(rescheduleAlarm = true)
+        if (prefs.isReminderActive) {
+            PrayerWorkScheduler.triggerImmediateSync(appContext, forceSummaryNotification = false)
+        }
     }
 
     fun applyGpsLocation(): String? {
@@ -273,6 +289,9 @@ class ShalatVibeViewModel(application: Application) : AndroidViewModel(applicati
         prefs.setLocation(detected.cityName, detected.latitude, detected.longitude, detected.zoneId)
         selectedDate = LocalDate.now(prefs.zoneId)
         refreshAll(rescheduleAlarm = true)
+        if (prefs.isReminderActive) {
+            PrayerWorkScheduler.triggerImmediateSync(appContext, forceSummaryNotification = false)
+        }
         return detected.cityName
     }
 
@@ -352,9 +371,81 @@ class ShalatVibeViewModel(application: Application) : AndroidViewModel(applicati
         refreshAll(rescheduleAlarm = false)
     }
 
+    fun setPhoneVibrateEnabled(enabled: Boolean) {
+        prefs.isPhoneVibrateEnabled = enabled
+        refreshAll(rescheduleAlarm = false)
+    }
+
+    fun setPhoneVibrateOnSilent(enabled: Boolean) {
+        prefs.isPhoneVibrateOnSilent = enabled
+        refreshAll(rescheduleAlarm = false)
+    }
+
+    fun setPhoneVibrateOnPreReminder(enabled: Boolean) {
+        prefs.isPhoneVibrateOnPreReminder = enabled
+        refreshAll(rescheduleAlarm = false)
+    }
+
+    fun setPhoneVibratePattern(pattern: PhoneVibrationPattern) {
+        prefs.phoneVibratePatternKey = pattern.key
+        refreshAll(rescheduleAlarm = false)
+        if (prefs.isPhoneVibrateEnabled) {
+            PhoneVibrationHelper.vibratePreview(
+                context = appContext,
+                pattern = pattern,
+                bypassSilent = prefs.isPhoneVibrateOnSilent
+            )
+        }
+    }
+
+    fun testPhoneVibration(): String {
+        val ringer = PhoneVibrationHelper.getRingerState(appContext)
+        val pattern = PhoneVibrationPattern.fromKey(prefs.phoneVibratePatternKey)
+        val bypassSilent = prefs.isPhoneVibrateOnSilent
+        if (!PhoneVibrationHelper.hasVibrator(appContext)) {
+            return "Perangkat ini tidak memiliki motor getar."
+        }
+        if (ringer == PhoneRingerState.SILENT && !bypassSilent) {
+            return "HP sedang Silent dan opsi Tembus Silent nonaktif — aktifkan agar HP tetap bergetar."
+        }
+        val triggered = PhoneVibrationHelper.vibratePreview(
+            context = appContext,
+            pattern = pattern,
+            bypassSilent = bypassSilent
+        )
+        return when {
+            !triggered -> "Gagal memicu getar HP. Cek pengaturan getar sistem."
+            ringer == PhoneRingerState.SILENT -> "Menguji getar ${pattern.label} menembus mode Silent!"
+            else -> "Menguji getar HP pola ${pattern.label}."
+        }
+    }
+
+    fun setDailySummaryEnabled(enabled: Boolean) {
+        prefs.isDailySummaryEnabled = enabled
+        refreshAll(rescheduleAlarm = true)
+    }
+
+    fun triggerManualDailyWorkSync(): String {
+        val forceSummary = prefs.isDailySummaryEnabled
+        PrayerWorkScheduler.ensureDailySyncScheduled(appContext)
+        PrayerWorkScheduler.triggerImmediateSync(appContext, forceSummaryNotification = forceSummary)
+        viewModelScope.launch {
+            delay(1_200L)
+            refreshAll(rescheduleAlarm = false)
+        }
+        return if (forceSummary && NotificationHelper.hasNotificationPermission(appContext)) {
+            "WorkManager menyinkronkan jadwal ${prefs.cityName} & mengirim ringkasan harian."
+        } else {
+            "WorkManager menyinkronkan jadwal & alarm untuk ${prefs.cityName}."
+        }
+    }
+
     fun sendImmediateTestNotification(): Boolean {
         if (!NotificationHelper.hasNotificationPermission(appContext)) {
             return false
+        }
+        if (prefs.isPhoneVibrateEnabled) {
+            PhoneVibrationHelper.vibrateTestFromPrefs(appContext)
         }
         val cityName = prefs.cityName
         val compactGt5 = prefs.isCompactGt5Format

@@ -8,7 +8,9 @@ import android.os.PowerManager;
 import com.jadwalshalat.gt5.data.PreferencesManager;
 import com.jadwalshalat.gt5.model.PrayerType;
 import com.jadwalshalat.gt5.notification.NotificationHelper;
+import com.jadwalshalat.gt5.notification.PhoneVibrationHelper;
 import com.jadwalshalat.gt5.widget.PrayerWidgetProvider;
+import com.jadwalshalat.gt5.work.PrayerWorkScheduler;
 
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -54,6 +56,9 @@ public class PrayerAlarmReceiver extends BroadcastReceiver {
             PreferencesManager prefs = new PreferencesManager(appContext);
 
             if (ACTION_TEST_NOTIFICATION.equals(intent.getAction())) {
+                if (prefs.isPhoneVibrateEnabled()) {
+                    PhoneVibrationHelper.vibrateTestFromPrefs(appContext);
+                }
                 if (prefs.isAdzanTripleBurst()) {
                     final String cityName = prefs.getCityName();
                     final boolean compactGt5 = prefs.isCompactGt5Format();
@@ -122,12 +127,14 @@ public class PrayerAlarmReceiver extends BroadcastReceiver {
                         + " (" + kind + ") pada " + nowStr);
 
                 if (!isFollowUp) {
+                    PhoneVibrationHelper.vibrateForPrayer(appContext, isPreReminder);
                     if (prefs.isDoublePing() && isPreReminder) {
                         AlarmScheduler.scheduleFollowUpPing(
                                 appContext, prayerType, formattedTime, true, minutesBefore
                         );
                     }
                     AlarmScheduler.scheduleNext(appContext);
+                    PrayerWorkScheduler.ensureDailySyncScheduled(appContext);
                 } else {
                     PrayerWidgetProvider.updateAllWidgets(appContext);
                 }

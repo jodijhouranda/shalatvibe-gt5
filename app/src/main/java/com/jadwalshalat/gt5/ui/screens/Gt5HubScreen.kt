@@ -68,7 +68,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.jadwalshalat.gt5.notification.PhoneVibrationPattern
 import com.jadwalshalat.gt5.ui.ShalatVibeUiState
+import com.jadwalshalat.gt5.ui.components.DailyWorkManagerCard
+import com.jadwalshalat.gt5.ui.components.PhoneVibrationSettingsCard
 import com.jadwalshalat.gt5.ui.theme.LocalShalatVibePalette
 
 @Composable
@@ -85,6 +88,13 @@ fun Gt5HubScreen(
     onToggleIhtiyat: (Boolean) -> Unit,
     onToggleAlarmClockMode: (Boolean) -> Unit,
     onToggleCompactGt5: (Boolean) -> Unit,
+    onTogglePhoneVibrate: (Boolean) -> Unit,
+    onToggleVibrateOnSilent: (Boolean) -> Unit,
+    onToggleVibrateOnPreReminder: (Boolean) -> Unit,
+    onSelectPhoneVibratePattern: (PhoneVibrationPattern) -> Unit,
+    onTestPhoneVibration: () -> Unit,
+    onToggleDailySummary: (Boolean) -> Unit,
+    onSyncDailyWorkNow: () -> Unit,
     onTestImmediate: () -> Unit,
     onTestDelayed5s: () -> Unit,
     onOpenHuaweiGuide: () -> Unit,
@@ -158,6 +168,27 @@ fun Gt5HubScreen(
                 activeTestBurstPulse = state.activeTestBurstPulse,
                 onTestDelayed5s = onTestDelayed5s,
                 onTestImmediate = onTestImmediate
+            )
+        }
+
+        // 3b. Phone Vibration & Silent-Bypass Settings Card
+        item(key = "phone_vibration_settings") {
+            PhoneVibrationSettingsCard(
+                state = state,
+                onTogglePhoneVibrate = onTogglePhoneVibrate,
+                onToggleVibrateOnSilent = onToggleVibrateOnSilent,
+                onToggleVibrateOnPreReminder = onToggleVibrateOnPreReminder,
+                onSelectPattern = onSelectPhoneVibratePattern,
+                onTestPhoneVibration = onTestPhoneVibration
+            )
+        }
+
+        // 3c. Daily WorkManager Prayer Notification & Sync Card
+        item(key = "daily_workmanager_sync") {
+            DailyWorkManagerCard(
+                state = state,
+                onToggleDailySummary = onToggleDailySummary,
+                onSyncWorkNow = onSyncDailyWorkNow
             )
         }
 

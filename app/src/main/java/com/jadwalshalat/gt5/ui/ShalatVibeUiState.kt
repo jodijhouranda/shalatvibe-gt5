@@ -3,6 +3,8 @@ package com.jadwalshalat.gt5.ui
 import com.jadwalshalat.gt5.model.CalculationMethod
 import com.jadwalshalat.gt5.model.PrayerSchedule
 import com.jadwalshalat.gt5.model.PrayerType
+import com.jadwalshalat.gt5.notification.PhoneRingerState
+import com.jadwalshalat.gt5.notification.PhoneVibrationPattern
 import com.jadwalshalat.gt5.prayer.PrayerEventPlanner
 import com.jadwalshalat.gt5.ui.theme.ThemeMode
 import java.time.LocalDate
@@ -71,6 +73,18 @@ data class ShalatVibeUiState(
     val doublePing: Boolean = false,
     val useAlarmClockMode: Boolean = true,
     val compactGt5Format: Boolean = true,
+
+    // Phone vibration & Silent-bypass settings
+    val phoneVibrateEnabled: Boolean = true,
+    val phoneVibrateOnSilent: Boolean = true,
+    val phoneVibrateOnPreReminder: Boolean = true,
+    val phoneVibratePattern: PhoneVibrationPattern = PhoneVibrationPattern.MEDIUM,
+    val phoneRingerState: PhoneRingerState = PhoneRingerState.NORMAL,
+    val hasDeviceVibrator: Boolean = true,
+
+    // Daily WorkManager sync settings
+    val dailySummaryEnabled: Boolean = true,
+    val lastWorkSyncLog: String = "",
 
     // Readiness & Health Check
     val hasNotificationPermission: Boolean = true,

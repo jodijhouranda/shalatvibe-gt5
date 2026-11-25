@@ -414,6 +414,23 @@ fun ShalatVibeApp(
                         onToggleIhtiyat = { viewModel.setUseIhtiyat(it) },
                         onToggleAlarmClockMode = { viewModel.setUseAlarmClockMode(it) },
                         onToggleCompactGt5 = { viewModel.setCompactGt5Format(it) },
+                        onTogglePhoneVibrate = { viewModel.setPhoneVibrateEnabled(it) },
+                        onToggleVibrateOnSilent = { viewModel.setPhoneVibrateOnSilent(it) },
+                        onToggleVibrateOnPreReminder = { viewModel.setPhoneVibrateOnPreReminder(it) },
+                        onSelectPhoneVibratePattern = { viewModel.setPhoneVibratePattern(it) },
+                        onTestPhoneVibration = {
+                            val message = viewModel.testPhoneVibration()
+                            scope.launch {
+                                snackbarHostState.showSnackbar(message)
+                            }
+                        },
+                        onToggleDailySummary = { viewModel.setDailySummaryEnabled(it) },
+                        onSyncDailyWorkNow = {
+                            val message = viewModel.triggerManualDailyWorkSync()
+                            scope.launch {
+                                snackbarHostState.showSnackbar(message)
+                            }
+                        },
                         onTestImmediate = {
                             val ok = viewModel.sendImmediateTestNotification()
                             scope.launch {

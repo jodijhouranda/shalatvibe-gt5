@@ -38,6 +38,13 @@ public final class PreferencesManager {
     private static final String KEY_THEME_MODE = "theme_mode";
     private static final String KEY_COMPACT_GT5_FORMAT = "compact_gt5_format";
     private static final String KEY_HUAWEI_STEP_PREFIX = "huawei_step_done_";
+    private static final String KEY_PHONE_VIBRATE_ENABLED = "phone_vibrate_enabled";
+    private static final String KEY_PHONE_VIBRATE_ON_SILENT = "phone_vibrate_on_silent";
+    private static final String KEY_PHONE_VIBRATE_PRE_REMINDER = "phone_vibrate_pre_reminder";
+    private static final String KEY_PHONE_VIBRATE_PATTERN = "phone_vibrate_pattern";
+    private static final String KEY_DAILY_SUMMARY_ENABLED = "daily_summary_enabled";
+    private static final String KEY_LAST_WORK_SYNC_LOG = "last_work_sync_log";
+    private static final String KEY_LAST_DAILY_SUMMARY_DATE = "last_daily_summary_date";
 
     public static final int PRE_MINUTES_FOLLOW_GLOBAL = -1;
 
@@ -214,6 +221,62 @@ public final class PreferencesManager {
 
     public void setLastAlarmLog(String log) {
         prefs.edit().putString(KEY_LAST_ALARM_LOG, log).apply();
+    }
+
+    public boolean isPhoneVibrateEnabled() {
+        return prefs.getBoolean(KEY_PHONE_VIBRATE_ENABLED, true);
+    }
+
+    public void setPhoneVibrateEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_PHONE_VIBRATE_ENABLED, enabled).apply();
+    }
+
+    public boolean isPhoneVibrateOnSilent() {
+        return prefs.getBoolean(KEY_PHONE_VIBRATE_ON_SILENT, true);
+    }
+
+    public void setPhoneVibrateOnSilent(boolean enabled) {
+        prefs.edit().putBoolean(KEY_PHONE_VIBRATE_ON_SILENT, enabled).apply();
+    }
+
+    public boolean isPhoneVibrateOnPreReminder() {
+        return prefs.getBoolean(KEY_PHONE_VIBRATE_PRE_REMINDER, true);
+    }
+
+    public void setPhoneVibrateOnPreReminder(boolean enabled) {
+        prefs.edit().putBoolean(KEY_PHONE_VIBRATE_PRE_REMINDER, enabled).apply();
+    }
+
+    public String getPhoneVibratePatternKey() {
+        return prefs.getString(KEY_PHONE_VIBRATE_PATTERN, "MEDIUM");
+    }
+
+    public void setPhoneVibratePatternKey(String patternKey) {
+        prefs.edit().putString(KEY_PHONE_VIBRATE_PATTERN, patternKey).apply();
+    }
+
+    public boolean isDailySummaryEnabled() {
+        return prefs.getBoolean(KEY_DAILY_SUMMARY_ENABLED, true);
+    }
+
+    public void setDailySummaryEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_DAILY_SUMMARY_ENABLED, enabled).apply();
+    }
+
+    public String getLastWorkSyncLog() {
+        return prefs.getString(KEY_LAST_WORK_SYNC_LOG, "Menunggu sinkronisasi harian WorkManager.");
+    }
+
+    public void setLastWorkSyncLog(String log) {
+        prefs.edit().putString(KEY_LAST_WORK_SYNC_LOG, log).apply();
+    }
+
+    public String getLastDailySummaryDate() {
+        return prefs.getString(KEY_LAST_DAILY_SUMMARY_DATE, "");
+    }
+
+    public void setLastDailySummaryDate(String isoDate) {
+        prefs.edit().putString(KEY_LAST_DAILY_SUMMARY_DATE, isoDate).apply();
     }
 
     public boolean isPrayerEnabled(PrayerType type) {

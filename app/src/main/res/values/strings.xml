@@ -3,6 +3,8 @@
     <string name="app_name">Nida</string>
     <string name="notification_channel_name">Pengingat Shalat GT 5</string>
     <string name="notification_channel_desc">Notifikasi prioritas tinggi sebelum dan saat waktu shalat agar Huawei Watch GT 5 otomatis bergetar.</string>
+    <string name="daily_summary_channel_name">Ringkasan Jadwal Shalat Harian</string>
+    <string name="daily_summary_channel_desc">Notifikasi ringkasan jadwal 5 waktu shalat harian dari sinkronisasi otomatis WorkManager sesuai lokasi tersimpan.</string>
     <string name="widget_label">Nida • Jadwal Shalat</string>
     <string name="widget_description">Hitung mundur waktu shalat berikutnya, status getar GT 5, dan ringkasan 5 waktu shalat.</string>
 </resources>

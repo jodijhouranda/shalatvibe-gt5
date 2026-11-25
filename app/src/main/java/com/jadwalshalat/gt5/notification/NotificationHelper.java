@@ -26,6 +26,8 @@ import com.jadwalshalat.gt5.model.PrayerType;
 public final class NotificationHelper {
 
     public static final String CHANNEL_ID = "shalat_gt5_alert_v1";
+    public static final String CHANNEL_DAILY_SUMMARY_ID = "shalat_daily_summary_v1";
+    public static final int DAILY_SUMMARY_NOTIFICATION_ID = 77001;
     public static final int ADZAN_BURST_COUNT = 3;
     public static final long ADZAN_BURST_INTERVAL_MS = 1_800L;
     public static final long ADZAN_BURST_CLEANUP_DELAY_MS = 1_400L;
@@ -68,6 +70,30 @@ public final class NotificationHelper {
         );
 
         manager.createNotificationChannel(channel);
+        ensureDailySummaryChannel(context);
+    }
+
+    public static void ensureDailySummaryChannel(Context context) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            return;
+        }
+        NotificationManager manager = context.getSystemService(NotificationManager.class);
+        if (manager == null) {
+            return;
+        }
+        if (manager.getNotificationChannel(CHANNEL_DAILY_SUMMARY_ID) != null) {
+            return;
+        }
+
+        NotificationChannel summaryChannel = new NotificationChannel(
+                CHANNEL_DAILY_SUMMARY_ID,
+                context.getString(R.string.daily_summary_channel_name),
+                NotificationManager.IMPORTANCE_DEFAULT
+        );
+        summaryChannel.setDescription(context.getString(R.string.daily_summary_channel_desc));
+        summaryChannel.enableVibration(false);
+        summaryChannel.setLockscreenVisibility(NotificationCompat.VISIBILITY_PUBLIC);
+        manager.createNotificationChannel(summaryChannel);
     }
 
     public static boolean hasNotificationPermission(Context context) {
@@ -259,6 +285,45 @@ public final class NotificationHelper {
         int notificationId = baseId + safePulse;
         dispatchNotification(context, notificationId, title, body);
         return notificationId;
+    }
+
+    public static void showDailyScheduleSummary(
+            Context context,
+            String cityName,
+            String dateLabel,
+            String compactLine,
+            String expandedBody
+    ) {
+        if (!hasNotificationPermission(context)) {
+            return;
+        }
+        ensureDailySummaryChannel(context);
+
+        Intent openIntent = new Intent(context, MainActivity.class);
+        openIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        PendingIntent contentIntent = PendingIntent.getActivity(
+                context,
+                DAILY_SUMMARY_NOTIFICATION_ID,
+                openIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+
+        String title = "Jadwal Shalat • " + cityName + " (" + dateLabel + ")";
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_DAILY_SUMMARY_ID)
+                .setSmallIcon(R.drawable.ic_mosque)
+                .setContentTitle(title)
+                .setContentText(compactLine)
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(expandedBody))
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setCategory(NotificationCompat.CATEGORY_REMINDER)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setWhen(System.currentTimeMillis())
+                .setShowWhen(true)
+                .setAutoCancel(true)
+                .setOnlyAlertOnce(true)
+                .setContentIntent(contentIntent);
+
+        NotificationManagerCompat.from(context).notify(DAILY_SUMMARY_NOTIFICATION_ID, builder.build());
     }
 
     public static void cancelNotifications(Context context, int... ids) {
