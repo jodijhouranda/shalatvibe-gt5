@@ -6,6 +6,7 @@ import com.google.firebase.Firebase
 import com.google.firebase.FirebaseApp
 import com.google.firebase.ai.GenerativeModel
 import com.google.firebase.ai.ai
+import com.google.firebase.ai.type.GenerativeBackend
 import com.google.firebase.ai.type.Schema
 import com.google.firebase.ai.type.content
 import com.google.firebase.ai.type.generationConfig
@@ -16,7 +17,8 @@ import org.json.JSONObject
 import java.io.File
 
 /**
- * Repositori AI Kamus menggunakan Firebase AI Logic (Gemini 3.8 Flash)
+ * Repositori AI Kamus menggunakan Firebase AI Logic (Agent Platform / Vertex AI backend)
+ * agar tagihan langsung memakai Google Cloud Billing & kredit developer,
  * dengan structured JSON output + cache lokal atomik di penyimpanan internal.
  */
 class KamusAiRepository(context: Context) {
@@ -63,8 +65,12 @@ class KamusAiRepository(context: Context) {
         }
     }
 
+    private val aiClient by lazy {
+        Firebase.ai(backend = GenerativeBackend.agentPlatform(location = "global"))
+    }
+
     private val primaryModel: GenerativeModel by lazy {
-        Firebase.ai.generativeModel(
+        aiClient.generativeModel(
             modelName = PRIMARY_MODEL_NAME,
             generationConfig = sharedGenerationConfig,
             systemInstruction = sharedSystemInstruction
@@ -72,7 +78,7 @@ class KamusAiRepository(context: Context) {
     }
 
     private val fallbackModel: GenerativeModel by lazy {
-        Firebase.ai.generativeModel(
+        aiClient.generativeModel(
             modelName = FALLBACK_MODEL_NAME,
             generationConfig = sharedGenerationConfig,
             systemInstruction = sharedSystemInstruction
@@ -137,7 +143,7 @@ class KamusAiRepository(context: Context) {
     } catch (e: Exception) {
         val isQuota = isQuotaError(e)
         val isDemand = isHighDemandError(e)
-        if (!isQuota && !isDemand) throw e
+        if (!isQuota && !isDemand) throw mapActionableError(e)
         Log.w(TAG, "Primary model ($PRIMARY_MODEL_NAME) unavailable/quota, trying $FALLBACK_MODEL_NAME once", e)
         try {
             fallbackModel.generateContent(prompt)
@@ -147,15 +153,29 @@ class KamusAiRepository(context: Context) {
             Log.e(TAG, "Fallback model ($FALLBACK_MODEL_NAME) also failed", e2)
             when {
                 isQuotaError(e2) || isQuota -> throw IllegalStateException(
-                    "Kuota free tier Gemini sedang habis / terkena batas per menit (429). Tunggu 1 menit atau hubungkan billing Blaze di Firebase Console agar kuota besar.",
+                    "Kuota Vertex AI Gemini sedang padat / batas per menit tercapai (429). Tunggu sebentar lalu coba lagi.",
                     e2
                 )
                 isHighDemandError(e2) || isDemand -> throw IllegalStateException(
                     "Server Gemini sedang padat sementara. Tunggu beberapa detik lalu tekan Coba Lagi.",
                     e2
                 )
-                else -> throw e2
+                else -> throw mapActionableError(e2)
             }
+        }
+    }
+
+    private fun mapActionableError(error: Exception): Exception {
+        val msg = errorMessageLower(error)
+        return when {
+            msg.contains("has not been used") ||
+                msg.contains("api is not enabled") ||
+                msg.contains("aiplatform.googleapis.com") ||
+                msg.contains("firebasevertexai.googleapis.com") -> IllegalStateException(
+                "Vertex AI / Agent Platform Gemini API belum aktif di Firebase Console. Buka Firebase Console → AI Logic → aktifkan Vertex AI / Agent Platform API untuk project ini.",
+                error
+            )
+            else -> error
         }
     }
 
