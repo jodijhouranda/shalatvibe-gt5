@@ -1824,7 +1824,9 @@ fun KamusEntryEditorSheet(
             synonymNote = ""
             pendingManualOverwrite = false
             lastAppliedResultSignature = null
-            onRequestAi(builtPhrase, contextSentence, lessonTitle, false)
+            // Hemat kuota: jangan langsung panggil AI di setiap ketukan perluasan frase;
+            // pengguna cukup ketuk tombol "Tanya AI" sekali setelah rentang frase pas.
+            onClearAiState()
         }
     }
 

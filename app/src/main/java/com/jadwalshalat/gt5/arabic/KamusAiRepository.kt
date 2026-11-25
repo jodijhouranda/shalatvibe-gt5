@@ -10,7 +10,6 @@ import com.google.firebase.ai.type.Schema
 import com.google.firebase.ai.type.content
 import com.google.firebase.ai.type.generationConfig
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeout
 import org.json.JSONArray
 import org.json.JSONObject
@@ -33,24 +32,14 @@ class KamusAiRepository(context: Context) {
     private val analysisSchema by lazy {
         Schema.obj(
             properties = mapOf(
-                "vocalizedArabic" to Schema.string(
-                    description = "Kata atau frase Arab dengan harakat (tasykil) lengkap yang akurat sesuai kedudukan i'rab dalam konteks kalimat."
-                ),
-                "indonesianMeaning" to Schema.string(
-                    description = "Arti Bahasa Indonesia yang akurat, alami, dan ringkas sesuai konteks kalimat transkrip (1-2 kalimat singkat)."
-                ),
-                "transliteration" to Schema.string(
-                    description = "Transliterasi Latin baku yang mudah dibaca, misalnya al-ḥaḍārah atau fī ẓilli."
-                ),
-                "turatsOrigin" to Schema.string(
-                    description = "Akar kata 3 huruf (jadzr) dan makna dasar/klasik turats hingga pergeseran makna kontemporernya secara singkat."
-                ),
-                "synonymNote" to Schema.string(
-                    description = "Sinonim Arab yang dekat beserta pembeda nuansa maknanya secara singkat, atau string kosong jika tidak relevan."
-                ),
+                "vocalizedArabic" to Schema.string(description = "Arab berharakat lengkap sesuai konteks"),
+                "indonesianMeaning" to Schema.string(description = "Arti Indonesia kontekstual singkat (1 baris)"),
+                "transliteration" to Schema.string(description = "Transliterasi Latin baku"),
+                "turatsOrigin" to Schema.string(description = "Akar kata & makna turats ke modern singkat"),
+                "synonymNote" to Schema.string(description = "1-2 sinonim & beda nuansa singkat, atau kosong"),
                 "entryKind" to Schema.enumeration(
                     values = listOf("word", "phrase", "idiom"),
-                    description = "Kategori entri: word untuk kata tunggal, phrase untuk frase atau kolokasi, idiom untuk ungkapan idiomatik."
+                    description = "word, phrase, atau idiom"
                 )
             )
         )
@@ -67,15 +56,9 @@ class KamusAiRepository(context: Context) {
     private val sharedSystemInstruction by lazy {
         content {
             text(
-                "Kamu adalah pakar leksikografi Bahasa Arab (klasik turats dan Arab modern/MSA) " +
-                    "dan penerjemah Arab-Indonesia yang presisi. Tugasmu menganalisis kata, frase, atau idiom Arab " +
-                    "dari transkrip pelajaran untuk dicatat di Kamus Pribadi pengguna.\n" +
-                    "Aturan ketat:\n" +
-                    "1. Selalu utamakan makna kontekstual yang tepat sesuai kalimat transkrip yang diberikan.\n" +
-                    "2. Berikan harakat (tasykil) lengkap pada vocalizedArabic yang selaras dengan teks sumber.\n" +
-                    "3. Tulis indonesianMeaning, turatsOrigin, dan synonymNote dalam Bahasa Indonesia yang ringkas, jelas, dan langsung pada inti.\n" +
-                    "4. Untuk turatsOrigin, sebutkan akar kata (misalnya: akar ح-ض-ر) dan hubungan makna klasik ke makna modern.\n" +
-                    "5. Untuk synonymNote, sebutkan 1-2 sinonim Arab beserta nuansa bedanya jika bermanfaat."
+                "Pakar leksikografi Arab-Indonesia (turats & modern). " +
+                    "Analisis kata/frase Arab sesuai konteks kalimat secara ringkas dan presisi dalam Bahasa Indonesia, " +
+                    "dengan harakat lengkap pada vocalizedArabic."
             )
         }
     }
@@ -97,11 +80,14 @@ class KamusAiRepository(context: Context) {
     }
 
     fun getCached(arabic: String, contextSentence: String): KamusAiAnalysis? {
-        val key = buildCacheKey(arabic, contextSentence)
-        if (key.isBlank()) return null
+        val exactKey = buildCacheKey(arabic, contextSentence)
+        val normArabic = ArabicTextUtils.normalizeForLookup(arabic)
+        if (normArabic.isBlank()) return null
         return synchronized(cacheLock) {
             val map = ensureCacheLoadedLocked()
-            map[key]?.analysis?.copy(fromCache = true)
+            val exact = if (exactKey.isNotBlank()) map[exactKey] else null
+            val hit = exact ?: map.values.lastOrNull { it.key.startsWith("$normArabic|") }
+            hit?.analysis?.copy(fromCache = true)
         }
     }
 
@@ -149,61 +135,64 @@ class KamusAiRepository(context: Context) {
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
-        if (!isTransientDemandError(e)) throw e
-        Log.w(TAG, "Primary model ($PRIMARY_MODEL_NAME) busy, falling back to $FALLBACK_MODEL_NAME", e)
+        val isQuota = isQuotaError(e)
+        val isDemand = isHighDemandError(e)
+        if (!isQuota && !isDemand) throw e
+        Log.w(TAG, "Primary model ($PRIMARY_MODEL_NAME) unavailable/quota, trying $FALLBACK_MODEL_NAME once", e)
         try {
             fallbackModel.generateContent(prompt)
         } catch (e2: CancellationException) {
             throw e2
         } catch (e2: Exception) {
-            if (!isTransientDemandError(e2)) throw e2
-            Log.w(TAG, "Fallback model ($FALLBACK_MODEL_NAME) also busy, retrying once after delay", e2)
-            delay(RETRY_DELAY_MILLIS)
-            try {
-                fallbackModel.generateContent(prompt)
-            } catch (e3: CancellationException) {
-                throw e3
-            } catch (e3: Exception) {
-                Log.e(TAG, "All Gemini models busy after retry", e3)
-                if (isTransientDemandError(e3)) {
-                    throw IllegalStateException(
-                        "Server Gemini sedang sangat padat sementara. Tunggu beberapa detik lalu tekan Coba Lagi.",
-                        e3
-                    )
-                }
-                throw e3
+            Log.e(TAG, "Fallback model ($FALLBACK_MODEL_NAME) also failed", e2)
+            when {
+                isQuotaError(e2) || isQuota -> throw IllegalStateException(
+                    "Kuota free tier Gemini sedang habis / terkena batas per menit (429). Tunggu 1 menit atau hubungkan billing Blaze di Firebase Console agar kuota besar.",
+                    e2
+                )
+                isHighDemandError(e2) || isDemand -> throw IllegalStateException(
+                    "Server Gemini sedang padat sementara. Tunggu beberapa detik lalu tekan Coba Lagi.",
+                    e2
+                )
+                else -> throw e2
             }
         }
     }
 
-    private fun isTransientDemandError(error: Throwable): Boolean {
-        val msg = buildString {
-            append(error.message.orEmpty())
-            error.cause?.message?.let { append(' ').append(it) }
-        }.lowercase()
+    private fun isQuotaError(error: Throwable): Boolean {
+        val msg = errorMessageLower(error)
+        return msg.contains("quota") ||
+            msg.contains("resource_exhausted") ||
+            msg.contains("429") ||
+            msg.contains("rate limit")
+    }
+
+    private fun isHighDemandError(error: Throwable): Boolean {
+        val msg = errorMessageLower(error)
         return msg.contains("high demand") ||
             msg.contains("overloaded") ||
             msg.contains("503") ||
             msg.contains("unavailable") ||
-            msg.contains("resource_exhausted") ||
-            msg.contains("429") ||
             msg.contains("try again later")
     }
+
+    private fun errorMessageLower(error: Throwable): String = buildString {
+        append(error.message.orEmpty())
+        error.cause?.message?.let { append(' ').append(it) }
+    }.lowercase()
 
     private fun buildPrompt(
         arabic: String,
         contextSentence: String,
         lessonTitle: String
     ): String = buildString {
-        appendLine("Analisis entri kamus Bahasa Arab berikut:")
-        appendLine("- Kata/Frase target: $arabic")
+        append("Target: ").append(arabic)
         if (contextSentence.isNotBlank()) {
-            appendLine("- Kalimat konteks dari transkrip: $contextSentence")
+            append("\nKonteks: ").append(contextSentence)
         }
         if (lessonTitle.isNotBlank()) {
-            appendLine("- Topik/Judul pelajaran: $lessonTitle")
+            append("\nTopik: ").append(lessonTitle)
         }
-        append("Kembalikan JSON sesuai skema dengan arti kontekstual Indonesia, harakat lengkap, transliterasi, akar kata/turats, nuansa sinonim, dan jenis entri.")
     }
 
     private fun parseAnalysisJson(rawJson: String, fallbackArabic: String): KamusAiAnalysis {
@@ -334,11 +323,10 @@ class KamusAiRepository(context: Context) {
 
     companion object {
         private const val TAG = "KamusAiRepository"
-        private const val PRIMARY_MODEL_NAME = "gemini-3.8-flash"
-        private const val FALLBACK_MODEL_NAME = "gemini-3.5-flash-lite"
+        private const val PRIMARY_MODEL_NAME = "gemini-3.5-flash-lite"
+        private const val FALLBACK_MODEL_NAME = "gemini-3.8-flash"
         private const val CACHE_FILE_NAME = "kamus_ai_cache_v1.json"
         private const val MAX_CACHE_ENTRIES = 300
         private const val TIMEOUT_MILLIS = 45_000L
-        private const val RETRY_DELAY_MILLIS = 1_200L
     }
 }
