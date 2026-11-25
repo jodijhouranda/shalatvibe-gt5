@@ -68,11 +68,10 @@ jobs:
           APK_FILE="Jadwal-${TAG}-release.apk"
           cat > /tmp/release_notes.md <<'NOTES'
           Rilis resmi **Jadwal** (Release APK teroptimasi R8 + *signed keystore* permanen):
-          - **Redesign Tonal Modern**: Tampilan baru **Tab Jadwal**, **Pustaka Belajar**, & **Ruang Belajar** dengan *tonal layering* bersih tanpa tumpukan border, hero card berkarakter, serta tipografi editorial yang lega (*AMOLED Dark* & *Serene Light*)
-          - **Transkrip Fiqh Muamalah Terkalibrasi**: Seluruh 5 seri kajian Syaikh Abdussalam asy-Syuwai'ir diselaraskan kata demi kata dengan teks Arab kitab resmi *Tafrigh Daurah Tabuk* & *timestamp* rekaman asli per ±15–30 detik, lengkap dengan *auto-highlight* dan *auto-scroll* mengikuti pemutar YouTube
-          - **Tab Jadwal**: *Atmosphere Hero Card*, *Solar Arc*, *live countdown* 1 detik, Kalender Hijriah offline, 52 kota Indonesia, override getar per shalat, & *Home Screen Widget*
-          - **Tab Belajar**: Kursus Berseri (*Split-View* video + transkrip interaktif + glosarium + PDF kitab 96 hal.) & Bahasa Arab harian (TAFL) + *Auto-Loop* + *Hybrid Sync*
-          - **Tab Kiblat & GT 5 Hub**: Kompas bezel Huawei Watch GT 5, pratinjau layar bulat GT 5, Readiness Check 4-poin, & Tes Getar 5 detik
+          - **Belajar Arab Interaktif (`Teks Interaktif` ↔ `PDF Asli`)**: Ketuk kata Arab mana saja di transkrip TAFL untuk menyimpan arti, akar kata *Turats → Modern*, dan nuansa sinonim (*Al-Furūq al-Lughawiyyah*) langsung ke **Kamus Saya**, plus mode **+ Pilih Frase** & toggle **تَشْكِيل ↔ Gundul**
+          - **Kamus Saya + Spaced Repetition (SRS)**: Kartu review terjadwal (+1, +3, +7, +14 hari), *Flashcard* bolak-balik, *Kuis Kalimat Konteks*, pelafalan suara Arab *offline* (`TextToSpeech`), tombol **`▶ Klip`** lompat ke detik video aslinya, & ekspor/impor **CSV siap Anki / JSON**
+          - **Kursus Fiqh Muamalah Terkalibrasi**: Seluruh 5 seri kajian Syaikh Abdussalam asy-Syuwai'ir tersinkron kata demi kata dengan kitab *Tafrigh Daurah Tabuk* & *auto-highlight* / *auto-scroll*
+          - **Desain Tonal Modern & Fitur Inti**: *Atmosphere Hero Card*, *Solar Arc*, kompas Kiblat GT 5, kalender Hijriah offline, 52 kota Indonesia, override getar per shalat, & *Home Screen Widget*
           - Ikon **Jadwal** (huruf **ج** + sabit & titik matahari emas)
           NOTES
           if gh release view "$TAG" >/dev/null 2>&1; then

@@ -25,8 +25,18 @@ data class ArabicStudyUiState(
     val activeLesson: ArabicLesson? = null,
     val activePdfFile: File? = null,
     val isLoadingPdf: Boolean = false,
-    val pdfErrorMessage: String? = null
+    val pdfErrorMessage: String? = null,
+    val activeLessonContent: ArabicLessonContent? = null,
+    val isLoadingContent: Boolean = false,
+    val activeSeekSec: Int? = null,
+    val showHarakat: Boolean = true,
+    val kamusEntries: List<KamusEntry> = emptyList(),
+    val kamusFilter: KamusFilter = KamusFilter.ALL,
+    val kamusSearchQuery: String = "",
+    val dueKamusCount: Int = 0
 ) {
+    val savedNormalizedKeys: Set<String>
+        get() = kamusEntries.mapNotNull { it.normalizedKey.takeIf(String::isNotBlank) }.toSet()
     val completedCount: Int
         get() = lessons.count { completedIds.contains(it.id) }
 
@@ -56,6 +66,9 @@ data class ArabicStudyUiState(
 class ArabicStudyViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = ArabicLessonRepository(application.applicationContext)
+    private val contentRepository = ArabicContentRepository(application.applicationContext)
+    private val kamusRepository = KamusRepository(application.applicationContext)
+    private val ttsHelper = ArabicTtsHelper(application.applicationContext)
 
     private val _uiState = MutableStateFlow(ArabicStudyUiState())
     val uiState: StateFlow<ArabicStudyUiState> = _uiState.asStateFlow()
@@ -65,6 +78,8 @@ class ArabicStudyViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun reloadFromLocal() {
+        val kamus = kamusRepository.loadEntries()
+        val today = KamusSrsScheduler.todayEpochDay()
         _uiState.update {
             it.copy(
                 lessons = repository.loadLessons(),
@@ -73,7 +88,9 @@ class ArabicStudyViewModel(application: Application) : AndroidViewModel(applicat
                 lastOpenedLessonId = repository.getLastOpenedLessonId(),
                 readingMode = repository.getReadingMode(),
                 syncManifestUrl = repository.getSyncManifestUrl(),
-                lastSyncLabel = repository.getLastSyncLabel()
+                lastSyncLabel = repository.getLastSyncLabel(),
+                kamusEntries = kamus,
+                dueKamusCount = kamus.count { item -> KamusSrsScheduler.isDue(item, today) }
             )
         }
     }
@@ -86,7 +103,7 @@ class ArabicStudyViewModel(application: Application) : AndroidViewModel(applicat
         _uiState.update { it.copy(searchQuery = query) }
     }
 
-    fun openLesson(lesson: ArabicLesson) {
+    fun openLesson(lesson: ArabicLesson, initialSeekSec: Int? = null) {
         repository.setLastOpenedLessonId(lesson.id)
         _uiState.update {
             it.copy(
@@ -94,8 +111,18 @@ class ArabicStudyViewModel(application: Application) : AndroidViewModel(applicat
                 lastOpenedLessonId = lesson.id,
                 activePdfFile = null,
                 isLoadingPdf = true,
-                pdfErrorMessage = null
+                pdfErrorMessage = null,
+                activeLessonContent = null,
+                isLoadingContent = true,
+                activeSeekSec = initialSeekSec
             )
+        }
+        viewModelScope.launch {
+            val content = contentRepository.loadLessonContent(lesson)
+            _uiState.update { state ->
+                if (state.activeLesson?.id != lesson.id) state
+                else state.copy(activeLessonContent = content, isLoadingContent = false)
+            }
         }
         viewModelScope.launch {
             val file = repository.resolvePdfFile(lesson)
@@ -112,15 +139,101 @@ class ArabicStudyViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    fun openLessonClip(lessonId: String, startSec: Int) {
+        val lesson = _uiState.value.lessons.firstOrNull { it.id == lessonId } ?: return
+        openLesson(lesson = lesson, initialSeekSec = startSec)
+    }
+
     fun closeLesson() {
+        ttsHelper.stop()
         _uiState.update {
             it.copy(
                 activeLesson = null,
                 activePdfFile = null,
                 isLoadingPdf = false,
-                pdfErrorMessage = null
+                pdfErrorMessage = null,
+                activeLessonContent = null,
+                isLoadingContent = false,
+                activeSeekSec = null
             )
         }
+    }
+
+    fun toggleHarakat() {
+        _uiState.update { it.copy(showHarakat = !it.showHarakat) }
+    }
+
+    fun setKamusFilter(filter: KamusFilter) {
+        _uiState.update { it.copy(kamusFilter = filter) }
+    }
+
+    fun setKamusSearchQuery(query: String) {
+        _uiState.update { it.copy(kamusSearchQuery = query) }
+    }
+
+    fun saveKamusEntry(entry: KamusEntry) {
+        val updated = kamusRepository.upsertEntry(entry)
+        val today = KamusSrsScheduler.todayEpochDay()
+        _uiState.update {
+            it.copy(
+                kamusEntries = updated,
+                dueKamusCount = updated.count { item -> KamusSrsScheduler.isDue(item, today) }
+            )
+        }
+    }
+
+    fun deleteKamusEntry(entryId: String) {
+        val updated = kamusRepository.deleteEntry(entryId)
+        val today = KamusSrsScheduler.todayEpochDay()
+        _uiState.update {
+            it.copy(
+                kamusEntries = updated,
+                dueKamusCount = updated.count { item -> KamusSrsScheduler.isDue(item, today) }
+            )
+        }
+    }
+
+    fun gradeKamusSrs(entryId: String, remembered: Boolean) {
+        val today = KamusSrsScheduler.todayEpochDay()
+        val updated = kamusRepository.gradeSrs(entryId, remembered, today)
+        _uiState.update {
+            it.copy(
+                kamusEntries = updated,
+                dueKamusCount = updated.count { item -> KamusSrsScheduler.isDue(item, today) }
+            )
+        }
+    }
+
+    fun toggleKamusMastered(entryId: String) {
+        val today = KamusSrsScheduler.todayEpochDay()
+        val updated = kamusRepository.toggleMastered(entryId, today)
+        _uiState.update {
+            it.copy(
+                kamusEntries = updated,
+                dueKamusCount = updated.count { item -> KamusSrsScheduler.isDue(item, today) }
+            )
+        }
+    }
+
+    fun importKamusBackupJson(rawJson: String): Int {
+        val (updated, addedCount) = kamusRepository.importBackupJson(rawJson)
+        val today = KamusSrsScheduler.todayEpochDay()
+        _uiState.update {
+            it.copy(
+                kamusEntries = updated,
+                dueKamusCount = updated.count { item -> KamusSrsScheduler.isDue(item, today) }
+            )
+        }
+        return addedCount
+    }
+
+    fun speakArabic(arabicText: String): String? {
+        return ttsHelper.speak(arabicText)
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        ttsHelper.shutdown()
     }
 
     fun toggleCompleted(lessonId: String) {

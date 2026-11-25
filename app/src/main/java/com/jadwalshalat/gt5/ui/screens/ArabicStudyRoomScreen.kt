@@ -2,6 +2,7 @@ package com.jadwalshalat.gt5.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
@@ -28,8 +29,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.Book
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Contrast
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Pause
@@ -45,6 +48,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -62,7 +66,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jadwalshalat.gt5.arabic.ArabicCatalogParser
 import com.jadwalshalat.gt5.arabic.ArabicLesson
+import com.jadwalshalat.gt5.arabic.KamusEntry
 import com.jadwalshalat.gt5.arabic.PdfReadingMode
+import com.jadwalshalat.gt5.ui.components.ArabicInteractiveReader
 import com.jadwalshalat.gt5.ui.components.ArabicYouTubePlayerView
 import com.jadwalshalat.gt5.ui.components.PdfDocumentViewer
 import com.jadwalshalat.gt5.ui.components.YouTubePlayerController
@@ -77,6 +83,16 @@ fun ArabicStudyRoomScreen(
     pdfErrorMessage: String?,
     isCompleted: Boolean,
     readingMode: PdfReadingMode,
+    lessonContent: com.jadwalshalat.gt5.arabic.ArabicLessonContent? = null,
+    isLoadingContent: Boolean = false,
+    initialSeekSec: Int? = null,
+    showHarakat: Boolean = true,
+    savedNormalizedKeys: Set<String> = emptySet(),
+    kamusCount: Int = 0,
+    onToggleHarakat: () -> Unit = {},
+    onSaveKamusEntry: (com.jadwalshalat.gt5.arabic.KamusEntry) -> Unit = {},
+    onOpenKamus: () -> Unit = {},
+    onSpeakArabic: (String) -> String? = { null },
     onCycleReadingMode: () -> Unit,
     onToggleCompleted: () -> Unit,
     onBack: () -> Unit
@@ -88,7 +104,7 @@ fun ArabicStudyRoomScreen(
 
     val ytController = remember(lesson.id) {
         YouTubePlayerController(
-            initialStartSec = lesson.startSeconds,
+            initialStartSec = initialSeekSec ?: lesson.startSeconds,
             initialEndSec = lesson.endSeconds
         )
     }
@@ -96,6 +112,20 @@ fun ArabicStudyRoomScreen(
     // -1 berarti seluruh segmen utama (mis. 06:08–08:15), >= 0 berarti sub-segmen ke-i
     var activeSegmentIndex by remember(lesson.id) { mutableIntStateOf(-1) }
     var isPdfFocusMode by remember(lesson.id) { mutableStateOf(false) }
+    var useInteractiveMode by remember(lesson.id, lessonContent != null) {
+        mutableStateOf(lessonContent != null)
+    }
+    var showManualKamusSheet by remember { mutableStateOf(false) }
+
+    LaunchedEffect(lesson.id, initialSeekSec) {
+        val seekSec = initialSeekSec ?: return@LaunchedEffect
+        ytController.seekTo(seekSec, autoPlay = true)
+        val segIdx = lessonContent?.findSegmentAt(seekSec)
+            ?: lesson.segments.indexOfFirst { seekSec in it.startSec..it.endSec }.takeIf { it >= 0 }
+        if (segIdx != null) {
+            activeSegmentIndex = segIdx
+        }
+    }
 
     val openInYouTubeApp: () -> Unit = {
         val targetSec = ytController.currentSeconds.takeIf { it > 0 } ?: ytController.windowStartSec
@@ -155,29 +185,59 @@ fun ArabicStudyRoomScreen(
                 )
             }
 
-            // Reading Mode Pill (Asli / Sepia / Gelap)
+            // Kamus Saya shortcut pill
             Surface(
-                onClick = onCycleReadingMode,
+                onClick = onOpenKamus,
                 shape = CircleShape,
-                color = palette.cardSurface
+                color = palette.goldSoft
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.Contrast,
-                        contentDescription = "Mode baca PDF",
-                        tint = palette.emeraldPrimary,
-                        modifier = Modifier.size(14.dp)
+                        imageVector = Icons.Rounded.Book,
+                        contentDescription = "Buka Kamus Saya",
+                        tint = palette.goldAccent,
+                        modifier = Modifier.size(13.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = readingMode.label,
-                        color = palette.textPrimary,
+                        text = "Kamus ($kamusCount)",
+                        color = palette.goldAccent,
                         fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.Bold
                     )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(6.dp))
+
+            // Reading Mode Pill (Asli / Sepia / Gelap) saat melihat PDF Asli
+            if (!useInteractiveMode || lessonContent == null) {
+                Surface(
+                    onClick = onCycleReadingMode,
+                    shape = CircleShape,
+                    color = palette.cardSurface
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Contrast,
+                            contentDescription = "Mode baca PDF",
+                            tint = palette.emeraldPrimary,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = readingMode.label,
+                            color = palette.textPrimary,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
             }
 
@@ -461,13 +521,101 @@ fun ArabicStudyRoomScreen(
             HorizontalDivider(color = palette.cardBorder)
         }
 
-        // 3. Bottom Split: Native High-Clarity PDF Reader
+        // Mode Dokumen Switcher (Teks Interaktif <-> PDF Asli)
+        if (lessonContent != null || isLoadingContent) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(palette.cardSurface)
+                    .padding(horizontal = 12.dp, vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Surface(
+                    onClick = { useInteractiveMode = true },
+                    shape = CircleShape,
+                    color = if (useInteractiveMode && lessonContent != null) palette.emeraldPrimary else palette.pillBg,
+                    enabled = lessonContent != null
+                ) {
+                    Text(
+                        text = if (isLoadingContent && lessonContent == null) "Memuat Teks…" else "Teks Interaktif",
+                        color = if (useInteractiveMode && lessonContent != null) Color.White else palette.textSecondary,
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                }
+
+                Surface(
+                    onClick = { useInteractiveMode = false },
+                    shape = CircleShape,
+                    color = if (!useInteractiveMode || lessonContent == null) palette.emeraldPrimary else palette.pillBg
+                ) {
+                    Text(
+                        text = "PDF Asli",
+                        color = if (!useInteractiveMode || lessonContent == null) Color.White else palette.textSecondary,
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                if (!useInteractiveMode || lessonContent == null) {
+                    Surface(
+                        onClick = { showManualKamusSheet = true },
+                        shape = CircleShape,
+                        color = palette.goldSoft
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Rounded.Edit, null, tint = palette.goldAccent, modifier = Modifier.size(13.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "+ Kamus",
+                                color = palette.goldAccent,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+            HorizontalDivider(color = palette.hairline)
+        }
+
+        // 3. Bottom Split: Teks Interaktif atau Native High-Clarity PDF Reader
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
         ) {
-            when {
+            if (useInteractiveMode && lessonContent != null) {
+                ArabicInteractiveReader(
+                    lesson = lesson,
+                    content = lessonContent,
+                    currentVideoSeconds = ytController.currentSeconds,
+                    selectedSegmentIdx = activeSegmentIndex.coerceAtLeast(0),
+                    showHarakat = showHarakat,
+                    savedNormalizedKeys = savedNormalizedKeys,
+                    isCompleted = isCompleted,
+                    onToggleHarakat = onToggleHarakat,
+                    onSeekToSegment = { seg, idx ->
+                        activeSegmentIndex = idx
+                        ytController.setSegmentWindow(seg.startSec, seg.endSec, seekNow = true)
+                    },
+                    onSaveKamusEntry = onSaveKamusEntry,
+                    onSpeakArabic = onSpeakArabic,
+                    onToggleCompleted = onToggleCompleted,
+                    onShowMessage = { msg ->
+                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else when {
                 isLoadingPdf -> {
                     Column(
                         modifier = Modifier.fillMaxSize(),
@@ -533,6 +681,28 @@ fun ArabicStudyRoomScreen(
                 }
             }
         }
+    }
+
+    if (showManualKamusSheet) {
+        KamusEntryEditorSheet(
+            initialEntry = KamusEntry(
+                id = "",
+                arabic = "",
+                lessonId = lesson.id,
+                lessonTitle = lesson.title,
+                segmentLabel = lesson.segmentRangeLabel,
+                segmentStartSec = ytController.currentSeconds.takeIf { it > 0 } ?: lesson.startSeconds
+            ),
+            onDismiss = { showManualKamusSheet = false },
+            onSave = { entry ->
+                onSaveKamusEntry(entry)
+                showManualKamusSheet = false
+                Toast.makeText(context, "Disimpan ke Kamus Saya: ${entry.arabic}", Toast.LENGTH_SHORT).show()
+            },
+            onSpeakArabic = { txt ->
+                onSpeakArabic(txt)?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+            }
+        )
     }
 }
 

@@ -1,0 +1,170 @@
+{
+  "lessonId": "video_ai_informasi",
+  "pdfFileName": "Bahasa_Arab_Analisis_Video_AI_Informasi_TAFL.pdf",
+  "transcriptSegments": [
+    {
+      "label": "06:08 – 06:28",
+      "startSec": 368,
+      "endSec": 388,
+      "arabic": "لَيْسَتْ كُلُّ الْعَمَلِيَّاتِ مُحَاوَلَةً لِتَوْجِيهِ نَمُوذَجِ الذَّكَاءِ الِاصْطِنَاعِيِّ مُبَاشَرَةً؛ أَحْيَانًا يَِكُونُ الْهَدَفُ هُوَ تَغْيِيرَ الْبِيئَةِ الْمَعْلُومَاتِيَّةِ الْمُحِيطَةِ بِهِ: مَا الَّذِي يَظْهَرُ عَلَى الْإِنْتَرْنِت؟ وَمَا الَّذِي قَدْ تَعْثُرُ عَلَيْهِ أَدَوَاتُ الْبَحْثِ؟ وَمَا الَّذِي يُمْكِنُ أَنْ تَسْتَشْهِدَ بِ رُوبُوتَاتُ الدَّرْدَشَةِ حِينَ تَبْحَثُ عَنْ إِجَابَةٍ؟",
+      "indonesian": "Tidak semua operasi merupakan upaya mengarahkan model kecerdasan buatan secara langsung; terkadang tujuannya adalah mengubah ekosistem informasi di sekelilingnya: apa yang muncul di internet? Apa yang mungkin ditemukan oleh mesin pencari? Dan apa yang dapat dikutip oleh bot percakapan saat mencari jawaban?"
+    },
+    {
+      "label": "06:28 – 06:55",
+      "startSec": 388,
+      "endSec": 415,
+      "arabic": "بََعْدَ الْحَرْبِ عَلَى غَزَّةَ كَشَفَتْ صَحِيفَةُ الْغَارْدِيَانِ الْبِرِيطَانِيَّةُ عَنْ مَوْقِعٍ يَحْمِلُ اسْمَ مَعْهَدِ هَانُوفَر لِلسِّيَاسَاتِ الْعَامَّةِ؛ اَلْمَوْقِعُ قَدَّمَ نَفْسَهُ كَمَرْكَزِ أَبْحَاثٍ، لٰكِنَّ الصَّحِيفَةَ قَالَتْ إِنَّ الْمَعْهَدَ لَا يَبْدُو أَنَّهُ كِيَانٌ قَانُونِيٌّ قَائِمٌ، وَرَبَطَ التَّحْقِيقُ الْمَوْقِعَ بِشَرِكَةٍ أَمْرِيكِيَّةٍ مُسَجَّلَةٍ لَدَى وِزَارَةِ الْعَدْلِ لِتَوْزِيعِ مَوَادَّ لِصَالِحِ الْحُكُومَةِ الْإِسْرَائِيلِيَّةِ.",
+      "indonesian": "Pasca perang di Gaza, surat kabar Inggris The Guardian mengungkap sebuah situs bernama Hannover Institute for Public Policy; situs tersebut memperkenalkan diri sebagai pusat riset, namun surat kabar itu menyatakan bahwa lembaga tersebut tampaknya bukan entitas hukum yang sah, dan investigasi mengaitkan situs itu dengan perusahaan Amerika yang terdaftar di Departemen Kehakiman untuk mendistribusikan materi bagi pemerintah Israel."
+    },
+    {
+      "label": "06:55 – 07:38",
+      "startSec": 415,
+      "endSec": 458,
+      "arabic": "وَُخِلَالَ تِسْعَةِ أَيَّامٍ فَقَطْ، بَيْنَ السَّادِسِ وَالرَّابِعَ عَشَرَ مِنْ أَغُسْطُسَ، نَشَرَ الْمَوْقِعُ ١٢٤ تَقْرِيرًا؛ اَلْعَنَاوِينُ لَمْ تَكُنْ عَشْوَائِيَّةً، مُعْظَمُهَا صِيغَ كَأَسْئِلَةٍ تُشْبِهُ مَا يَكْتُبُهُ الْمُسْتَخْدِمُونَ فِي رُوبُوتَاتِ الدَّرْدَشَةِ: هَلْ تَرْتَكِبُ إِسْرَائِيلُ إِبَادَةً جَمَاعِيَّةً فِي غََزَّةَ؟ هَلْ تَعَمَّدَتْ تَجْوِيعَ الْفِلَسْطِينِيِّينَ؟ هَلْ مُعَادَاةُ الصَّهْيُونِيَّةِ هِيَ مُعَادَاةُ لِلسَّامِيَّةِ؟ وَقَدَّمَتِ الْمَوَادُّ حُجَجًا مُؤَيِّدَةً لِإِسْرَائِيلَيّةِ فِي صُورَةِ تَقَارِيرَ بَحْثِيَّةٍ إِحَالَاتٍ إِلَى مَصَادِرَ مِثْلِ الْأُمَمِ الْمُتَّحِدَةِ وَالْبَنْكِ الدُّوَلِيِّ وَمُنَظَّمَاتٍ حُقُوقِيَّةٍ.",
+      "indonesian": "Hanya dalam sembilan hari, antara 6 hingga 14 Agustus, situs tersebut menerbitkan 124 laporan; judul-judulnya tidak acak, sebagian besar dirumuskan sebagai pertanyaan yang menyerupai apa yang diketik pengguna pada bot percakapan: Apakah Israel melakukan genosida di Gaza? Apakah Israel sengaja membuat warga Palestina kelaparan? Apakah anti-Zionisme sama dengan antisemitisme? Materi-materi itu menyajikan argumen pro-Israel dalam kemasan laporan riset disertai rujukan ke berbagai sumber seperti PBB, Bank Dunia, dan organisasi hak asasi manusia."
+    },
+    {
+      "label": "07:38 – 08:15",
+      "startSec": 458,
+      "endSec": 495,
+      "arabic": "وِفْقَ الْغَارْدِيَانِ كَانَ الْهَدَفُ رَفْعَ احْتِمَالِ أَنْ تَظْهَرَ هٰذِهِ الْمَوَادُّ فِي نَتَائِجِ الْبَحْثِ أَ أَنْ تَسْتَشْهِدَ بِهَا أَدَوَاتُ الذَّكَاءِ الِاصْطِنَاعِيِّ، وَرُبَّمَا أَنْ تَصِلَ مُسْتَقْبَلًا إِلَى مُِسْتَوْدَعَاتِ بَيَانَاتٍ مَفْتُوحَةٍ مِثْلِ كُومُون كْرَاوْل. لٰكِنْ لَا يُوجَدُ دَلِيلٌ مَنْشُورٌ عَلَى أَُنَّهَا تِلْكَ الْمَوَادَّ دَخَلَتْ فِعْلًا فِي بَيَانَاتِ تَدْرِيبِ نَمُوذَجٍ مُحَدَّدٍ أَوْ أَنَّهَا غَيَّرَتْ بِالْفِعْلِ إِجَابَاتِ تْشَاتْجِي جِي بِيتِي تِي أَوْ غَيْرِهِ عَلَى نَحْوٍ وَاسِعٍ؛ مَا هُوَ مُوَثَّقٌ هُوَ وُجُودُ مُحَاوَلَةٍ لِتَصْمِيمِ مُحْتَوى سِيَاسِيٍّ بِكَثَافَةٍ وَلُغَةٍ شِبْهِ أَكَادِيمِيَّةٍ بِحَيْثُ يَبْدُو صَالِحًا لِلِاقْتِبَاسِ وَالِاسْتِدْعَاءِ عِنْدَمَا يَسْأَلُ الْمُسْتَخْدِمُ رُوبُوتَ دَرْدَشَةٍ عَنِ الْحَرْبِ عَلَى غَزَّةَ.",
+      "indonesian": "Menurut The Guardian, tujuannya adalah meningkatkan peluang munculnya materi- materi tersebut di hasil pencarian atau dikutip oleh perangkat kecerdasan buatan, dan barangkali kelak masuk ke repositori data terbuka seperti Common Crawl. Namun, belum ada bukti terpublikasi bahwa materi tersebut benar-benar masuk ke data latih model tertentu atau telah mengubah jawaban ChatGPT dan lainnya secara luas; yang terdokumentasi adalah adanya upaya merancang konten politik secara intensif dengan bahasa semi-akademik sehingga tampak layak dikutip dan dipanggil ketika pengguna bertanya kepada bot percakapan mengenai perang di Gaza."
+    }
+  ],
+  "semanticShifts": [
+    {
+      "arabic": "اِسْتَشْهَدَ بِـ",
+      "transliteration": "istasyhada bi-",
+      "turatsMeaning": "Meminta kesaksian dalam peradilan atau mengutip syair Arab klasik sebagai bukti kaidah nahwu (شَاهِدٌ).",
+      "modernMeaning": "Mengutip sebagai sumber / cite dalam artikel ilmiah atau respons mesin pencari AI."
+    },
+    {
+      "arabic": "إِحَالَةٌ",
+      "transliteration": "iḥālatun",
+      "turatsMeaning": "Dalam fikih muamalah (حَوَالَةٌ): pemindahan tanggungan utang dari satu pihak ke pihak lain.",
+      "modernMeaning": "Rujukan silang / sitasi / pelimpahan perkara hukum: إِحَالَاتٌ إِلَى مَصَادِرَ"
+    },
+    {
+      "arabic": "صَاَغَ – يَصُوغُ",
+      "transliteration": "ṣāgha",
+      "turatsMeaning": "Menempa atau membentuk logam mulia (emas dan perak) menjadi perhiasan (صِيَاغَةٌ).",
+      "modernMeaning": "Merumuskan / memformulasikan teks, undang-undang, atau pertanyaan: صِيغَ كَأَسْئِلَةٍ"
+    },
+    {
+      "arabic": "مُسْتَوْدَعٌ",
+      "transliteration": "mustauda‘un",
+      "turatsMeaning": "Tempat penyimpanan barang titipan amanah (وَدِيعَةٌ).",
+      "modernMeaning": "Repositori / gudang data dalam komputasi: مُسْتَوْدَعَاتُ بَيَانَاتٍ مَفْتُوحَةٌ"
+    },
+    {
+      "arabic": "اِسْتِدْعَاءٌ",
+      "transliteration": "istid‘ā’un",
+      "turatsMeaning": "Memanggil seseorang agar menghadap penguasa atau hakim.",
+      "modernMeaning": "Pemanggilan data / retrieval dalam sistem informasi dan AI: صَالِحٌ لِلِاسْتِدْعَاءِ"
+    }
+  ],
+  "idioms": [
+    {
+      "arabic": "كِيَانٌ قَانُونِيٌّ قَائِمٌ",
+      "transliteration": "kiyānun qānūniyyun qā’im",
+      "literalMeaning": "wujud hukum yang berdiri.",
+      "idiomaticMeaning": "badan/entitas hukum yang sah.",
+      "exampleArabic": "تَبَيَّنَ أَنَّ الشَّرِكَةَ لَيْسَتْ كِيَانًا قَانُونِيًّا قَائِمًا.",
+      "exampleIndonesian": "Terbukti perusahaan itu bukan badan hukum yang sah."
+    },
+    {
+      "arabic": "فِي صُورَةِ...",
+      "transliteration": "fī ṣūrati ...",
+      "literalMeaning": "dalam rupa/gambar.",
+      "idiomaticMeaning": "dalam kemasan / berbentuk.",
+      "exampleArabic": "نُشِرَتِ الدِّعَايَةُ فِي صُورَةِ تَقَارِيرَ عِلْمِيَّةٍ.",
+      "exampleIndonesian": "Propaganda itu diterbitkan dalam kemasan laporan ilmiah."
+    },
+    {
+      "arabic": "عَلَى نَحْوٍ وَاسِعٍ",
+      "transliteration": "‘alā naḥwin wāsi‘in",
+      "literalMeaning": "atas arah yang luas.",
+      "idiomaticMeaning": "secara luas / dalam skala masif.",
+      "exampleArabic": "اِنْتَشَرَتِ التَّقْنِيَةُ عَلَى نَحْوٍ وَاسِعٍ.",
+      "exampleIndonesian": "Teknologi itu menyebar secara luas."
+    },
+    {
+      "arabic": "رَفْعُ احْتِمَاِلِ...",
+      "transliteration": "raf‘u iḥtimāli ...",
+      "literalMeaning": "mengangkat kemungkinan.",
+      "idiomaticMeaning": "meningkatkan probabilitas.",
+      "exampleArabic": "يَسْعَى الْمَوْقِعُ إِلَى رَفْعِ احْتِمَالِ ظُهُورِهِ.",
+      "exampleIndonesian": "Situs itu berupaya meningkatkan peluang kemunculannya."
+    }
+  ],
+  "synonymGroups": [
+    {
+      "words": [
+        "عَثَرَ عَلَى",
+        "وَجَدَ",
+        "اِكْتَشَفَ"
+      ],
+      "distinction": "‘Atsara ‘alā: menemukan setelah menelusuri atau kebetulan. Wajada: menemukan secara umum. Iktasyafa: menyingkap hal tersembunyi.",
+      "collocations": [
+        "عَثَرَتْ عَلَيْهِ أَدَوَاتُ الْبَحْثِ (ditemukan mesin pencari)",
+        "كَشَفَتِ الصَّحِيفَةُ عَنْ مَوْقِعٍ (koran mengungkap situs)"
+      ]
+    },
+    {
+      "words": [
+        "اِقْتِبَاسٌ",
+        "اِسْتِشْهَادٌ",
+        "إِحَالَةٌ"
+      ],
+      "distinction": "Iqtibās: menyalin kutipan langsung. Istisyhād: mengutip sebagai penguat argumen. Iḥālah: menunjuk ke daftar sumber.",
+      "collocations": [
+        "صَالِحٌ لِلِاقْتِبَاسِ (layak dikutip)",
+        "إِحَالَاتٌ إِلَى مَصَادِرَ (rujukan ke sumber)"
+      ]
+    },
+    {
+      "words": [
+        "مُوَثَّقٌ",
+        "مُسَجَّلٌ",
+        "مَثْبُوتٌ"
+      ],
+      "distinction": "Muwatstsaq: terdokumentasi dan terverifikasi kredibel. Musajjal: tercatat administratif. Matsbūt: terbukti sahih.",
+      "collocations": [
+        "شَرِكَةٌ مُسَجَّلٌ (perusahaan terdaftar)",
+        "مَا هُوَ مُوَقِعٍ (yang terdokumentasi)"
+      ]
+    }
+  ],
+  "thematicVocab": [
+    {
+      "arabic": "اَلْبِيئَةُ الْمَعْلُومَاتِيَّةُ",
+      "indonesian": "Ekosistem informasi digital",
+      "clusterTitle": "Ekosistem Informasi, Riset & AI"
+    },
+    {
+      "arabic": "نَمُوذَجُ الذَّكَاءِ الِاصْطِنَاعِيِّ",
+      "indonesian": "Model kecerdasan buatan (AI model)",
+      "clusterTitle": "Ekosistem Informasi, Riset & AI"
+    },
+    {
+      "arabic": "رُوبُوتَاتُ الدَّرْدَشَةِ",
+      "indonesian": "Bot percakapan (chatbots)",
+      "clusterTitle": "Ekosistem Informasi, Riset & AI"
+    },
+    {
+      "arabic": "نَتَائِجُ الْبَحْثِ",
+      "indonesian": "Hasil pencarian mesin telusur",
+      "clusterTitle": "Ekosistem Informasi, Riset & AI"
+    },
+    {
+      "arabic": "بَيَانَاتُ التَّدْرِيبِ",
+      "indonesian": "Data latih (training data)",
+      "clusterTitle": "Ekosistem Informasi, Riset & AI"
+    },
+    {
+      "arabic": "لُغَةٌ شِبْهُ أَكَادِيمِيَّةٍ",
+      "indonesian": "Bahasa semi-akademik",
+      "clusterTitle": "Ekosistem Informasi, Riset & AI"
+    }
+  ]
+}

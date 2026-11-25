@@ -390,6 +390,143 @@ public class PrayerTimeCalculatorTest {
         }
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    public void arabicContentAssetsAndCatalogAreSyncedAndValid() throws Exception {
+        java.io.File catalogFile = new java.io.File("lessons/catalog.json");
+        if (!catalogFile.exists()) {
+            catalogFile = new java.io.File("../lessons/catalog.json");
+        }
+        org.junit.Assert.assertTrue("Missing lessons/catalog.json", catalogFile.exists());
+        java.io.File repoRoot = catalogFile.getParentFile().getParentFile();
+        java.io.File repoContentDir = new java.io.File(repoRoot, "lessons/arabic_content");
+        java.io.File assetContentDir = new java.io.File(repoRoot, "app/src/main/assets/arabic_lessons/content");
+        org.junit.Assert.assertTrue("Missing repo arabic_content dir", repoContentDir.isDirectory());
+        org.junit.Assert.assertTrue("Missing asset arabic_lessons/content dir", assetContentDir.isDirectory());
+
+        String catText = new String(
+                java.nio.file.Files.readAllBytes(catalogFile.toPath()),
+                java.nio.charset.StandardCharsets.UTF_8
+        );
+        java.util.Map<String, Object> cat = (java.util.Map<String, Object>) new MinimalJsonParser(catText).parseValue();
+        java.util.List<Object> lessons = (java.util.List<Object>) cat.get("lessons");
+        org.junit.Assert.assertNotNull(lessons);
+        org.junit.Assert.assertTrue(lessons.size() >= 11);
+
+        java.io.File[] repoFiles = repoContentDir.listFiles((dir, name) -> name.endsWith(".json"));
+        org.junit.Assert.assertNotNull(repoFiles);
+        org.junit.Assert.assertTrue("Expected at least 11 TAFL JSONs", repoFiles.length >= 11);
+
+        java.util.Set<String> validatedNames = new java.util.HashSet<>();
+        for (java.io.File repoJson : repoFiles) {
+            String jsonName = repoJson.getName();
+            java.io.File assetJson = new java.io.File(assetContentDir, jsonName);
+            org.junit.Assert.assertTrue("Missing asset JSON: " + jsonName, assetJson.exists());
+
+            byte[] repoBytes = java.nio.file.Files.readAllBytes(repoJson.toPath());
+            byte[] assetBytes = java.nio.file.Files.readAllBytes(assetJson.toPath());
+            org.junit.Assert.assertArrayEquals("Byte parity mismatch for " + jsonName, repoBytes, assetBytes);
+
+            String raw = new String(assetBytes, java.nio.charset.StandardCharsets.UTF_8);
+            com.jadwalshalat.gt5.arabic.ArabicLessonContent parsed =
+                    com.jadwalshalat.gt5.arabic.ArabicContentParser.INSTANCE.parseContentJson(raw);
+            org.junit.Assert.assertNotNull("Failed parsing " + jsonName, parsed);
+            org.junit.Assert.assertTrue("No transcript segments in " + jsonName, parsed.getTranscriptSegments().size() >= 3);
+            org.junit.Assert.assertTrue("No vocab items in " + jsonName, parsed.getTotalGlossaryItems() >= 10);
+            validatedNames.add(jsonName);
+        }
+
+        int matchedInCatalog = 0;
+        for (Object lObj : lessons) {
+            java.util.Map<String, Object> l = (java.util.Map<String, Object>) lObj;
+            String pdf = (String) l.get("pdfFileName");
+            org.junit.Assert.assertNotNull(pdf);
+            String jsonName = com.jadwalshalat.gt5.arabic.ArabicContentParser.INSTANCE.contentFileNameForPdf(pdf);
+            if (validatedNames.contains(jsonName)) matchedInCatalog++;
+        }
+        org.junit.Assert.assertTrue("Expected at least 11 catalog lessons with interactive JSON", matchedInCatalog >= 11);
+    }
+
+    @Test
+    public void arabicTextUtilsKamusSrsAndClozeWorkCleanly() {
+        com.jadwalshalat.gt5.arabic.ArabicTextUtils utils = com.jadwalshalat.gt5.arabic.ArabicTextUtils.INSTANCE;
+        org.junit.Assert.assertEquals("الحضارة", utils.stripHarakat("اَلْحَضَارَةُ"));
+
+        String sentence = "اَلْحَضَارَةُ الْعَرَبِيَّةُ الْإِسْلَامِيَّةُ لَيْسَتْ حَضَارَةً عَابِرَةً.";
+        java.util.List<com.jadwalshalat.gt5.arabic.ArabicWordToken> tokens = utils.tokenizeSentenceWords(sentence);
+        org.junit.Assert.assertTrue(tokens.size() >= 6);
+        String phrase = utils.buildPhraseFromRange(tokens, 4, 5);
+        org.junit.Assert.assertEquals("حَضَارَةً عَابِرَةً", phrase);
+
+        com.jadwalshalat.gt5.arabic.KamusEntry entry1 = new com.jadwalshalat.gt5.arabic.KamusEntry(
+                com.jadwalshalat.gt5.arabic.KamusCodec.INSTANCE.createStableId("حَضَارَةً عَابِرَةً", "finjan"),
+                "حَضَارَةً عَابِرَةً",
+                "ḥaḍāratan ‘ābiratan",
+                "Peradaban yang hanya numpang lewat",
+                "Dari ‘abara (عَبَرَ): menyeberangi sungai / lewat",
+                "Ḥaḍārah (peradaban maju) • Madaniyyah (sisi material)",
+                com.jadwalshalat.gt5.arabic.KamusEntryKind.PHRASE,
+                "finjan",
+                "Podcast Finjan: Peradaban",
+                "00:49 – 01:25",
+                49,
+                sentence,
+                "",
+                0,
+                0L,
+                1000L,
+                0
+        );
+        com.jadwalshalat.gt5.arabic.KamusEntry entry2 = new com.jadwalshalat.gt5.arabic.KamusEntry(
+                "km_2",
+                "تَدَهْوُرٌ",
+                "tadahwur",
+                "Kemerosotan",
+                "", "", com.jadwalshalat.gt5.arabic.KamusEntryKind.WORD,
+                "finjan", "Finjan", "", 49, "", "", 0, 0L, 1000L, 0
+        );
+
+        long today = 20100L;
+        com.jadwalshalat.gt5.arabic.KamusSrsScheduler srs = com.jadwalshalat.gt5.arabic.KamusSrsScheduler.INSTANCE;
+        org.junit.Assert.assertTrue(srs.isDue(entry1, today));
+        com.jadwalshalat.gt5.arabic.KamusEntry st1 = srs.advance(entry1, true, today);
+        org.junit.Assert.assertEquals(1, st1.getMasteryStage());
+        org.junit.Assert.assertEquals(today + 1L, st1.getNextReviewEpochDay());
+        org.junit.Assert.assertFalse(srs.isDue(st1, today));
+        com.jadwalshalat.gt5.arabic.KamusEntry stReset = srs.advance(st1, false, today + 1L);
+        org.junit.Assert.assertEquals(0, stReset.getMasteryStage());
+        org.junit.Assert.assertEquals(today + 1L, stReset.getNextReviewEpochDay());
+
+        com.jadwalshalat.gt5.arabic.ClozeQuestion q = utils.buildClozeQuestion(
+                entry1,
+                java.util.Arrays.asList(entry1, entry2),
+                java.util.Arrays.asList("سَرْدِيَّةٌ", "نَهْضَةٌ"),
+                true,
+                1
+        );
+        org.junit.Assert.assertNotNull(q);
+        org.junit.Assert.assertTrue(q.getMaskedSentence().contains("________"));
+        org.junit.Assert.assertFalse(q.getMaskedSentence().contains("عَابِرَةً"));
+        org.junit.Assert.assertEquals(4, q.getOptions().size());
+        org.junit.Assert.assertTrue(q.getOptions().contains("حَضَارَةً عَابِرَةً"));
+
+        // Backup JSON & CSV Anki roundtrip
+        String backup = com.jadwalshalat.gt5.arabic.KamusCodec.INSTANCE.toBackupJson(
+                java.util.Arrays.asList(entry1, entry2)
+        );
+        java.util.List<com.jadwalshalat.gt5.arabic.KamusEntry> restored =
+                com.jadwalshalat.gt5.arabic.KamusCodec.INSTANCE.fromBackupJson(backup);
+        org.junit.Assert.assertEquals(2, restored.size());
+        org.junit.Assert.assertEquals("حَضَارَةً عَابِرَةً", restored.get(0).getArabic());
+        org.junit.Assert.assertEquals(49, restored.get(0).getSegmentStartSec());
+
+        String csv = com.jadwalshalat.gt5.arabic.KamusCodec.INSTANCE.toAnkiCsv(
+                java.util.Arrays.asList(entry1, entry2)
+        );
+        org.junit.Assert.assertTrue(csv.contains("حَضَارَةً عَابِرَةً"));
+        org.junit.Assert.assertTrue(csv.contains("Peradaban yang hanya numpang lewat"));
+    }
+
     private static final class MinimalJsonParser {
         private final String src;
         private int pos = 0;

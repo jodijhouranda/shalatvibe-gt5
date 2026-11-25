@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.MenuBook
+import androidx.compose.material.icons.rounded.Book
 import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material.icons.rounded.BookmarkBorder
 import androidx.compose.material.icons.rounded.CheckCircle
@@ -71,6 +72,7 @@ fun ArabicCatalogScreen(
     onSyncNow: () -> Unit,
     onOpenSyncSettings: () -> Unit,
     modifier: Modifier = Modifier,
+    onOpenKamus: () -> Unit = {},
     onBack: (() -> Unit)? = null
 ) {
     val palette = LocalShalatVibePalette.current
@@ -113,11 +115,38 @@ fun ArabicCatalogScreen(
                         letterSpacing = (-0.4).sp
                     )
                     Text(
-                        text = "Modul TAFL Harian • Video YouTube & PDF",
+                        text = "Modul TAFL Harian • Teks Interaktif & PDF",
                         color = palette.textSecondary,
                         fontSize = 12.sp
                     )
                 }
+
+                Surface(
+                    onClick = onOpenKamus,
+                    shape = CircleShape,
+                    color = palette.goldSoft
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Book,
+                            contentDescription = "Kamus Saya",
+                            tint = palette.goldAccent,
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Kamus (${state.kamusEntries.size})",
+                            color = palette.goldAccent,
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(6.dp))
 
                 Surface(
                     onClick = onSyncNow,
@@ -144,7 +173,7 @@ fun ArabicCatalogScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(6.dp))
 
                 Surface(
                     onClick = onOpenSyncSettings,
@@ -173,6 +202,70 @@ fun ArabicCatalogScreen(
                 continueLesson = state.lastOpenedLesson,
                 onContinueClick = { lesson -> onOpenLesson(lesson) }
             )
+        }
+
+        // Kamus Saya Quick Review Strip
+        item(key = "kamus_shortcut") {
+            Surface(
+                onClick = onOpenKamus,
+                shape = RoundedCornerShape(18.dp),
+                color = palette.cardSurface,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        shape = CircleShape,
+                        color = palette.goldSoft,
+                        modifier = Modifier.size(38.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Rounded.Book,
+                                contentDescription = null,
+                                tint = palette.goldAccent,
+                                modifier = Modifier.size(19.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Kamus Saya (${state.kamusEntries.size} kata & frase)",
+                            color = palette.textPrimary,
+                            fontSize = 13.5.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = when {
+                                state.dueKamusCount > 0 -> "${state.dueKamusCount} siap review flashcard SRS hari ini"
+                                state.kamusEntries.isNotEmpty() -> "Latihan Flashcard, Kuis Kalimat & Ekspor Anki"
+                                else -> "Ketuk kata di Teks Interaktif untuk mengumpulkan"
+                            },
+                            color = palette.textSecondary,
+                            fontSize = 11.5.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    Surface(
+                        shape = CircleShape,
+                        color = if (state.dueKamusCount > 0) palette.goldAccent else palette.emeraldSoft
+                    ) {
+                        Text(
+                            text = if (state.dueKamusCount > 0) "Review" else "Buka",
+                            color = if (state.dueKamusCount > 0) Color.White else palette.emeraldPrimary,
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        )
+                    }
+                }
+            }
         }
 
         // Search input (borderless tonal pill)

@@ -52,6 +52,7 @@ import com.jadwalshalat.gt5.ui.components.PrayerDetailBottomSheet
 import com.jadwalshalat.gt5.ui.components.QiblaCalibrationBottomSheet
 import com.jadwalshalat.gt5.ui.components.ThemePickerBottomSheet
 import com.jadwalshalat.gt5.ui.screens.ArabicCatalogScreen
+import com.jadwalshalat.gt5.ui.screens.ArabicKamusScreen
 import com.jadwalshalat.gt5.ui.screens.ArabicStudyRoomScreen
 import com.jadwalshalat.gt5.ui.screens.CourseFullBookPdfScreen
 import com.jadwalshalat.gt5.ui.screens.CourseOverviewScreen
@@ -79,6 +80,7 @@ fun ShalatVibeApp(
 ) {
     val palette = LocalShalatVibePalette.current
     val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     var currentTab by remember { mutableStateOf(MainTab.SCHEDULE) }
     var showCitySheet by remember { mutableStateOf(false) }
@@ -87,9 +89,39 @@ fun ShalatVibeApp(
     var showHuaweiGuideSheet by remember { mutableStateOf(false) }
     var showCalibrationSheet by remember { mutableStateOf(false) }
     var showArabicSyncSheet by remember { mutableStateOf(false) }
+    var showArabicKamus by remember { mutableStateOf(false) }
     var detailPrayerType by remember { mutableStateOf<PrayerType?>(null) }
 
-    // Jika pengguna sedang membuka Ruang Belajar Bahasa Arab (Video YouTube + PDF), tampilkan penuh tanpa bottom bar
+    // Jika pengguna membuka Kamus Saya (dari Pustaka Belajar, Katalog Arab, atau Ruang Belajar), tampilkan penuh tanpa bottom bar
+    if (showArabicKamus) {
+        ArabicKamusScreen(
+            entries = arabicState.kamusEntries,
+            selectedFilter = arabicState.kamusFilter,
+            searchQuery = arabicState.kamusSearchQuery,
+            showHarakat = arabicState.showHarakat,
+            onToggleHarakat = { arabicViewModel.toggleHarakat() },
+            onSelectFilter = { arabicViewModel.setKamusFilter(it) },
+            onSearchQueryChange = { arabicViewModel.setKamusSearchQuery(it) },
+            onSaveEntry = { arabicViewModel.saveKamusEntry(it) },
+            onDeleteEntry = { arabicViewModel.deleteKamusEntry(it) },
+            onGradeSrs = { id, ok -> arabicViewModel.gradeKamusSrs(id, ok) },
+            onToggleMastered = { id -> arabicViewModel.toggleKamusMastered(id) },
+            onImportBackupJson = { raw -> arabicViewModel.importKamusBackupJson(raw) },
+            onOpenLessonClip = { lessonId, startSec ->
+                showArabicKamus = false
+                arabicViewModel.openLessonClip(lessonId, startSec)
+            },
+            onSpeakArabic = { text ->
+                arabicViewModel.speakArabic(text)?.let { msg ->
+                    android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+                }
+            },
+            onBack = { showArabicKamus = false }
+        )
+        return
+    }
+
+    // Jika pengguna sedang membuka Ruang Belajar Bahasa Arab (Video YouTube + Teks Interaktif/PDF), tampilkan penuh tanpa bottom bar
     val openLesson = arabicState.activeLesson
     if (openLesson != null) {
         ArabicStudyRoomScreen(
@@ -99,6 +131,16 @@ fun ShalatVibeApp(
             pdfErrorMessage = arabicState.pdfErrorMessage,
             isCompleted = arabicState.completedIds.contains(openLesson.id),
             readingMode = arabicState.readingMode,
+            lessonContent = arabicState.activeLessonContent,
+            isLoadingContent = arabicState.isLoadingContent,
+            initialSeekSec = arabicState.activeSeekSec,
+            showHarakat = arabicState.showHarakat,
+            savedNormalizedKeys = arabicState.savedNormalizedKeys,
+            kamusCount = arabicState.kamusEntries.size,
+            onToggleHarakat = { arabicViewModel.toggleHarakat() },
+            onSaveKamusEntry = { arabicViewModel.saveKamusEntry(it) },
+            onOpenKamus = { showArabicKamus = true },
+            onSpeakArabic = { text -> arabicViewModel.speakArabic(text) },
             onCycleReadingMode = { arabicViewModel.cycleReadingMode() },
             onToggleCompleted = { arabicViewModel.toggleCompleted(openLesson.id) },
             onBack = { arabicViewModel.closeLesson() }
@@ -275,6 +317,7 @@ fun ShalatVibeApp(
                                     }
                                 },
                                 onOpenSyncSettings = { showArabicSyncSheet = true },
+                                onOpenKamus = { showArabicKamus = true },
                                 onBack = { learningViewModel.navigateBack() }
                             )
                             is LearningDestination.CourseOverview -> {
@@ -310,7 +353,8 @@ fun ShalatVibeApp(
                                                 scope.launch { snackbarHostState.showSnackbar(result.message) }
                                             }
                                         },
-                                        onOpenSyncSettings = { showArabicSyncSheet = true }
+                                        onOpenSyncSettings = { showArabicSyncSheet = true },
+                                        onOpenArabicKamus = { showArabicKamus = true }
                                     )
                                 }
                             }
@@ -329,7 +373,8 @@ fun ShalatVibeApp(
                                         scope.launch { snackbarHostState.showSnackbar(result.message) }
                                     }
                                 },
-                                onOpenSyncSettings = { showArabicSyncSheet = true }
+                                onOpenSyncSettings = { showArabicSyncSheet = true },
+                                onOpenArabicKamus = { showArabicKamus = true }
                             )
                         }
                     }

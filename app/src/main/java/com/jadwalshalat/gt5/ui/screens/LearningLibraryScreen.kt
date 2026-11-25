@@ -23,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.automirrored.rounded.MenuBook
 import androidx.compose.material.icons.rounded.Balance
+import androidx.compose.material.icons.rounded.Book
 import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Close
@@ -75,7 +76,8 @@ fun LearningLibraryScreen(
     onOpenTopicBlock: (courseId: String, episodeId: String, blockId: String, initialTimeSec: Int?) -> Unit,
     onSyncAll: () -> Unit,
     onOpenSyncSettings: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onOpenArabicKamus: () -> Unit = {}
 ) {
     val palette = LocalShalatVibePalette.current
     val query = hubState.searchQuery.trim()
@@ -268,6 +270,73 @@ fun LearningLibraryScreen(
                             progressFraction = done.toFloat() / total.toFloat(),
                             onClick = { onOpenArabicLesson(continueArabic) }
                         )
+                    }
+                }
+            }
+
+            // 3b. Kamus Saya & Flashcard SRS Shortcut Card
+            item(key = "kamus_saya_shortcut") {
+                Surface(
+                    onClick = onOpenArabicKamus,
+                    shape = RoundedCornerShape(18.dp),
+                    color = palette.cardSurface,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .background(palette.goldSoft),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Book,
+                                contentDescription = "Kamus Saya",
+                                tint = palette.goldAccent,
+                                modifier = Modifier.size(19.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Kamus Saya (${arabicState.kamusEntries.size} kata & frase)",
+                                color = palette.textPrimary,
+                                fontSize = 13.5.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = when {
+                                    arabicState.dueKamusCount > 0 ->
+                                        "${arabicState.dueKamusCount} siap review flashcard SRS hari ini"
+                                    arabicState.kamusEntries.isNotEmpty() ->
+                                        "Flashcard, Kuis Kalimat Konteks & Ekspor Anki"
+                                    else ->
+                                        "Ketuk kata saat belajar Bahasa Arab untuk menyimpan"
+                                },
+                                color = palette.textSecondary,
+                                fontSize = 11.5.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        Surface(
+                            shape = CircleShape,
+                            color = if (arabicState.dueKamusCount > 0) palette.goldAccent else palette.emeraldSoft
+                        ) {
+                            Text(
+                                text = if (arabicState.dueKamusCount > 0) "Review (${arabicState.dueKamusCount})" else "Buka",
+                                color = if (arabicState.dueKamusCount > 0) Color.White else palette.emeraldPrimary,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp)
+                            )
+                        }
                     }
                 }
             }
