@@ -1,7 +1,45 @@
 {
   "version": 1,
-  "updatedAt": "2026-11-24",
+  "updatedAt": "2026-11-25",
   "lessons": [
+    {
+      "id": "video_jejak_digital_keamanan_siber",
+      "category": "VIDEO_ANALYSIS",
+      "dayLabel": "Video 11",
+      "dateLabel": "24 Nov 2026",
+      "title": "Jejak Digital, Hak Dilupakan & Keamanan Siber",
+      "subtitle": "Keamanan siber, penghapusan jejak digital, dan hukum privasi data",
+      "sourceName": "AlJazeera Arabic قناة الجزيرة",
+      "level": "CEFR B2–C1",
+      "youtubeVideoId": "5fFuMEELRnc",
+      "startSeconds": 1,
+      "endSeconds": 127,
+      "pdfFileName": "Bahasa_Arab_Analisis_Video_Jejak_Digital_Siber_TAFL.pdf",
+      "pdfUrl": "https://raw.githubusercontent.com/jodijhouranda/shalatvibe-gt5/main/lessons/pdfs/Bahasa_Arab_Analisis_Video_Jejak_Digital_Siber_TAFL.pdf",
+      "driveFileId": "1opLWCYQdSK8Fbi7j1xayr2hdF-k0Bn4Z",
+      "segments": [
+        {
+          "label": "00:01 – 00:43",
+          "startSec": 1,
+          "endSec": 43
+        },
+        {
+          "label": "00:43 – 01:16",
+          "startSec": 43,
+          "endSec": 76
+        },
+        {
+          "label": "01:16 – 01:49",
+          "startSec": 76,
+          "endSec": 109
+        },
+        {
+          "label": "01:49 – 02:07",
+          "startSec": 109,
+          "endSec": 127
+        }
+      ]
+    },
     {
       "id": "video_podcast_finjan_sejarah_sains",
       "category": "VIDEO_ANALYSIS",
