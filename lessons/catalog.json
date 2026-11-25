@@ -3,6 +3,39 @@
   "updatedAt": "2026-11-25",
   "lessons": [
     {
+      "id": "video_ai_otonom_anthropic",
+      "category": "VIDEO_ANALYSIS",
+      "dayLabel": "Video 13",
+      "dateLabel": "25 Nov 2026",
+      "title": "Peringatan Anthropic: AI Mengembangkan Diri & Risiko Lepas Kendali",
+      "subtitle": "Tata Kelola AI, Keamanan Global, & Geopolitik Teknologi",
+      "sourceName": "AlJazeera Arabic قناة الجزيرة",
+      "level": "CEFR B2–C1",
+      "youtubeVideoId": "p_-gM3au4R8",
+      "startSeconds": 1,
+      "endSeconds": 140,
+      "pdfFileName": "Bahasa_Arab_Analisis_Video_AI_Otonom_Anthropic_TAFL.pdf",
+      "pdfUrl": "https://raw.githubusercontent.com/jodijhouranda/shalatvibe-gt5/main/lessons/pdfs/Bahasa_Arab_Analisis_Video_AI_Otonom_Anthropic_TAFL.pdf",
+      "driveFileId": "1qBvehzEW-OzzwotXAZjdUnObepYObxB3",
+      "segments": [
+        {
+          "label": "00:01 – 00:54",
+          "startSec": 1,
+          "endSec": 54
+        },
+        {
+          "label": "00:55 – 01:40",
+          "startSec": 55,
+          "endSec": 100
+        },
+        {
+          "label": "01:41 – 02:20",
+          "startSec": 101,
+          "endSec": 140
+        }
+      ]
+    },
+    {
       "id": "video_podcast_finjan_sejarah_sains_v2",
       "category": "VIDEO_ANALYSIS",
       "dayLabel": "Video 12",
