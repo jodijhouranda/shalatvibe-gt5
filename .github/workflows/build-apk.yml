@@ -68,7 +68,7 @@ jobs:
           APK_FILE="Jadwal-${TAG}-release.apk"
           cat > /tmp/release_notes.md <<'NOTES'
           Rilis resmi **Jadwal** (Release APK teroptimasi R8 + *signed keystore* permanen):
-          - **Belajar Arab Interaktif (`Teks Interaktif` ↔ `PDF Asli`)**: Ketuk kata Arab mana saja di transkrip TAFL untuk menyimpan arti, akar kata *Turats → Modern*, dan nuansa sinonim (*Al-Furūq al-Lughawiyyah*) langsung ke **Kamus Saya**, plus mode **+ Pilih Frase** & toggle **تَشْكِيل ↔ Gundul**
+          - **Belajar Arab Interaktif (`Teks` ↔ `PDF Asli` + Ruang Baca Lega)**: *Toggle* PDF langsung di *Top Bar*, *toolbar* ringkas ikut tergulung + tombol melayang, tipografi rapat nyaman, serta proteksi *navigation bar* & *Back* — ketuk kata mana saja atau pakai **`+ Frase`** & **تَشْكِيل ↔ Gundul** untuk menyimpan ke **Kamus Saya**
           - **Kamus Saya + Spaced Repetition (SRS)**: Kartu review terjadwal (+1, +3, +7, +14 hari), *Flashcard* bolak-balik, *Kuis Kalimat Konteks*, pelafalan suara Arab *offline* (`TextToSpeech`), tombol **`▶ Klip`** lompat ke detik video aslinya, & ekspor/impor **CSV siap Anki / JSON**
           - **Kursus Fiqh Muamalah Terkalibrasi**: Seluruh 5 seri kajian Syaikh Abdussalam asy-Syuwai'ir tersinkron kata demi kata dengan kitab *Tafrigh Daurah Tabuk* & *auto-highlight* / *auto-scroll*
           - **Desain Tonal Modern & Fitur Inti**: *Atmosphere Hero Card*, *Solar Arc*, kompas Kiblat GT 5, kalender Hijriah offline, 52 kota Indonesia, override getar per shalat, & *Home Screen Widget*

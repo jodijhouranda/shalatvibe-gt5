@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -134,7 +135,7 @@ fun ArabicStudyRoomScreen(
     }
 
     val videoHeight by animateDpAsState(
-        targetValue = if (isPdfFocusMode) 1.dp else 206.dp,
+        targetValue = if (isPdfFocusMode) 1.dp else 182.dp,
         animationSpec = tween(260),
         label = "video_height"
     )
@@ -144,20 +145,25 @@ fun ArabicStudyRoomScreen(
             .fillMaxSize()
             .background(palette.background)
             .statusBarsPadding()
+            .navigationBarsPadding()
     ) {
         // 1. Sleek Tonal Top Study Bar
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(palette.pillBg)
-                .padding(horizontal = 8.dp, vertical = 8.dp),
+                .padding(horizontal = 6.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onBack) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier.size(36.dp)
+            ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                     contentDescription = "Kembali",
-                    tint = palette.textPrimary
+                    tint = palette.textPrimary,
+                    modifier = Modifier.size(20.dp)
                 )
             }
 
@@ -165,7 +171,7 @@ fun ArabicStudyRoomScreen(
                 Text(
                     text = lesson.title,
                     color = palette.textPrimary,
-                    fontSize = 14.sp,
+                    fontSize = 13.5.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -174,12 +180,12 @@ fun ArabicStudyRoomScreen(
                     text = buildString {
                         append(lesson.sourceName.ifBlank { lesson.level })
                         if (lesson.hasVideo) {
-                            append("  •  ")
+                            append(" • ")
                             append(lesson.segmentRangeLabel)
                         }
                     },
                     color = palette.textSecondary,
-                    fontSize = 11.sp,
+                    fontSize = 10.5.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -192,7 +198,7 @@ fun ArabicStudyRoomScreen(
                 color = palette.goldSoft
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
@@ -201,9 +207,9 @@ fun ArabicStudyRoomScreen(
                         tint = palette.goldAccent,
                         modifier = Modifier.size(13.dp)
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(3.dp))
                     Text(
-                        text = "Kamus ($kamusCount)",
+                        text = "$kamusCount",
                         color = palette.goldAccent,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold
@@ -211,49 +217,75 @@ fun ArabicStudyRoomScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.width(6.dp))
+            Spacer(modifier = Modifier.width(5.dp))
 
-            // Reading Mode Pill (Asli / Sepia / Gelap) saat melihat PDF Asli
-            if (!useInteractiveMode || lessonContent == null) {
+            // Teks Interaktif <-> PDF Asli single compact toggle pill
+            if (lessonContent != null) {
                 Surface(
-                    onClick = onCycleReadingMode,
+                    onClick = { useInteractiveMode = !useInteractiveMode },
                     shape = CircleShape,
                     color = palette.cardSurface
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                    Text(
+                        text = if (useInteractiveMode) "PDF Asli" else "Teks",
+                        color = palette.emeraldPrimary,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp)
+                    )
+                }
+            }
+
+            // Saat mode PDF Asli: kontras + catat kata manual
+            if (!useInteractiveMode || lessonContent == null) {
+                Spacer(modifier = Modifier.width(5.dp))
+                Surface(
+                    onClick = onCycleReadingMode,
+                    shape = CircleShape,
+                    color = palette.cardSurface,
+                    modifier = Modifier.size(30.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = Icons.Rounded.Contrast,
-                            contentDescription = "Mode baca PDF",
+                            contentDescription = "Mode baca PDF: ${readingMode.label}",
                             tint = palette.emeraldPrimary,
-                            modifier = Modifier.size(14.dp)
+                            modifier = Modifier.size(15.dp)
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = readingMode.label,
-                            color = palette.textPrimary,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold
+                    }
+                }
+                Spacer(modifier = Modifier.width(5.dp))
+                Surface(
+                    onClick = { showManualKamusSheet = true },
+                    shape = CircleShape,
+                    color = palette.emeraldPrimary,
+                    modifier = Modifier.size(30.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Rounded.Edit,
+                            contentDescription = "Catat kata ke Kamus",
+                            tint = Color.White,
+                            modifier = Modifier.size(14.dp)
                         )
                     }
                 }
             }
 
             if (lesson.hasVideo) {
-                IconButton(onClick = openInYouTubeApp) {
+                IconButton(
+                    onClick = openInYouTubeApp,
+                    modifier = Modifier.size(34.dp)
+                ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
                         contentDescription = "Buka di aplikasi YouTube",
                         tint = palette.textSecondary,
-                        modifier = Modifier.size(19.dp)
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             }
         }
-
-        HorizontalDivider(color = palette.cardBorder)
 
         // 2. Sticky Collapsible YouTube Player & Controls (hanya untuk modul dengan video)
         if (lesson.hasVideo) {
@@ -367,7 +399,7 @@ fun ArabicStudyRoomScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(palette.cardSurface)
-                        .padding(vertical = 8.dp)
+                        .padding(top = 6.dp, bottom = 7.dp)
                 ) {
                     Row(
                         modifier = Modifier
@@ -453,7 +485,7 @@ fun ArabicStudyRoomScreen(
                             }
                         }
 
-                        // Collapse to PDF Focus Mode
+                        // Lipat video agar ruang transkrip / PDF jauh lebih lega
                         Surface(
                             onClick = { isPdfFocusMode = true },
                             shape = CircleShape,
@@ -465,12 +497,12 @@ fun ArabicStudyRoomScreen(
                             ) {
                                 Icon(
                                     imageVector = Icons.Rounded.KeyboardArrowUp,
-                                    contentDescription = "Mode Fokus PDF",
+                                    contentDescription = "Lipat video",
                                     tint = palette.textPrimary,
                                     modifier = Modifier.size(14.dp)
                                 )
                                 Text(
-                                    text = "PDF",
+                                    text = "Lipat",
                                     color = palette.textPrimary,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.SemiBold
@@ -481,7 +513,7 @@ fun ArabicStudyRoomScreen(
 
                     // Sub-segment quick seek chips
                     if (lesson.segments.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
                         LazyRow(
                             contentPadding = PaddingValues(horizontal = 12.dp),
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -518,73 +550,6 @@ fun ArabicStudyRoomScreen(
                     }
                 }
             }
-            HorizontalDivider(color = palette.cardBorder)
-        }
-
-        // Mode Dokumen Switcher (Teks Interaktif <-> PDF Asli)
-        if (lessonContent != null || isLoadingContent) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(palette.cardSurface)
-                    .padding(horizontal = 12.dp, vertical = 7.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Surface(
-                    onClick = { useInteractiveMode = true },
-                    shape = CircleShape,
-                    color = if (useInteractiveMode && lessonContent != null) palette.emeraldPrimary else palette.pillBg,
-                    enabled = lessonContent != null
-                ) {
-                    Text(
-                        text = if (isLoadingContent && lessonContent == null) "Memuat Teks…" else "Teks Interaktif",
-                        color = if (useInteractiveMode && lessonContent != null) Color.White else palette.textSecondary,
-                        fontSize = 11.5.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                    )
-                }
-
-                Surface(
-                    onClick = { useInteractiveMode = false },
-                    shape = CircleShape,
-                    color = if (!useInteractiveMode || lessonContent == null) palette.emeraldPrimary else palette.pillBg
-                ) {
-                    Text(
-                        text = "PDF Asli",
-                        color = if (!useInteractiveMode || lessonContent == null) Color.White else palette.textSecondary,
-                        fontSize = 11.5.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                if (!useInteractiveMode || lessonContent == null) {
-                    Surface(
-                        onClick = { showManualKamusSheet = true },
-                        shape = CircleShape,
-                        color = palette.goldSoft
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Rounded.Edit, null, tint = palette.goldAccent, modifier = Modifier.size(13.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "+ Kamus",
-                                color = palette.goldAccent,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
-            }
-            HorizontalDivider(color = palette.hairline)
         }
 
         // 3. Bottom Split: Teks Interaktif atau Native High-Clarity PDF Reader

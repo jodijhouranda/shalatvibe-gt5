@@ -2,6 +2,7 @@ package com.jadwalshalat.gt5.ui.screens
 
 import android.content.Intent
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -19,6 +20,8 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -129,6 +132,7 @@ fun ArabicKamusScreen(
 ) {
     val palette = LocalShalatVibePalette.current
     val context = LocalContext.current
+    BackHandler(onBack = onBack)
     val today = remember(entries.size) { KamusSrsScheduler.todayEpochDay() }
     val dueEntries = remember(entries, today) { entries.filter { KamusSrsScheduler.isDue(it, today) } }
     val masteredCount = remember(entries) { entries.count { it.isMastered } }
@@ -199,6 +203,7 @@ fun ArabicKamusScreen(
             .fillMaxSize()
             .background(palette.background)
             .windowInsetsPadding(WindowInsets.statusBars)
+            .navigationBarsPadding()
     ) {
         // 1. Sleek Top Header
         Row(
@@ -1734,6 +1739,8 @@ fun KamusEntryEditorSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .navigationBarsPadding()
+                .imePadding()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)

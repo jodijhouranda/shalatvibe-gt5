@@ -151,19 +151,45 @@ fun ArabicInteractiveReader(
         }
     }
 
-    Column(
+    val openManualDraft = {
+        val seg = content.transcriptSegments.getOrNull(selectedSegmentIdx)
+        pendingDraft = KamusEntry(
+            id = "",
+            arabic = "",
+            kind = KamusEntryKind.WORD,
+            lessonId = lesson.id,
+            lessonTitle = lesson.title,
+            segmentLabel = seg?.label.orEmpty(),
+            segmentStartSec = seg?.startSec ?: lesson.startSeconds,
+            contextSentence = seg?.arabic.orEmpty()
+        )
+    }
+
+    val isScrolledPastTools by remember {
+        androidx.compose.runtime.derivedStateOf { listState.firstVisibleItemIndex >= 1 }
+    }
+
+    Box(
         modifier = modifier
             .fillMaxSize()
             .background(palette.background)
     ) {
-        // Toolbar Interaktif (Harakat Toggle + Pilih Frase + Catat + Lompat Bagian)
-        Surface(
-            color = palette.cardSurface,
-            modifier = Modifier.fillMaxWidth()
+        // Scrollable Interactive Reader Body (bebas tumpukan toolbar lengket!)
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = 12.dp,
+                end = 12.dp,
+                top = 8.dp,
+                bottom = if (isScrolledPastTools) 64.dp else 24.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+            // Item 0: Compact scrollable action & section-jump strip (ikut tergulung agar ruang baca 100% lega)
+            item(key = "reader_tools") {
                 LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(7.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     item {
@@ -175,9 +201,9 @@ fun ArabicInteractiveReader(
                             Text(
                                 text = if (showHarakat) "تَشْكِيل ✓" else "Gundul",
                                 color = if (showHarakat) palette.emeraldPrimary else palette.textSecondary,
-                                fontSize = 11.5.sp,
+                                fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp)
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                             )
                         }
                     }
@@ -193,20 +219,20 @@ fun ArabicInteractiveReader(
                             color = if (phraseMode) palette.goldAccent else palette.goldSoft
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp),
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
                                     imageVector = if (phraseMode) Icons.Rounded.Close else Icons.Rounded.BookmarkAdd,
                                     contentDescription = null,
                                     tint = if (phraseMode) Color.White else palette.goldAccent,
-                                    modifier = Modifier.size(14.dp)
+                                    modifier = Modifier.size(13.dp)
                                 )
-                                Spacer(modifier = Modifier.width(5.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = if (phraseMode) "Batal Frase" else "+ Pilih Frase",
+                                    text = if (phraseMode) "Batal Frase" else "+ Frase",
                                     color = if (phraseMode) Color.White else palette.goldAccent,
-                                    fontSize = 11.5.sp,
+                                    fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -215,120 +241,61 @@ fun ArabicInteractiveReader(
 
                     item {
                         Surface(
-                            onClick = {
-                                val seg = content.transcriptSegments.getOrNull(selectedSegmentIdx)
-                                pendingDraft = KamusEntry(
-                                    id = "",
-                                    arabic = "",
-                                    kind = KamusEntryKind.WORD,
-                                    lessonId = lesson.id,
-                                    lessonTitle = lesson.title,
-                                    segmentLabel = seg?.label.orEmpty(),
-                                    segmentStartSec = seg?.startSec ?: lesson.startSeconds,
-                                    contextSentence = seg?.arabic.orEmpty()
-                                )
-                            },
+                            onClick = openManualDraft,
                             shape = CircleShape,
                             color = palette.pillBg
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Rounded.Edit, null, tint = palette.textSecondary, modifier = Modifier.size(13.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Catat", color = palette.textSecondary, fontSize = 11.5.sp, fontWeight = FontWeight.Medium)
+                                Icon(Icons.Rounded.Edit, null, tint = palette.textSecondary, modifier = Modifier.size(12.dp))
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text("Catat", color = palette.textSecondary, fontSize = 11.sp, fontWeight = FontWeight.Medium)
                             }
                         }
                     }
 
-                    // Lompat Bagian Chips
-                    item {
-                        SectionJumpPill("1. Transkrip") {
-                            scope.launch { listState.animateScrollToItem(sec1HeaderIndex) }
-                        }
-                    }
                     if (content.semanticShifts.isNotEmpty()) {
                         item {
-                            SectionJumpPill("2. Turats (${content.semanticShifts.size})") {
+                            SectionJumpPill("Turats (${content.semanticShifts.size})") {
                                 scope.launch { listState.animateScrollToItem(sec2HeaderIndex) }
                             }
                         }
                     }
                     if (content.idioms.isNotEmpty()) {
                         item {
-                            SectionJumpPill("3. Idiom (${content.idioms.size})") {
+                            SectionJumpPill("Idiom (${content.idioms.size})") {
                                 scope.launch { listState.animateScrollToItem(sec3HeaderIndex) }
                             }
                         }
                     }
                     if (content.synonymGroups.isNotEmpty()) {
                         item {
-                            SectionJumpPill("4. Sinonim (${content.synonymGroups.size})") {
+                            SectionJumpPill("Sinonim (${content.synonymGroups.size})") {
                                 scope.launch { listState.animateScrollToItem(sec4HeaderIndex) }
                             }
                         }
                     }
                     if (content.thematicVocab.isNotEmpty()) {
                         item {
-                            SectionJumpPill("5. Tematik (${content.thematicVocab.size})") {
+                            SectionJumpPill("Tematik (${content.thematicVocab.size})") {
                                 scope.launch { listState.animateScrollToItem(sec5HeaderIndex) }
                             }
                         }
                     }
                 }
-
-                if (phraseMode) {
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = palette.goldSoft,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = if (phraseStartWordIdx < 0)
-                                "Mode Pilih Frase aktif: ketuk KATA AWAL pada transkrip Arab di bawah."
-                            else
-                                "Kata awal dipilih! Sekarang ketuk KATA AKHIR pada kalimat yang sama untuk menyimpan frase.",
-                            color = palette.goldAccent,
-                            fontSize = 11.5.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                        )
-                    }
-                }
-            }
-        }
-
-        // Scrollable Interactive Reader Body
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 10.dp, bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            item(key = "tap_tip") {
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = palette.emeraldSoft.copy(alpha = 0.65f),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "Tip: Ketuk kata Arab mana saja untuk melihat arti/asal Turats dan menyimpannya ke Kamus Saya. Kata disorot emas sudah tersimpan.",
-                        color = palette.emeraldPrimary,
-                        fontSize = 11.5.sp,
-                        lineHeight = 16.sp,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp)
-                    )
-                }
             }
 
-            // Section 1 Header
+            // Item 1: Ringkas Section 1 Header (tip hanya tampil bila kamus masih kosong)
             item(key = "sec1_hdr") {
                 SectionHeaderBlock(
                     number = "1",
-                    title = "Transkrip Segmen Interaktif",
-                    subtitle = "${content.transcriptSegments.size} segmen audio tersinkron"
+                    title = "Transkrip Segmen (${content.transcriptSegments.size})",
+                    subtitle = if (savedNormalizedKeys.isEmpty())
+                        "Ketuk kata Arab mana saja untuk simpan ke Kamus"
+                    else
+                        "Kata bergaris emas sudah ada di Kamus Saya"
                 )
             }
 
@@ -549,6 +516,110 @@ fun ArabicInteractiveReader(
                 }
             }
         }
+
+        // Banner mengambang hanya muncul saat Mode Pilih Frase aktif
+        if (phraseMode) {
+            Surface(
+                shape = CircleShape,
+                color = palette.goldAccent,
+                shadowElevation = 6.dp,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (phraseStartWordIdx < 0)
+                            "Ketuk KATA AWAL frase"
+                        else
+                            "Ketuk KATA AKHIR frase",
+                        color = Color.White,
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Surface(
+                        onClick = {
+                            phraseMode = false
+                            phraseStartSegIdx = -1
+                            phraseStartWordIdx = -1
+                        },
+                        shape = CircleShape,
+                        color = Color.White.copy(alpha = 0.22f)
+                    ) {
+                        Text(
+                            text = "Batal",
+                            color = Color.White,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // Pill cepat mungil saat pengguna sudah scroll ke bawah
+        if (isScrolledPastTools && !phraseMode) {
+            Surface(
+                shape = CircleShape,
+                color = palette.cardSurfaceElevated.copy(alpha = 0.95f),
+                shadowElevation = 4.dp,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 12.dp, bottom = 10.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        onClick = onToggleHarakat,
+                        shape = CircleShape,
+                        color = if (showHarakat) palette.emeraldSoft else palette.pillBg
+                    ) {
+                        Text(
+                            text = if (showHarakat) "تَشْكِيل" else "Gundul",
+                            color = if (showHarakat) palette.emeraldPrimary else palette.textSecondary,
+                            fontSize = 10.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                        )
+                    }
+                    Surface(
+                        onClick = {
+                            phraseMode = true
+                            phraseStartSegIdx = -1
+                            phraseStartWordIdx = -1
+                        },
+                        shape = CircleShape,
+                        color = palette.goldSoft
+                    ) {
+                        Text(
+                            text = "+ Frase",
+                            color = palette.goldAccent,
+                            fontSize = 10.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                        )
+                    }
+                    Surface(
+                        onClick = openManualDraft,
+                        shape = CircleShape,
+                        color = palette.emeraldPrimary,
+                        modifier = Modifier.size(26.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Rounded.Edit, "Catat", tint = Color.White, modifier = Modifier.size(13.dp))
+                        }
+                    }
+                }
+            }
+        }
     }
 
     val draft = pendingDraft
@@ -628,11 +699,11 @@ private fun InteractiveTranscriptSegmentCard(
     val tokens = remember(segment.arabic) { ArabicTextUtils.tokenizeSentenceWords(segment.arabic) }
 
     Surface(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(18.dp),
         color = if (isActive) palette.highlightSurface else palette.cardSurface,
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 13.dp, vertical = 12.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -644,20 +715,20 @@ private fun InteractiveTranscriptSegmentCard(
                     color = if (isActive) palette.emeraldPrimary else palette.pillBg
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.PlayArrow,
                             contentDescription = "Putar klip",
                             tint = if (isActive) Color.White else palette.emeraldPrimary,
-                            modifier = Modifier.size(15.dp)
+                            modifier = Modifier.size(14.dp)
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(3.dp))
                         Text(
                             text = segment.label,
                             color = if (isActive) Color.White else palette.textPrimary,
-                            fontSize = 11.5.sp,
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -669,14 +740,14 @@ private fun InteractiveTranscriptSegmentCard(
                     color = palette.emeraldSoft
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Rounded.VolumeUp,
                             contentDescription = "Dengar pengucapan segmen",
                             tint = palette.emeraldPrimary,
-                            modifier = Modifier.size(14.dp)
+                            modifier = Modifier.size(13.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
@@ -689,14 +760,14 @@ private fun InteractiveTranscriptSegmentCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // Kata-kata Arab yang dapat diketuk dalam aliran RTL natural
+            // Kata-kata Arab yang dapat diketuk dalam aliran RTL natural yang rapat & nyaman dibaca
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(5.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     tokens.forEach { tok ->
                         val isSaved = tok.hasArabicLetters &&
@@ -720,21 +791,21 @@ private fun InteractiveTranscriptSegmentCard(
 
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(RoundedCornerShape(6.dp))
                                 .background(chipBg)
                                 .then(
                                     if (tok.hasArabicLetters && tok.cleanArabic.isNotBlank()) {
                                         Modifier.clickable { onTapWord(tok, tokens) }
                                     } else Modifier
                                 )
-                                .padding(horizontal = if (isSaved || isPhraseStart) 5.dp else 1.dp, vertical = 1.dp)
+                                .padding(horizontal = if (isSaved || isPhraseStart) 4.dp else 1.dp, vertical = 0.dp)
                         ) {
                             Text(
                                 text = displayWord,
                                 color = chipFg,
-                                fontSize = 20.sp,
+                                fontSize = 18.5.sp,
                                 fontWeight = if (isSaved || isPhraseStart) FontWeight.Bold else FontWeight.Medium,
-                                lineHeight = 32.sp,
+                                lineHeight = 27.sp,
                                 textDecoration = if (isSaved) TextDecoration.Underline else TextDecoration.None
                             )
                         }
@@ -743,19 +814,19 @@ private fun InteractiveTranscriptSegmentCard(
             }
 
             if (segment.indonesian.isNotBlank()) {
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(9.dp))
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(1.dp)
                         .background(palette.hairline)
                 )
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = segment.indonesian,
                     color = palette.textSecondary,
-                    fontSize = 13.sp,
-                    lineHeight = 20.sp
+                    fontSize = 12.5.sp,
+                    lineHeight = 18.5.sp
                 )
             }
         }
