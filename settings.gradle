@@ -13,5 +13,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "ShalatVibeGT5"
+rootProject.name = "Nida"
 include(":app")
