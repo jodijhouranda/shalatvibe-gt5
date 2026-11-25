@@ -116,7 +116,15 @@ fun ShalatVibeApp(
                     android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
                 }
             },
-            onBack = { showArabicKamus = false }
+            kamusAiState = arabicState.kamusAiState,
+            onLookupKamusAi = { ar, ctx, title, force ->
+                arabicViewModel.lookupKamusWithAi(ar, ctx, title, force)
+            },
+            onClearKamusAiState = { arabicViewModel.clearKamusAiState() },
+            onBack = {
+                arabicViewModel.clearKamusAiState()
+                showArabicKamus = false
+            }
         )
         return
     }
@@ -136,14 +144,23 @@ fun ShalatVibeApp(
             initialSeekSec = arabicState.activeSeekSec,
             showHarakat = arabicState.showHarakat,
             savedNormalizedKeys = arabicState.savedNormalizedKeys,
+            kamusEntries = arabicState.kamusEntries,
             kamusCount = arabicState.kamusEntries.size,
+            kamusAiState = arabicState.kamusAiState,
+            onLookupKamusAi = { ar, ctx, title, force ->
+                arabicViewModel.lookupKamusWithAi(ar, ctx, title, force)
+            },
+            onClearKamusAiState = { arabicViewModel.clearKamusAiState() },
             onToggleHarakat = { arabicViewModel.toggleHarakat() },
             onSaveKamusEntry = { arabicViewModel.saveKamusEntry(it) },
             onOpenKamus = { showArabicKamus = true },
             onSpeakArabic = { text -> arabicViewModel.speakArabic(text) },
             onCycleReadingMode = { arabicViewModel.cycleReadingMode() },
             onToggleCompleted = { arabicViewModel.toggleCompleted(openLesson.id) },
-            onBack = { arabicViewModel.closeLesson() }
+            onBack = {
+                arabicViewModel.clearKamusAiState()
+                arabicViewModel.closeLesson()
+            }
         )
         return
     }

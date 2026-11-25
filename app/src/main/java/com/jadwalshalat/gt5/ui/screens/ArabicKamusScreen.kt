@@ -6,6 +6,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -59,6 +61,7 @@ import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material.icons.rounded.UploadFile
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -73,6 +76,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -87,6 +91,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -97,7 +102,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jadwalshalat.gt5.arabic.ArabicCatalogParser
 import com.jadwalshalat.gt5.arabic.ArabicTextUtils
+import com.jadwalshalat.gt5.arabic.ArabicWordToken
 import com.jadwalshalat.gt5.arabic.ClozeQuestion
+import com.jadwalshalat.gt5.arabic.KamusAiUiState
 import com.jadwalshalat.gt5.arabic.KamusCodec
 import com.jadwalshalat.gt5.arabic.KamusEntry
 import com.jadwalshalat.gt5.arabic.KamusEntryKind
@@ -128,6 +135,9 @@ fun ArabicKamusScreen(
     onImportBackupJson: (String) -> Int,
     onOpenLessonClip: (lessonId: String, startSec: Int) -> Unit,
     onSpeakArabic: (String) -> Unit,
+    kamusAiState: KamusAiUiState = KamusAiUiState.Idle,
+    onLookupKamusAi: (arabic: String, contextSentence: String, lessonTitle: String, forceRefresh: Boolean) -> Unit = { _, _, _, _ -> },
+    onClearKamusAiState: () -> Unit = {},
     onBack: () -> Unit
 ) {
     val palette = LocalShalatVibePalette.current
@@ -464,9 +474,16 @@ fun ArabicKamusScreen(
     if (showEditorSheet) {
         KamusEntryEditorSheet(
             initialEntry = editingEntry,
-            onDismiss = { showEditorSheet = false },
+            aiState = kamusAiState,
+            onRequestAi = onLookupKamusAi,
+            onClearAiState = onClearKamusAiState,
+            onDismiss = {
+                onClearKamusAiState()
+                showEditorSheet = false
+            },
             onSave = { updated ->
                 onSaveEntry(updated)
+                onClearKamusAiState()
                 showEditorSheet = false
             },
             onSpeakArabic = onSpeakArabic
@@ -1710,7 +1727,13 @@ fun KamusEntryEditorSheet(
     initialEntry: KamusEntry?,
     onDismiss: () -> Unit,
     onSave: (KamusEntry) -> Unit,
-    onSpeakArabic: (String) -> Unit
+    onSpeakArabic: (String) -> Unit,
+    aiState: KamusAiUiState = KamusAiUiState.Idle,
+    onRequestAi: (arabic: String, contextSentence: String, lessonTitle: String, forceRefresh: Boolean) -> Unit = { _, _, _, _ -> },
+    onClearAiState: () -> Unit = {},
+    segmentTokens: List<ArabicWordToken> = emptyList(),
+    initialRangeStart: Int = -1,
+    initialRangeEnd: Int = -1
 ) {
     val palette = LocalShalatVibePalette.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -1722,6 +1745,89 @@ fun KamusEntryEditorSheet(
     var personalNote by remember(initialEntry) { mutableStateOf(initialEntry?.personalNote.orEmpty()) }
     var kind by remember(initialEntry) { mutableStateOf(initialEntry?.kind ?: KamusEntryKind.WORD) }
 
+    val hasValidRange = segmentTokens.isNotEmpty() &&
+        initialRangeStart in segmentTokens.indices &&
+        initialRangeEnd in segmentTokens.indices
+    var rangeStart by remember(initialEntry, initialRangeStart) {
+        mutableIntStateOf(if (hasValidRange) minOf(initialRangeStart, initialRangeEnd) else -1)
+    }
+    var rangeEnd by remember(initialEntry, initialRangeEnd) {
+        mutableIntStateOf(if (hasValidRange) maxOf(initialRangeStart, initialRangeEnd) else -1)
+    }
+
+    var pendingManualOverwrite by remember(initialEntry) { mutableStateOf(false) }
+    var lastAppliedResultSignature by remember(initialEntry) { mutableStateOf<String?>(null) }
+
+    val contextSentence = initialEntry?.contextSentence.orEmpty()
+    val lessonTitle = initialEntry?.lessonTitle.orEmpty()
+
+    // Otomatis panggil AI ketika entri memiliki teks Arab tetapi artinya masih kosong
+    LaunchedEffect(initialEntry?.id, initialEntry?.arabic) {
+        val seedArabic = initialEntry?.arabic?.trim().orEmpty()
+        if (seedArabic.isNotBlank() && initialEntry?.meaning.isNullOrBlank()) {
+            pendingManualOverwrite = false
+            onRequestAi(seedArabic, contextSentence, lessonTitle, false)
+        }
+    }
+
+    // Terapkan hasil analisis AI secara aman tanpa menimpa isian pengguna kecuali diminta eksplisit
+    LaunchedEffect(aiState) {
+        if (aiState is KamusAiUiState.Success) {
+            val currentNorm = ArabicTextUtils.normalizeForLookup(arabic)
+            val queryNorm = ArabicTextUtils.normalizeForLookup(aiState.queryArabic)
+            val matchesCurrent = currentNorm.isNotBlank() && currentNorm == queryNorm
+            val signature = "${aiState.queryArabic}|${aiState.analysis.hashCode()}|$pendingManualOverwrite"
+            if (matchesCurrent && lastAppliedResultSignature != signature) {
+                lastAppliedResultSignature = signature
+                val res = aiState.analysis
+                val overwrite = pendingManualOverwrite
+
+                if (res.vocalizedArabic.isNotBlank()) {
+                    val resNorm = ArabicTextUtils.normalizeForLookup(res.vocalizedArabic)
+                    if (overwrite || resNorm == currentNorm || arabic.isBlank()) {
+                        arabic = res.vocalizedArabic
+                    }
+                }
+                if (overwrite || meaning.isBlank()) {
+                    meaning = res.indonesianMeaning
+                }
+                if ((overwrite || transliteration.isBlank()) && res.transliteration.isNotBlank()) {
+                    transliteration = res.transliteration
+                }
+                if ((overwrite || turats.isBlank()) && res.turatsOrigin.isNotBlank()) {
+                    turats = res.turatsOrigin
+                }
+                if ((overwrite || synonymNote.isBlank()) && res.synonymNote.isNotBlank()) {
+                    synonymNote = res.synonymNote
+                }
+                if (overwrite || arabic.trim().contains(' ') || kind == KamusEntryKind.WORD) {
+                    kind = res.suggestedKind
+                }
+                pendingManualOverwrite = false
+            }
+        }
+    }
+
+    fun applyExpandedRange(newStart: Int, newEnd: Int) {
+        if (segmentTokens.isEmpty()) return
+        val lo = minOf(newStart, newEnd).coerceIn(0, segmentTokens.lastIndex)
+        val hi = maxOf(newStart, newEnd).coerceIn(0, segmentTokens.lastIndex)
+        rangeStart = lo
+        rangeEnd = hi
+        val builtPhrase = ArabicTextUtils.buildPhraseFromRange(segmentTokens, lo, hi)
+        if (builtPhrase.isNotBlank()) {
+            arabic = builtPhrase
+            kind = if (lo != hi || builtPhrase.contains(' ')) KamusEntryKind.PHRASE else KamusEntryKind.WORD
+            meaning = ""
+            transliteration = ""
+            turats = ""
+            synonymNote = ""
+            pendingManualOverwrite = false
+            lastAppliedResultSignature = null
+            onRequestAi(builtPhrase, contextSentence, lessonTitle, false)
+        }
+    }
+
     val fieldColors = OutlinedTextFieldDefaults.colors(
         focusedBorderColor = palette.emeraldPrimary,
         unfocusedBorderColor = palette.cardBorder,
@@ -1731,8 +1837,13 @@ fun KamusEntryEditorSheet(
         unfocusedLabelColor = palette.textSecondary
     )
 
+    val isAiLoading = aiState is KamusAiUiState.Loading
+
     ModalBottomSheet(
-        onDismissRequest = onDismiss,
+        onDismissRequest = {
+            onClearAiState()
+            onDismiss()
+        },
         sheetState = sheetState,
         containerColor = palette.cardSurface
     ) {
@@ -1766,7 +1877,7 @@ fun KamusEntryEditorSheet(
                             modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.AutoMirrored.Rounded.VolumeUp, null, tint = palette.emeraldPrimary, modifier = Modifier.size(16.dp))
+                            Icon(Icons.AutoMirrored.Rounded.VolumeUp, contentDescription = "Dengar pengucapan Arab", tint = palette.emeraldPrimary, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(5.dp))
                             Text("Dengar", color = palette.emeraldPrimary, fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
                         }
@@ -1774,22 +1885,346 @@ fun KamusEntryEditorSheet(
                 }
             }
 
-            // Kind Pills
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                KamusEntryKind.entries.forEach { k ->
-                    val sel = kind == k
-                    Surface(
-                        onClick = { kind = k },
-                        shape = CircleShape,
-                        color = if (sel) palette.emeraldPrimary else palette.pillBg
+            // Baris jenis entri + tombol manual Tanya AI / Perkaya dengan AI
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    KamusEntryKind.entries.forEach { k ->
+                        val sel = kind == k
+                        Surface(
+                            onClick = { kind = k },
+                            shape = CircleShape,
+                            color = if (sel) palette.emeraldPrimary else palette.pillBg
+                        ) {
+                            Text(
+                                text = k.label,
+                                color = if (sel) Color.White else palette.textSecondary,
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Surface(
+                    onClick = {
+                        val trimmed = arabic.trim()
+                        if (trimmed.isNotBlank() && !isAiLoading) {
+                            val shouldForceRefresh = meaning.isNotBlank()
+                            pendingManualOverwrite = true
+                            lastAppliedResultSignature = null
+                            onRequestAi(trimmed, contextSentence, lessonTitle, shouldForceRefresh)
+                        }
+                    },
+                    enabled = arabic.isNotBlank() && !isAiLoading,
+                    shape = CircleShape,
+                    color = if (arabic.isNotBlank()) palette.goldSoft else palette.pillBg,
+                    border = BorderStroke(1.dp, if (arabic.isNotBlank()) palette.goldAccent.copy(alpha = 0.4f) else palette.cardBorder),
+                    modifier = Modifier
+                        .heightIn(min = 48.dp)
+                        .testTag("ai_kamus_trigger_button")
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = k.label,
-                            color = if (sel) Color.White else palette.textSecondary,
-                            fontSize = 11.5.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        Icon(
+                            imageVector = Icons.Rounded.AutoAwesome,
+                            contentDescription = "Analisis arti dengan AI",
+                            tint = if (arabic.isNotBlank()) palette.goldAccent else palette.textMuted,
+                            modifier = Modifier.size(15.dp)
                         )
+                        Spacer(modifier = Modifier.width(5.dp))
+                        Text(
+                            text = if (meaning.isBlank()) "Tanya AI" else "Perkaya AI",
+                            color = if (arabic.isNotBlank()) palette.goldAccent else palette.textMuted,
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
+            // Status Banner AI (Loading / Success / Error transparan)
+            AnimatedVisibility(visible = aiState !is KamusAiUiState.Idle) {
+                when (aiState) {
+                    is KamusAiUiState.Loading -> {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = palette.emeraldSoft,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                CircularProgressIndicator(
+                                    color = palette.emeraldPrimary,
+                                    strokeWidth = 2.dp,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    text = "Gemini AI menganalisis arti konteks, harakat & akar kata...",
+                                    color = palette.emeraldPrimary,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                    }
+
+                    is KamusAiUiState.Success -> {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = palette.statusOkBg,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.AutoAwesome,
+                                        contentDescription = null,
+                                        tint = palette.statusOkFg,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = if (aiState.analysis.fromCache) {
+                                            "Diisi dari Cache AI • Anda tetap bisa menyunting"
+                                        } else {
+                                            "Diisi Gemini AI • Silakan periksa & simpan"
+                                        },
+                                        color = palette.statusOkFg,
+                                        fontSize = 11.5.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    is KamusAiUiState.Error -> {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = palette.statusWarnBg,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = aiState.message,
+                                    color = palette.statusWarnFg,
+                                    fontSize = 12.sp,
+                                    lineHeight = 17.sp
+                                )
+                                Surface(
+                                    onClick = {
+                                        val trimmed = arabic.trim()
+                                        if (trimmed.isNotBlank()) {
+                                            pendingManualOverwrite = true
+                                            lastAppliedResultSignature = null
+                                            onRequestAi(trimmed, contextSentence, lessonTitle, true)
+                                        }
+                                    },
+                                    shape = CircleShape,
+                                    color = palette.statusWarnFg.copy(alpha = 0.14f),
+                                    modifier = Modifier
+                                        .heightIn(min = 36.dp)
+                                        .testTag("ai_kamus_retry_button")
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Refresh,
+                                            contentDescription = "Coba lagi analisis AI",
+                                            tint = palette.statusWarnFg,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(5.dp))
+                                        Text(
+                                            text = "Coba Lagi",
+                                            color = palette.statusWarnFg,
+                                            fontSize = 11.5.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    KamusAiUiState.Idle -> Unit
+                }
+            }
+
+            // Kartu Konteks Transkrip + Perluasan Frase Cepat (+ Kata Sebelum / + Kata Sesudah)
+            if (contextSentence.isNotBlank()) {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = palette.cardSurfaceElevated,
+                    border = BorderStroke(1.dp, palette.cardBorder),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = if (initialEntry?.segmentLabel?.isNotBlank() == true) {
+                                    "Konteks Segmen ${initialEntry.segmentLabel}"
+                                } else {
+                                    "Konteks Kalimat Transkrip"
+                                },
+                                color = palette.textMuted,
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            if (hasValidRange && (rangeStart != minOf(initialRangeStart, initialRangeEnd) || rangeEnd != maxOf(initialRangeStart, initialRangeEnd))) {
+                                Surface(
+                                    onClick = { applyExpandedRange(initialRangeStart, initialRangeEnd) },
+                                    shape = CircleShape,
+                                    color = palette.pillBg
+                                ) {
+                                    Text(
+                                        text = "Reset",
+                                        color = palette.textSecondary,
+                                        fontSize = 10.5.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                            if (hasValidRange && rangeStart in segmentTokens.indices && rangeEnd in segmentTokens.indices) {
+                                FlowRow(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                                ) {
+                                    segmentTokens.forEach { tok ->
+                                        val inRange = tok.index in rangeStart..rangeEnd
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(6.dp))
+                                                .background(if (inRange) palette.emeraldPrimary else Color.Transparent)
+                                                .padding(horizontal = if (inRange) 5.dp else 1.dp, vertical = 1.dp)
+                                        ) {
+                                            Text(
+                                                text = tok.raw,
+                                                color = if (inRange) Color.White else palette.textSecondary,
+                                                fontSize = 14.5.sp,
+                                                fontWeight = if (inRange) FontWeight.Bold else FontWeight.Normal,
+                                                lineHeight = 23.sp
+                                            )
+                                        }
+                                    }
+                                }
+                            } else {
+                                Text(
+                                    text = contextSentence,
+                                    color = palette.textSecondary,
+                                    fontSize = 13.5.sp,
+                                    lineHeight = 22.sp,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+
+                        if (hasValidRange && rangeStart in segmentTokens.indices && rangeEnd in segmentTokens.indices) {
+                            val canExpandPrev = rangeStart > 0
+                            val canExpandNext = rangeEnd < segmentTokens.lastIndex
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Surface(
+                                    onClick = { if (canExpandPrev) applyExpandedRange(rangeStart - 1, rangeEnd) },
+                                    enabled = canExpandPrev,
+                                    shape = CircleShape,
+                                    color = if (canExpandPrev) palette.emeraldSoft else palette.pillBg,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .heightIn(min = 40.dp)
+                                        .testTag("phrase_expand_prev_button")
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                                        horizontalArrangement = Arrangement.Center,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Add,
+                                            contentDescription = null,
+                                            tint = if (canExpandPrev) palette.emeraldPrimary else palette.textMuted,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = "Kata Sebelum",
+                                            color = if (canExpandPrev) palette.emeraldPrimary else palette.textMuted,
+                                            fontSize = 11.5.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+
+                                Surface(
+                                    onClick = { if (canExpandNext) applyExpandedRange(rangeStart, rangeEnd + 1) },
+                                    enabled = canExpandNext,
+                                    shape = CircleShape,
+                                    color = if (canExpandNext) palette.emeraldSoft else palette.pillBg,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .heightIn(min = 40.dp)
+                                        .testTag("phrase_expand_next_button")
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                                        horizontalArrangement = Arrangement.Center,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Add,
+                                            contentDescription = null,
+                                            tint = if (canExpandNext) palette.emeraldPrimary else palette.textMuted,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = "Kata Sesudah",
+                                            color = if (canExpandNext) palette.emeraldPrimary else palette.textMuted,
+                                            fontSize = 11.5.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1797,7 +2232,7 @@ fun KamusEntryEditorSheet(
             OutlinedTextField(
                 value = arabic,
                 onValueChange = { arabic = it },
-                label = { Text("Kata / Frase Bahasa Arab") },
+                label = { Text("Kata / Frase Bahasa Arab (Berharakat)") },
                 colors = fieldColors,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -1805,59 +2240,41 @@ fun KamusEntryEditorSheet(
             OutlinedTextField(
                 value = meaning,
                 onValueChange = { meaning = it },
-                label = { Text("Arti Indonesia") },
+                label = { Text("Arti Indonesia (Sesuai Konteks)") },
+                minLines = 2,
                 colors = fieldColors,
                 modifier = Modifier.fillMaxWidth()
             )
 
-            if (turats.isNotBlank() || initialEntry != null) {
-                OutlinedTextField(
-                    value = turats,
-                    onValueChange = { turats = it },
-                    label = { Text("Akar Turats -> Modern (Opsional)") },
-                    colors = fieldColors,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
+            OutlinedTextField(
+                value = transliteration,
+                onValueChange = { transliteration = it },
+                label = { Text("Transliterasi Latin (Opsional)") },
+                singleLine = true,
+                colors = fieldColors,
+                modifier = Modifier.fillMaxWidth()
+            )
 
-            if (synonymNote.isNotBlank()) {
-                Surface(shape = RoundedCornerShape(12.dp), color = palette.emeraldSoft, modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = "Nuansa Sinonim: $synonymNote",
-                        color = palette.textSecondary,
-                        fontSize = 11.5.sp,
-                        modifier = Modifier.padding(10.dp)
-                    )
-                }
-            }
+            OutlinedTextField(
+                value = turats,
+                onValueChange = { turats = it },
+                label = { Text("Akar Kata & Turats → Modern (Opsional)") },
+                colors = fieldColors,
+                modifier = Modifier.fillMaxWidth()
+            )
 
-            if (initialEntry?.contextSentence?.isNotBlank() == true) {
-                Surface(shape = RoundedCornerShape(12.dp), color = palette.cardSurfaceElevated, modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(10.dp)) {
-                        Text(
-                            text = "Konteks Segmen ${initialEntry.segmentLabel}",
-                            color = palette.textMuted,
-                            fontSize = 10.5.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                            Text(
-                                text = initialEntry.contextSentence,
-                                color = palette.textSecondary,
-                                fontSize = 13.5.sp,
-                                lineHeight = 22.sp,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                    }
-                }
-            }
+            OutlinedTextField(
+                value = synonymNote,
+                onValueChange = { synonymNote = it },
+                label = { Text("Nuansa Sinonim (Opsional)") },
+                colors = fieldColors,
+                modifier = Modifier.fillMaxWidth()
+            )
 
             OutlinedTextField(
                 value = personalNote,
                 onValueChange = { personalNote = it },
-                label = { Text("Catatan Pribadi / Transliterasi (Opsional)") },
+                label = { Text("Catatan Pribadi (Opsional)") },
                 colors = fieldColors,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -1870,8 +2287,15 @@ fun KamusEntryEditorSheet(
                             id = KamusCodec.createStableId(trimmedAr, ""),
                             arabic = trimmedAr
                         )
+                        val resolvedId = if (base.createdAtMillis > 0L) {
+                            base.id
+                        } else {
+                            KamusCodec.createStableId(trimmedAr, base.lessonId)
+                        }
+                        onClearAiState()
                         onSave(
                             base.copy(
+                                id = resolvedId,
                                 arabic = trimmedAr,
                                 meaning = meaning.trim(),
                                 transliteration = transliteration.trim(),
@@ -1886,7 +2310,10 @@ fun KamusEntryEditorSheet(
                 enabled = arabic.isNotBlank(),
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = palette.emeraldPrimary),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 48.dp)
+                    .testTag("kamus_save_button")
             ) {
                 Text("Simpan ke Kamus Saya", color = Color.White, fontWeight = FontWeight.Bold)
             }

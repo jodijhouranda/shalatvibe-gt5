@@ -1,13 +1,19 @@
 package com.jadwalshalat.gt5.arabic
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Locale
 
@@ -33,7 +39,8 @@ data class ArabicStudyUiState(
     val kamusEntries: List<KamusEntry> = emptyList(),
     val kamusFilter: KamusFilter = KamusFilter.ALL,
     val kamusSearchQuery: String = "",
-    val dueKamusCount: Int = 0
+    val dueKamusCount: Int = 0,
+    val kamusAiState: KamusAiUiState = KamusAiUiState.Idle
 ) {
     val savedNormalizedKeys: Set<String>
         get() = kamusEntries.mapNotNull { it.normalizedKey.takeIf(String::isNotBlank) }.toSet()
@@ -68,7 +75,9 @@ class ArabicStudyViewModel(application: Application) : AndroidViewModel(applicat
     private val repository = ArabicLessonRepository(application.applicationContext)
     private val contentRepository = ArabicContentRepository(application.applicationContext)
     private val kamusRepository = KamusRepository(application.applicationContext)
+    private val kamusAiRepository = KamusAiRepository(application.applicationContext)
     private val ttsHelper = ArabicTtsHelper(application.applicationContext)
+    private var aiLookupJob: Job? = null
 
     private val _uiState = MutableStateFlow(ArabicStudyUiState())
     val uiState: StateFlow<ArabicStudyUiState> = _uiState.asStateFlow()
@@ -227,13 +236,86 @@ class ArabicStudyViewModel(application: Application) : AndroidViewModel(applicat
         return addedCount
     }
 
+    fun lookupKamusWithAi(
+        arabic: String,
+        contextSentence: String,
+        lessonTitle: String = "",
+        forceRefresh: Boolean = false
+    ) {
+        val cleanQuery = ArabicTextUtils.stripOuterPunctuation(arabic).ifBlank { arabic.trim() }
+        if (cleanQuery.isBlank()) return
+
+        aiLookupJob?.cancel()
+
+        if (!forceRefresh) {
+            val cached = kamusAiRepository.getCached(cleanQuery, contextSentence)
+            if (cached != null) {
+                _uiState.update {
+                    it.copy(kamusAiState = KamusAiUiState.Success(cleanQuery, cached))
+                }
+                return
+            }
+        }
+
+        _uiState.update { it.copy(kamusAiState = KamusAiUiState.Loading(cleanQuery)) }
+        aiLookupJob = viewModelScope.launch {
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    kamusAiRepository.analyze(
+                        arabic = cleanQuery,
+                        contextSentence = contextSentence,
+                        lessonTitle = lessonTitle,
+                        forceRefresh = forceRefresh
+                    )
+                }
+                _uiState.update {
+                    it.copy(kamusAiState = KamusAiUiState.Success(cleanQuery, result))
+                }
+            } catch (e: TimeoutCancellationException) {
+                Log.e(TAG, "AI Kamus lookup timed out for '$cleanQuery'", e)
+                _uiState.update {
+                    it.copy(
+                        kamusAiState = KamusAiUiState.Error(
+                            queryArabic = cleanQuery,
+                            message = "Permintaan Gemini AI melebihi batas waktu. Periksa koneksi lalu coba lagi."
+                        )
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "AI Kamus lookup failed for '$cleanQuery'", e)
+                _uiState.update {
+                    it.copy(
+                        kamusAiState = KamusAiUiState.Error(
+                            queryArabic = cleanQuery,
+                            message = e.localizedMessage?.takeIf { msg -> msg.isNotBlank() }
+                                ?: "Gagal menghubungi Gemini AI. Pastikan koneksi internet aktif."
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    fun clearKamusAiState() {
+        aiLookupJob?.cancel()
+        aiLookupJob = null
+        _uiState.update { it.copy(kamusAiState = KamusAiUiState.Idle) }
+    }
+
     fun speakArabic(arabicText: String): String? {
         return ttsHelper.speak(arabicText)
     }
 
     override fun onCleared() {
         super.onCleared()
+        aiLookupJob?.cancel()
         ttsHelper.shutdown()
+    }
+
+    companion object {
+        private const val TAG = "ArabicStudyViewModel"
     }
 
     fun toggleCompleted(lessonId: String) {

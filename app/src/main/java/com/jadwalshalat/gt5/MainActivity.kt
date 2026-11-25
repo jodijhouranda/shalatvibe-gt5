@@ -19,6 +19,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import com.jadwalshalat.gt5.ai.configureAppCheck
 import com.jadwalshalat.gt5.arabic.ArabicStudyViewModel
 import com.jadwalshalat.gt5.learning.LearningViewModel
 import com.jadwalshalat.gt5.location.LocationHelper
@@ -64,6 +65,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        configureAppCheck(this, intent)
         enableEdgeToEdge()
 
         setContent {

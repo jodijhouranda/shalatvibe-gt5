@@ -67,6 +67,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jadwalshalat.gt5.arabic.ArabicCatalogParser
 import com.jadwalshalat.gt5.arabic.ArabicLesson
+import com.jadwalshalat.gt5.arabic.KamusAiUiState
 import com.jadwalshalat.gt5.arabic.KamusEntry
 import com.jadwalshalat.gt5.arabic.PdfReadingMode
 import com.jadwalshalat.gt5.ui.components.ArabicInteractiveReader
@@ -89,7 +90,11 @@ fun ArabicStudyRoomScreen(
     initialSeekSec: Int? = null,
     showHarakat: Boolean = true,
     savedNormalizedKeys: Set<String> = emptySet(),
+    kamusEntries: List<KamusEntry> = emptyList(),
     kamusCount: Int = 0,
+    kamusAiState: KamusAiUiState = KamusAiUiState.Idle,
+    onLookupKamusAi: (arabic: String, contextSentence: String, lessonTitle: String, forceRefresh: Boolean) -> Unit = { _, _, _, _ -> },
+    onClearKamusAiState: () -> Unit = {},
     onToggleHarakat: () -> Unit = {},
     onSaveKamusEntry: (com.jadwalshalat.gt5.arabic.KamusEntry) -> Unit = {},
     onOpenKamus: () -> Unit = {},
@@ -578,6 +583,10 @@ fun ArabicStudyRoomScreen(
                     onShowMessage = { msg ->
                         Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
                     },
+                    kamusEntries = kamusEntries,
+                    kamusAiState = kamusAiState,
+                    onLookupKamusAi = onLookupKamusAi,
+                    onClearKamusAiState = onClearKamusAiState,
                     modifier = Modifier.fillMaxSize()
                 )
             } else when {
@@ -658,9 +667,16 @@ fun ArabicStudyRoomScreen(
                 segmentLabel = lesson.segmentRangeLabel,
                 segmentStartSec = ytController.currentSeconds.takeIf { it > 0 } ?: lesson.startSeconds
             ),
-            onDismiss = { showManualKamusSheet = false },
+            aiState = kamusAiState,
+            onRequestAi = onLookupKamusAi,
+            onClearAiState = onClearKamusAiState,
+            onDismiss = {
+                onClearKamusAiState()
+                showManualKamusSheet = false
+            },
             onSave = { entry ->
                 onSaveKamusEntry(entry)
+                onClearKamusAiState()
                 showManualKamusSheet = false
                 Toast.makeText(context, "Disimpan ke Kamus Saya: ${entry.arabic}", Toast.LENGTH_SHORT).show()
             },

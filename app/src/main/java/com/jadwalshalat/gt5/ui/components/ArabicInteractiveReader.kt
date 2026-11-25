@@ -1,7 +1,9 @@
 package com.jadwalshalat.gt5.ui.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,7 +51,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -62,7 +67,9 @@ import com.jadwalshalat.gt5.arabic.ArabicLesson
 import com.jadwalshalat.gt5.arabic.ArabicLessonContent
 import com.jadwalshalat.gt5.arabic.ArabicTextUtils
 import com.jadwalshalat.gt5.arabic.ArabicTranscriptSegment
+import com.jadwalshalat.gt5.arabic.ArabicWordToken
 import com.jadwalshalat.gt5.arabic.IdiomEntry
+import com.jadwalshalat.gt5.arabic.KamusAiUiState
 import com.jadwalshalat.gt5.arabic.KamusCodec
 import com.jadwalshalat.gt5.arabic.KamusEntry
 import com.jadwalshalat.gt5.arabic.KamusEntryKind
@@ -72,6 +79,12 @@ import com.jadwalshalat.gt5.arabic.ThematicVocabEntry
 import com.jadwalshalat.gt5.ui.screens.KamusEntryEditorSheet
 import com.jadwalshalat.gt5.ui.theme.LocalShalatVibePalette
 import kotlinx.coroutines.launch
+
+private data class PendingPhraseSelection(
+    val tokens: List<ArabicWordToken>,
+    val startIndex: Int,
+    val endIndex: Int
+)
 
 @Composable
 fun ArabicInteractiveReader(
@@ -88,17 +101,33 @@ fun ArabicInteractiveReader(
     onSpeakArabic: (String) -> String?,
     onToggleCompleted: () -> Unit,
     onShowMessage: (String) -> Unit,
+    kamusEntries: List<KamusEntry> = emptyList(),
+    kamusAiState: KamusAiUiState = KamusAiUiState.Idle,
+    onLookupKamusAi: (arabic: String, contextSentence: String, lessonTitle: String, forceRefresh: Boolean) -> Unit = { _, _, _, _ -> },
+    onClearKamusAiState: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val palette = LocalShalatVibePalette.current
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    val haptics = LocalHapticFeedback.current
 
     var phraseMode by remember(lesson.id) { mutableStateOf(false) }
     var phraseStartSegIdx by remember(lesson.id) { mutableIntStateOf(-1) }
     var phraseStartWordIdx by remember(lesson.id) { mutableIntStateOf(-1) }
+    var phraseStartSegment by remember(lesson.id) { mutableStateOf<ArabicTranscriptSegment?>(null) }
+    var phraseStartTokens by remember(lesson.id) { mutableStateOf<List<ArabicWordToken>>(emptyList()) }
 
     var pendingDraft by remember { mutableStateOf<KamusEntry?>(null) }
+    var pendingPhraseSelection by remember { mutableStateOf<PendingPhraseSelection?>(null) }
+
+    fun resetPhraseSelection() {
+        phraseMode = false
+        phraseStartSegIdx = -1
+        phraseStartWordIdx = -1
+        phraseStartSegment = null
+        phraseStartTokens = emptyList()
+    }
 
     fun openCollectorForPhrase(
         arabicPhrase: String,
@@ -107,24 +136,44 @@ fun ArabicInteractiveReader(
         overrideTurats: String = "",
         overrideSyn: String = "",
         overrideKind: KamusEntryKind? = null,
-        overrideTranslit: String = ""
+        overrideTranslit: String = "",
+        selectionContext: PendingPhraseSelection? = null
     ) {
+        onClearKamusAiState()
         val clean = ArabicTextUtils.stripOuterPunctuation(arabicPhrase).ifBlank { arabicPhrase.trim() }
+        val normKey = ArabicTextUtils.normalizeForLookup(clean)
+        val existingSaved = if (normKey.isNotBlank()) {
+            kamusEntries.firstOrNull { it.normalizedKey == normKey }
+        } else null
         val match = ArabicContentParser.matchInGlossary(clean, content)
         val segCtx = seg?.arabic.orEmpty()
+        pendingPhraseSelection = selectionContext
         pendingDraft = KamusEntry(
-            id = KamusCodec.createStableId(clean, lesson.id),
-            arabic = clean,
-            transliteration = overrideTranslit.ifBlank { match.transliteration },
-            meaning = overrideMeaning.ifBlank { match.suggestedMeaning },
-            turatsOrigin = overrideTurats.ifBlank { match.turatsOrigin },
-            synonymNote = overrideSyn.ifBlank { match.synonymNote },
-            kind = overrideKind ?: match.kind,
+            id = existingSaved?.id ?: KamusCodec.createStableId(clean, lesson.id),
+            arabic = existingSaved?.arabic?.ifBlank { clean } ?: clean,
+            transliteration = overrideTranslit
+                .ifBlank { existingSaved?.transliteration.orEmpty() }
+                .ifBlank { match.transliteration },
+            meaning = overrideMeaning
+                .ifBlank { existingSaved?.meaning.orEmpty() }
+                .ifBlank { match.suggestedMeaning },
+            turatsOrigin = overrideTurats
+                .ifBlank { existingSaved?.turatsOrigin.orEmpty() }
+                .ifBlank { match.turatsOrigin },
+            synonymNote = overrideSyn
+                .ifBlank { existingSaved?.synonymNote.orEmpty() }
+                .ifBlank { match.synonymNote },
+            kind = overrideKind ?: existingSaved?.kind ?: match.kind,
             lessonId = lesson.id,
             lessonTitle = lesson.title,
             segmentLabel = seg?.label.orEmpty(),
             segmentStartSec = seg?.startSec ?: lesson.startSeconds,
-            contextSentence = segCtx
+            contextSentence = segCtx,
+            personalNote = existingSaved?.personalNote.orEmpty(),
+            masteryStage = existingSaved?.masteryStage ?: 0,
+            nextReviewEpochDay = existingSaved?.nextReviewEpochDay ?: 0L,
+            createdAtMillis = existingSaved?.createdAtMillis ?: 0L,
+            reviewCount = existingSaved?.reviewCount ?: 0
         )
     }
 
@@ -152,7 +201,9 @@ fun ArabicInteractiveReader(
     }
 
     val openManualDraft = {
+        onClearKamusAiState()
         val seg = content.transcriptSegments.getOrNull(selectedSegmentIdx)
+        pendingPhraseSelection = null
         pendingDraft = KamusEntry(
             id = "",
             arabic = "",
@@ -211,12 +262,19 @@ fun ArabicInteractiveReader(
                     item {
                         Surface(
                             onClick = {
-                                phraseMode = !phraseMode
-                                phraseStartSegIdx = -1
-                                phraseStartWordIdx = -1
+                                if (phraseMode) {
+                                    resetPhraseSelection()
+                                } else {
+                                    phraseMode = true
+                                    phraseStartSegIdx = -1
+                                    phraseStartWordIdx = -1
+                                    phraseStartSegment = null
+                                    phraseStartTokens = emptyList()
+                                }
                             },
                             shape = CircleShape,
-                            color = if (phraseMode) palette.goldAccent else palette.goldSoft
+                            color = if (phraseMode) palette.goldAccent else palette.goldSoft,
+                            modifier = Modifier.testTag("reader_phrase_mode_button")
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
@@ -224,7 +282,7 @@ fun ArabicInteractiveReader(
                             ) {
                                 Icon(
                                     imageVector = if (phraseMode) Icons.Rounded.Close else Icons.Rounded.BookmarkAdd,
-                                    contentDescription = null,
+                                    contentDescription = if (phraseMode) "Batal mode pilih frase" else "Pilih frase dari transkrip",
                                     tint = if (phraseMode) Color.White else palette.goldAccent,
                                     modifier = Modifier.size(13.dp)
                                 )
@@ -287,15 +345,15 @@ fun ArabicInteractiveReader(
                 }
             }
 
-            // Item 1: Ringkas Section 1 Header (tip hanya tampil bila kamus masih kosong)
+            // Item 1: Ringkas Section 1 Header
             item(key = "sec1_hdr") {
                 SectionHeaderBlock(
                     number = "1",
                     title = "Transkrip Segmen (${content.transcriptSegments.size})",
                     subtitle = if (savedNormalizedKeys.isEmpty())
-                        "Ketuk kata Arab mana saja untuk simpan ke Kamus"
+                        "Ketuk kata untuk arti • Tekan lama untuk pilih frase"
                     else
-                        "Kata bergaris emas sudah ada di Kamus Saya"
+                        "Ketuk kata • Tekan lama untuk frase • Garis emas = tersimpan"
                 )
             }
 
@@ -311,6 +369,7 @@ fun ArabicInteractiveReader(
                     isActive = isActive,
                     showHarakat = showHarakat,
                     savedNormalizedKeys = savedNormalizedKeys,
+                    phraseMode = phraseMode,
                     phraseStartSegIdx = phraseStartSegIdx,
                     phraseStartWordIdx = phraseStartWordIdx,
                     onPlaySegment = { onSeekToSegment(seg, idx) },
@@ -322,20 +381,35 @@ fun ArabicInteractiveReader(
                             if (phraseStartSegIdx != idx || phraseStartWordIdx < 0) {
                                 phraseStartSegIdx = idx
                                 phraseStartWordIdx = token.index
+                                phraseStartSegment = seg
+                                phraseStartTokens = tokens
                             } else {
-                                val phrase = ArabicTextUtils.buildPhraseFromRange(tokens, phraseStartWordIdx, token.index)
-                                phraseMode = false
-                                phraseStartSegIdx = -1
-                                phraseStartWordIdx = -1
+                                val lo = minOf(phraseStartWordIdx, token.index)
+                                val hi = maxOf(phraseStartWordIdx, token.index)
+                                val phrase = ArabicTextUtils.buildPhraseFromRange(tokens, lo, hi)
+                                resetPhraseSelection()
                                 openCollectorForPhrase(
                                     arabicPhrase = phrase,
                                     seg = seg,
-                                    overrideKind = if (phrase.contains(' ')) KamusEntryKind.PHRASE else KamusEntryKind.WORD
+                                    overrideKind = if (lo != hi || phrase.contains(' ')) KamusEntryKind.PHRASE else KamusEntryKind.WORD,
+                                    selectionContext = PendingPhraseSelection(tokens, lo, hi)
                                 )
                             }
                         } else {
-                            openCollectorForPhrase(arabicPhrase = token.cleanArabic, seg = seg)
+                            openCollectorForPhrase(
+                                arabicPhrase = token.cleanArabic,
+                                seg = seg,
+                                selectionContext = PendingPhraseSelection(tokens, token.index, token.index)
+                            )
                         }
+                    },
+                    onLongPressWord = { token, tokens ->
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        phraseMode = true
+                        phraseStartSegIdx = idx
+                        phraseStartWordIdx = token.index
+                        phraseStartSegment = seg
+                        phraseStartTokens = tokens
                     }
                 )
             }
@@ -407,6 +481,8 @@ fun ArabicInteractiveReader(
                                     ArabicTextUtils.normalizeForLookup(idiom.arabic).take(8)
                                 )
                             } ?: content.transcriptSegments.firstOrNull()
+                            onClearKamusAiState()
+                            pendingPhraseSelection = null
                             pendingDraft = KamusEntry(
                                 id = KamusCodec.createStableId(idiom.arabic, lesson.id),
                                 arabic = idiom.arabic,
@@ -525,11 +601,12 @@ fun ArabicInteractiveReader(
                 shadowElevation = 6.dp,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .padding(horizontal = 14.dp, vertical = 10.dp)
+                    .padding(horizontal = 12.dp, vertical = 10.dp)
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
                         text = if (phraseStartWordIdx < 0)
@@ -540,13 +617,37 @@ fun ArabicInteractiveReader(
                         fontSize = 11.5.sp,
                         fontWeight = FontWeight.Bold
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
+                    if (phraseStartWordIdx >= 0 && phraseStartTokens.isNotEmpty()) {
+                        Surface(
+                            onClick = {
+                                val seg = phraseStartSegment
+                                val tokens = phraseStartTokens
+                                val startIdx = phraseStartWordIdx
+                                val single = ArabicTextUtils.buildPhraseFromRange(tokens, startIdx, startIdx)
+                                resetPhraseSelection()
+                                if (single.isNotBlank()) {
+                                    openCollectorForPhrase(
+                                        arabicPhrase = single,
+                                        seg = seg,
+                                        overrideKind = KamusEntryKind.WORD,
+                                        selectionContext = PendingPhraseSelection(tokens, startIdx, startIdx)
+                                    )
+                                }
+                            },
+                            shape = CircleShape,
+                            color = palette.emeraldPrimary
+                        ) {
+                            Text(
+                                text = "1 Kata",
+                                color = Color.White,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
                     Surface(
-                        onClick = {
-                            phraseMode = false
-                            phraseStartSegIdx = -1
-                            phraseStartWordIdx = -1
-                        },
+                        onClick = { resetPhraseSelection() },
                         shape = CircleShape,
                         color = Color.White.copy(alpha = 0.22f)
                     ) {
@@ -624,12 +725,25 @@ fun ArabicInteractiveReader(
 
     val draft = pendingDraft
     if (draft != null) {
+        val selCtx = pendingPhraseSelection
         KamusEntryEditorSheet(
             initialEntry = draft,
-            onDismiss = { pendingDraft = null },
+            aiState = kamusAiState,
+            onRequestAi = onLookupKamusAi,
+            onClearAiState = onClearKamusAiState,
+            segmentTokens = selCtx?.tokens.orEmpty(),
+            initialRangeStart = selCtx?.startIndex ?: -1,
+            initialRangeEnd = selCtx?.endIndex ?: -1,
+            onDismiss = {
+                onClearKamusAiState()
+                pendingDraft = null
+                pendingPhraseSelection = null
+            },
             onSave = { entry ->
                 onSaveKamusEntry(entry)
+                onClearKamusAiState()
                 pendingDraft = null
+                pendingPhraseSelection = null
                 onShowMessage("Disimpan ke Kamus Saya: ${entry.arabic}")
             },
             onSpeakArabic = { txt -> onSpeakArabic(txt)?.let(onShowMessage) }
@@ -681,7 +795,7 @@ private fun SectionHeaderBlock(number: String, title: String, subtitle: String) 
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 private fun InteractiveTranscriptSegmentCard(
     segment: ArabicTranscriptSegment,
@@ -689,11 +803,13 @@ private fun InteractiveTranscriptSegmentCard(
     isActive: Boolean,
     showHarakat: Boolean,
     savedNormalizedKeys: Set<String>,
+    phraseMode: Boolean,
     phraseStartSegIdx: Int,
     phraseStartWordIdx: Int,
     onPlaySegment: () -> Unit,
     onSpeakSegment: () -> Unit,
-    onTapWord: (com.jadwalshalat.gt5.arabic.ArabicWordToken, List<com.jadwalshalat.gt5.arabic.ArabicWordToken>) -> Unit
+    onTapWord: (ArabicWordToken, List<ArabicWordToken>) -> Unit,
+    onLongPressWord: (ArabicWordToken, List<ArabicWordToken>) -> Unit
 ) {
     val palette = LocalShalatVibePalette.current
     val tokens = remember(segment.arabic) { ArabicTextUtils.tokenizeSentenceWords(segment.arabic) }
@@ -778,9 +894,11 @@ private fun InteractiveTranscriptSegmentCard(
                             if (showHarakat) tok.raw else ArabicTextUtils.stripHarakat(tok.raw)
                         }
 
+                        val isSamePhraseSegment = phraseMode && phraseStartSegIdx == segmentIndex
                         val chipBg = when {
                             isPhraseStart -> palette.emeraldPrimary
                             isSaved -> palette.goldSoft
+                            isSamePhraseSegment && tok.hasArabicLetters -> palette.emeraldSoft.copy(alpha = 0.45f)
                             else -> Color.Transparent
                         }
                         val chipFg = when {
@@ -795,10 +913,13 @@ private fun InteractiveTranscriptSegmentCard(
                                 .background(chipBg)
                                 .then(
                                     if (tok.hasArabicLetters && tok.cleanArabic.isNotBlank()) {
-                                        Modifier.clickable { onTapWord(tok, tokens) }
+                                        Modifier.combinedClickable(
+                                            onClick = { onTapWord(tok, tokens) },
+                                            onLongClick = { onLongPressWord(tok, tokens) }
+                                        )
                                     } else Modifier
                                 )
-                                .padding(horizontal = if (isSaved || isPhraseStart) 4.dp else 1.dp, vertical = 0.dp)
+                                .padding(horizontal = if (isSaved || isPhraseStart || isSamePhraseSegment) 4.dp else 1.dp, vertical = 0.dp)
                         ) {
                             Text(
                                 text = displayWord,
