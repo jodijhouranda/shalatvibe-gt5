@@ -4,7 +4,10 @@ import android.annotation.SuppressLint
 import android.graphics.Color as AndroidColor
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
+import android.view.ViewGroup
 import android.webkit.JavascriptInterface
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
@@ -13,6 +16,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -23,15 +27,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.PlayCircleOutline
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -47,6 +54,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.jadwalshalat.gt5.arabic.ArabicCatalogParser
 import com.jadwalshalat.gt5.ui.theme.LocalShalatVibePalette
+
+private const val TAG = "ArabicYouTubePlayer"
 
 @Stable
 class YouTubePlayerController(
@@ -72,6 +81,8 @@ class YouTubePlayerController(
     var windowEndSec by mutableIntStateOf(initialEndSec)
         internal set
     var embedErrorCode by mutableStateOf<Int?>(null)
+        internal set
+    var rendererCrashed by mutableStateOf(false)
         internal set
 
     fun play() {
@@ -115,9 +126,18 @@ class YouTubePlayerController(
         seekTo(windowStartSec, autoPlay = true)
     }
 
+    internal fun clearErrors() {
+        embedErrorCode = null
+        rendererCrashed = false
+        isReady = false
+        isPlaying = false
+    }
+
     internal fun onBridgeReady() {
         mainHandler.post {
             isReady = true
+            rendererCrashed = false
+            embedErrorCode = null
             evalJs("if(window.ytCtrl){ytCtrl.setWindow($windowStartSec, $windowEndSec, $loopEnabled); ytCtrl.setRate($playbackRate);}")
         }
     }
@@ -144,18 +164,42 @@ class YouTubePlayerController(
         }
     }
 
+    internal fun onRendererGone(crashedView: WebView?) {
+        mainHandler.post {
+            if (crashedView != null && webView === crashedView) {
+                webView = null
+            }
+            isReady = false
+            isPlaying = false
+            rendererCrashed = true
+        }
+    }
+
     private fun evalJs(script: String) {
         mainHandler.post {
-            webView?.evaluateJavascript(script, null)
+            val wv = webView ?: return@post
+            runCatching { wv.evaluateJavascript(script, null) }
+                .onFailure { Log.w(TAG, "evaluateJavascript skipped on detached WebView", it) }
         }
     }
 
     fun release() {
-        webView?.let { wv ->
-            wv.loadUrl("about:blank")
-            wv.destroy()
-        }
+        val wv = webView ?: return
         webView = null
+        isReady = false
+        isPlaying = false
+        runCatching {
+            wv.stopLoading()
+            wv.removeJavascriptInterface("AndroidBridge")
+            wv.webChromeClient = null
+            wv.webViewClient = WebViewClient()
+            (wv.parent as? ViewGroup)?.removeView(wv)
+            wv.onPause()
+            wv.loadUrl("about:blank")
+            wv.clearHistory()
+            wv.removeAllViews()
+            wv.destroy()
+        }.onFailure { Log.w(TAG, "Error releasing WebView", it) }
     }
 }
 
@@ -182,7 +226,8 @@ fun ArabicYouTubePlayerView(
     modifier: Modifier = Modifier
 ) {
     val palette = LocalShalatVibePalette.current
-    val htmlContent = remember(videoId, controller.windowStartSec) {
+    var reloadNonce by remember(videoId) { mutableIntStateOf(0) }
+    val htmlContent = remember(videoId, controller.windowStartSec, reloadNonce) {
         buildYouTubeIframeHtml(
             videoId = videoId,
             startSec = controller.windowStartSec,
@@ -196,7 +241,7 @@ fun ArabicYouTubePlayerView(
         }
     }
 
-    DisposableEffect(videoId) {
+    DisposableEffect(videoId, reloadNonce) {
         onDispose {
             controller.release()
         }
@@ -206,36 +251,60 @@ fun ArabicYouTubePlayerView(
         modifier = modifier.background(Color.Black),
         contentAlignment = Alignment.Center
     ) {
-        AndroidView(
-            factory = { ctx ->
-                WebView(ctx).apply {
-                    setBackgroundColor(AndroidColor.BLACK)
-                    settings.apply {
-                        javaScriptEnabled = true
-                        domStorageEnabled = true
-                        mediaPlaybackRequiresUserGesture = false
-                        cacheMode = WebSettings.LOAD_DEFAULT
-                        mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
-                        loadWithOverviewMode = true
-                        useWideViewPort = true
-                    }
-                    webChromeClient = WebChromeClient()
-                    webViewClient = WebViewClient()
-                    addJavascriptInterface(YouTubeJsBridge(controller), "AndroidBridge")
-                    controller.webView = this
-                    loadDataWithBaseURL(
-                        "https://www.youtube-nocookie.com",
-                        htmlContent,
-                        "text/html",
-                        "utf-8",
-                        null
-                    )
-                }
-            },
-            modifier = Modifier.fillMaxSize()
-        )
+        if (!controller.rendererCrashed) {
+            key(videoId, reloadNonce) {
+                AndroidView(
+                    factory = { ctx ->
+                        WebView(ctx).apply {
+                            setBackgroundColor(AndroidColor.BLACK)
+                            setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false)
+                            settings.apply {
+                                javaScriptEnabled = true
+                                domStorageEnabled = true
+                                mediaPlaybackRequiresUserGesture = false
+                                cacheMode = WebSettings.LOAD_DEFAULT
+                                mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+                                loadWithOverviewMode = true
+                                useWideViewPort = true
+                            }
+                            webChromeClient = WebChromeClient()
+                            webViewClient = object : WebViewClient() {
+                                override fun onRenderProcessGone(
+                                    view: WebView?,
+                                    detail: RenderProcessGoneDetail?
+                                ): Boolean {
+                                    Log.e(
+                                        TAG,
+                                        "WebView renderer process gone (didCrash=${detail?.didCrash()}, priority=${detail?.rendererPriorityAtExit()})"
+                                    )
+                                    if (view != null) {
+                                        runCatching {
+                                            (view.parent as? ViewGroup)?.removeView(view)
+                                            view.destroy()
+                                        }
+                                    }
+                                    controller.onRendererGone(view)
+                                    // Return true so Android does not kill the host app process
+                                    return true
+                                }
+                            }
+                            addJavascriptInterface(YouTubeJsBridge(controller), "AndroidBridge")
+                            controller.webView = this
+                            loadDataWithBaseURL(
+                                "https://www.youtube-nocookie.com",
+                                htmlContent,
+                                "text/html",
+                                "utf-8",
+                                null
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
 
-        if (controller.embedErrorCode != null) {
+        if (controller.rendererCrashed || controller.embedErrorCode != null) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -252,31 +321,59 @@ fun ArabicYouTubePlayerView(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Video ini membatasi pemutaran embed atau internet belum aktif.",
+                    text = if (controller.rendererCrashed) {
+                        "Pemutar video terhenti sementara. Muat ulang atau buka langsung di YouTube."
+                    } else {
+                        "Video ini membatasi pemutaran embed atau internet belum aktif."
+                    },
                     color = Color.White,
                     fontSize = 12.sp,
                     textAlign = TextAlign.Center
                 )
                 Spacer(modifier = Modifier.height(10.dp))
-                Button(
-                    onClick = onOpenExternalYouTube,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = palette.emeraldPrimary,
-                        contentColor = Color(0xFF03231D)
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "Buka YouTube (${ArabicCatalogParser.formatTimestamp(controller.windowStartSec)})",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = {
+                            controller.release()
+                            controller.clearErrors()
+                            reloadNonce++
+                        },
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Refresh,
+                            contentDescription = "Muat ulang pemutar video",
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(5.dp))
+                        Text(
+                            text = "Muat Ulang",
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Button(
+                        onClick = onOpenExternalYouTube,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = palette.emeraldPrimary,
+                            contentColor = Color(0xFF03231D)
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "YouTube (${ArabicCatalogParser.formatTimestamp(controller.windowStartSec)})",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }
