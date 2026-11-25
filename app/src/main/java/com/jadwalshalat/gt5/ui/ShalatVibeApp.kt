@@ -161,67 +161,75 @@ fun ShalatVibeApp(
         containerColor = palette.background,
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         bottomBar = {
-            NavigationBar(
-                containerColor = palette.navBarBg,
-                tonalElevation = 0.dp
+            androidx.compose.foundation.layout.Column(
+                modifier = Modifier.background(palette.navBarBg)
             ) {
-                MainTab.entries.forEach { tab ->
-                    val selected = tab == currentTab
-                    val selectedIcon = when (tab) {
-                        MainTab.SCHEDULE -> Icons.Rounded.CalendarMonth
-                        MainTab.ARABIC -> Icons.AutoMirrored.Rounded.MenuBook
-                        MainTab.QIBLA -> Icons.Rounded.Explore
-                        MainTab.GT5_HUB -> Icons.Rounded.Watch
-                    }
-                    val unselectedIcon = when (tab) {
-                        MainTab.SCHEDULE -> Icons.Outlined.CalendarMonth
-                        MainTab.ARABIC -> Icons.AutoMirrored.Outlined.MenuBook
-                        MainTab.QIBLA -> Icons.Outlined.Explore
-                        MainTab.GT5_HUB -> Icons.Outlined.Watch
-                    }
+                androidx.compose.material3.HorizontalDivider(
+                    thickness = 0.5.dp,
+                    color = palette.hairline
+                )
+                NavigationBar(
+                    containerColor = palette.navBarBg,
+                    tonalElevation = 0.dp
+                ) {
+                    MainTab.entries.forEach { tab ->
+                        val selected = tab == currentTab
+                        val selectedIcon = when (tab) {
+                            MainTab.SCHEDULE -> Icons.Rounded.CalendarMonth
+                            MainTab.ARABIC -> Icons.AutoMirrored.Rounded.MenuBook
+                            MainTab.QIBLA -> Icons.Rounded.Explore
+                            MainTab.GT5_HUB -> Icons.Rounded.Watch
+                        }
+                        val unselectedIcon = when (tab) {
+                            MainTab.SCHEDULE -> Icons.Outlined.CalendarMonth
+                            MainTab.ARABIC -> Icons.AutoMirrored.Outlined.MenuBook
+                            MainTab.QIBLA -> Icons.Outlined.Explore
+                            MainTab.GT5_HUB -> Icons.Outlined.Watch
+                        }
 
-                    NavigationBarItem(
-                        selected = selected,
-                        onClick = { currentTab = tab },
-                        icon = {
-                            if (tab == MainTab.GT5_HUB && state.missingCriticalPermissionCount > 0) {
-                                BadgedBox(
-                                    badge = {
-                                        Badge(
-                                            containerColor = palette.goldAccent,
-                                            modifier = Modifier
-                                                .size(9.dp)
-                                                .clip(CircleShape)
+                        NavigationBarItem(
+                            selected = selected,
+                            onClick = { currentTab = tab },
+                            icon = {
+                                if (tab == MainTab.GT5_HUB && state.missingCriticalPermissionCount > 0) {
+                                    BadgedBox(
+                                        badge = {
+                                            Badge(
+                                                containerColor = palette.goldAccent,
+                                                modifier = Modifier
+                                                    .size(8.dp)
+                                                    .clip(CircleShape)
+                                            )
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = if (selected) selectedIcon else unselectedIcon,
+                                            contentDescription = tab.label
                                         )
                                     }
-                                ) {
+                                } else {
                                     Icon(
                                         imageVector = if (selected) selectedIcon else unselectedIcon,
                                         contentDescription = tab.label
                                     )
                                 }
-                            } else {
-                                Icon(
-                                    imageVector = if (selected) selectedIcon else unselectedIcon,
-                                    contentDescription = tab.label
+                            },
+                            label = {
+                                Text(
+                                    text = tab.label,
+                                    fontSize = 11.sp,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
                                 )
-                            }
-                        },
-                        label = {
-                            Text(
-                                text = tab.label,
-                                fontSize = 11.sp,
-                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
+                            },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = palette.emeraldPrimary,
+                                selectedTextColor = palette.emeraldPrimary,
+                                indicatorColor = palette.emeraldSoft,
+                                unselectedIconColor = palette.textMuted,
+                                unselectedTextColor = palette.textMuted
                             )
-                        },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = palette.emeraldPrimary,
-                            selectedTextColor = palette.emeraldPrimary,
-                            indicatorColor = palette.emeraldSoft,
-                            unselectedIconColor = palette.textMuted,
-                            unselectedTextColor = palette.textMuted
                         )
-                    )
+                    }
                 }
             }
         }

@@ -256,11 +256,7 @@ fun QiblaScreen(
             Surface(
                 onClick = onOpenCalibrationSheet,
                 shape = CircleShape,
-                color = if (needsCalibration) palette.statusWarnBg else palette.cardSurface,
-                border = BorderStroke(
-                    1.dp,
-                    if (needsCalibration) palette.statusWarnFg.copy(alpha = 0.4f) else palette.cardBorder
-                )
+                color = if (needsCalibration) palette.statusWarnBg else palette.pillBg
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
@@ -285,11 +281,10 @@ fun QiblaScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Telemetry Summary Card
+        // Telemetry Summary Card (borderless tonal surface)
         Surface(
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(22.dp),
             color = palette.cardSurface,
-            border = BorderStroke(1.dp, palette.cardBorder),
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(

@@ -129,9 +129,8 @@ fun CityPickerBottomSheet(
                     onUseGps()
                     onDismiss()
                 },
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(18.dp),
                 color = palette.emeraldSoft,
-                border = BorderStroke(1.dp, palette.emeraldPrimary.copy(alpha = 0.35f)),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -163,7 +162,7 @@ fun CityPickerBottomSheet(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Search input
+            // Search input (borderless tonal pill)
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
@@ -181,10 +180,12 @@ fun CityPickerBottomSheet(
                     }
                 },
                 singleLine = true,
-                shape = RoundedCornerShape(14.dp),
+                shape = CircleShape,
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = palette.emeraldPrimary,
-                    unfocusedBorderColor = palette.cardBorder,
+                    focusedContainerColor = palette.pillBg,
+                    unfocusedContainerColor = palette.pillBg,
+                    focusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = Color.Transparent,
                     focusedTextColor = palette.textPrimary,
                     unfocusedTextColor = palette.textPrimary
                 ),
@@ -207,9 +208,8 @@ fun CityPickerBottomSheet(
                             onSelectCity(city)
                             onDismiss()
                         },
-                        shape = RoundedCornerShape(14.dp),
+                        shape = RoundedCornerShape(16.dp),
                         color = if (isSelected) palette.highlightSurface else Color.Transparent,
-                        border = if (isSelected) BorderStroke(1.dp, palette.highlightBorder) else null,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
@@ -313,11 +313,7 @@ fun MethodPickerBottomSheet(
                             onDismiss()
                         },
                         shape = RoundedCornerShape(16.dp),
-                        color = if (selected) palette.highlightSurface else palette.background,
-                        border = BorderStroke(
-                            width = if (selected) 1.5.dp else 1.dp,
-                            color = if (selected) palette.highlightBorder else palette.cardBorder
-                        ),
+                        color = if (selected) palette.highlightSurface else palette.cardSurfaceElevated,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
@@ -360,7 +356,7 @@ fun MethodPickerBottomSheet(
             }
 
             Spacer(modifier = Modifier.height(14.dp))
-            HorizontalDivider(color = palette.cardBorder)
+            HorizontalDivider(thickness = 0.5.dp, color = palette.hairline)
             Spacer(modifier = Modifier.height(10.dp))
 
             Row(
@@ -481,8 +477,7 @@ fun PrayerDetailBottomSheet(
                     Surface(
                         onClick = { onSelectOverride(value) },
                         shape = CircleShape,
-                        color = if (selected) palette.emeraldPrimary else palette.pillBg,
-                        border = if (selected) null else BorderStroke(1.dp, palette.cardBorder)
+                        color = if (selected) palette.emeraldPrimary else palette.pillBg
                     ) {
                         Text(
                             text = label,
@@ -541,11 +536,7 @@ fun ThemePickerBottomSheet(
                         onDismiss()
                     },
                     shape = RoundedCornerShape(16.dp),
-                    color = if (selected) palette.highlightSurface else palette.background,
-                    border = BorderStroke(
-                        if (selected) 1.5.dp else 1.dp,
-                        if (selected) palette.highlightBorder else palette.cardBorder
-                    ),
+                    color = if (selected) palette.highlightSurface else palette.cardSurfaceElevated,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -647,12 +638,8 @@ fun HuaweiGuideBottomSheet(
                     val checked = checklistStates.getOrElse(idx) { false }
                     Surface(
                         onClick = { onToggleStep(idx) },
-                        shape = RoundedCornerShape(14.dp),
-                        color = if (checked) palette.statusOkBg else palette.background,
-                        border = BorderStroke(
-                            1.dp,
-                            if (checked) palette.emeraldPrimary.copy(alpha = 0.4f) else palette.cardBorder
-                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        color = if (checked) palette.statusOkBg else palette.cardSurfaceElevated,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(

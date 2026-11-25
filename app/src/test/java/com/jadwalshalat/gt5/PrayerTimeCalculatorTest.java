@@ -271,4 +271,229 @@ public class PrayerTimeCalculatorTest {
                 com.jadwalshalat.gt5.learning.LearningTrackType.Companion.fromRaw("SERIES_COURSE")
         );
     }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void fiqhMuamalahTranscriptAndTimestampsAreContinuousAndSynced() throws Exception {
+        java.io.File lessonsFile = new java.io.File("lessons/courses/fiqh_muamalat_syuwaiir.json");
+        if (!lessonsFile.exists()) {
+            lessonsFile = new java.io.File("../lessons/courses/fiqh_muamalat_syuwaiir.json");
+        }
+        java.io.File assetsFile = new java.io.File("app/src/main/assets/courses/fiqh_muamalat_syuwaiir.json");
+        if (!assetsFile.exists()) {
+            assetsFile = new java.io.File("src/main/assets/courses/fiqh_muamalat_syuwaiir.json");
+        }
+        org.junit.Assert.assertTrue("lessons course JSON missing", lessonsFile.exists());
+        org.junit.Assert.assertTrue("assets course JSON missing", assetsFile.exists());
+
+        byte[] lessonsBytes = java.nio.file.Files.readAllBytes(lessonsFile.toPath());
+        byte[] assetsBytes = java.nio.file.Files.readAllBytes(assetsFile.toPath());
+        org.junit.Assert.assertArrayEquals(
+                "lessons and assets course JSON must remain byte-identical",
+                lessonsBytes,
+                assetsBytes
+        );
+
+        String rawJson = new String(assetsBytes, java.nio.charset.StandardCharsets.UTF_8);
+        java.util.Map<String, Object> course =
+                (java.util.Map<String, Object>) new MinimalJsonParser(rawJson).parseValue();
+
+        int bookTotalPages = ((Number) course.get("bookTotalPages")).intValue();
+        org.junit.Assert.assertEquals(96, bookTotalPages);
+
+        java.util.List<Object> episodes = (java.util.List<Object>) course.get("episodes");
+        org.junit.Assert.assertEquals(5, episodes.size());
+
+        java.util.Map<Integer, java.util.Map<String, int[]>> blockBoundsByEpisode = new java.util.HashMap<>();
+        int totalCourseSegments = 0;
+        long totalCourseSec = 0L;
+
+        for (int epIdx = 0; epIdx < episodes.size(); epIdx++) {
+            java.util.Map<String, Object> ep = (java.util.Map<String, Object>) episodes.get(epIdx);
+            int epNum = ((Number) ep.get("episodeNumber")).intValue();
+            int durationSec = ((Number) ep.get("durationSec")).intValue();
+            int pdfStart = ((Number) ep.get("pdfStartPage")).intValue();
+            int pdfEnd = ((Number) ep.get("pdfEndPage")).intValue();
+            org.junit.Assert.assertEquals(epIdx + 1, epNum);
+            org.junit.Assert.assertTrue(durationSec > 0);
+            org.junit.Assert.assertTrue(pdfStart >= 1 && pdfEnd <= bookTotalPages && pdfStart <= pdfEnd);
+
+            java.util.List<Object> blocks = (java.util.List<Object>) ep.get("blocks");
+            org.junit.Assert.assertTrue("Episode " + epNum + " has no blocks", !blocks.isEmpty());
+
+            java.util.Map<String, int[]> blockBounds = new java.util.HashMap<>();
+            blockBoundsByEpisode.put(epNum, blockBounds);
+
+            int prevBlockEnd = 0;
+            int epSegCount = 0;
+            for (int bIdx = 0; bIdx < blocks.size(); bIdx++) {
+                java.util.Map<String, Object> block = (java.util.Map<String, Object>) blocks.get(bIdx);
+                String blockId = (String) block.get("id");
+                int bStart = ((Number) block.get("startSec")).intValue();
+                int bEnd = ((Number) block.get("endSec")).intValue();
+                int pdfHint = ((Number) block.get("pdfPageHint")).intValue();
+                org.junit.Assert.assertEquals("Block boundary discontinuity at " + blockId, prevBlockEnd, bStart);
+                org.junit.Assert.assertTrue("Invalid block duration at " + blockId, bEnd > bStart);
+                org.junit.Assert.assertTrue("Invalid pdfPageHint at " + blockId, pdfHint >= 1 && pdfHint <= bookTotalPages);
+                blockBounds.put(blockId, new int[]{bStart, bEnd});
+
+                java.util.List<Object> segments = (java.util.List<Object>) block.get("segments");
+                org.junit.Assert.assertTrue(
+                        "Block " + blockId + " must have >= 10 dense segments (found " + segments.size() + ")",
+                        segments.size() >= 10
+                );
+
+                int prevSegEnd = bStart;
+                for (Object segObj : segments) {
+                    java.util.Map<String, Object> seg = (java.util.Map<String, Object>) segObj;
+                    int sStart = ((Number) seg.get("startSec")).intValue();
+                    int sEnd = ((Number) seg.get("endSec")).intValue();
+                    String arabic = (String) seg.get("arabic");
+                    String indonesian = (String) seg.get("indonesian");
+                    org.junit.Assert.assertEquals("Segment gap/overlap in " + blockId, prevSegEnd, sStart);
+                    org.junit.Assert.assertTrue("Non-positive segment duration in " + blockId, sEnd > sStart);
+                    org.junit.Assert.assertTrue("Segment > 35s in " + blockId + ": " + (sEnd - sStart), (sEnd - sStart) <= 35);
+                    org.junit.Assert.assertTrue("Empty Arabic in " + blockId, arabic != null && !arabic.trim().isEmpty());
+                    org.junit.Assert.assertTrue("Empty Indonesian in " + blockId, indonesian != null && !indonesian.trim().isEmpty());
+                    prevSegEnd = sEnd;
+                    epSegCount++;
+                }
+                org.junit.Assert.assertEquals("Block end != last segment end in " + blockId, bEnd, prevSegEnd);
+                prevBlockEnd = bEnd;
+            }
+            org.junit.Assert.assertEquals("Episode duration mismatch for ep " + epNum, durationSec, prevBlockEnd);
+            double epAvg = (double) durationSec / epSegCount;
+            org.junit.Assert.assertTrue("Episode " + epNum + " avg seg duration too high: " + epAvg, epAvg <= 32.0);
+            totalCourseSegments += epSegCount;
+            totalCourseSec += durationSec;
+        }
+
+        double overallAvg = (double) totalCourseSec / totalCourseSegments;
+        org.junit.Assert.assertTrue("Overall avg seg duration too high: " + overallAvg, overallAvg <= 32.0);
+
+        java.util.List<Object> glossary = (java.util.List<Object>) course.get("glossary");
+        org.junit.Assert.assertEquals(16, glossary.size());
+        for (Object gObj : glossary) {
+            java.util.Map<String, Object> g = (java.util.Map<String, Object>) gObj;
+            String gid = (String) g.get("id");
+            int epNum = ((Number) g.get("episodeNumber")).intValue();
+            String blkId = (String) g.get("blockId");
+            int sec = ((Number) g.get("exampleTimeSec")).intValue();
+            java.util.Map<String, int[]> bMap = blockBoundsByEpisode.get(epNum);
+            org.junit.Assert.assertNotNull("Glossary ep missing: " + gid, bMap);
+            int[] bounds = bMap.get(blkId);
+            org.junit.Assert.assertNotNull("Glossary block missing: " + gid + " -> " + blkId, bounds);
+            org.junit.Assert.assertTrue(
+                    "Glossary time out of bounds for " + gid + ": " + sec + " not in [" + bounds[0] + "," + bounds[1] + "]",
+                    sec >= bounds[0] && sec < bounds[1]
+            );
+        }
+    }
+
+    private static final class MinimalJsonParser {
+        private final String src;
+        private int pos = 0;
+
+        MinimalJsonParser(String src) {
+            this.src = src;
+        }
+
+        Object parseValue() {
+            skipWs();
+            char c = src.charAt(pos);
+            if (c == '{') return parseObject();
+            if (c == '[') return parseArray();
+            if (c == '"') return parseString();
+            if (c == 't' || c == 'f') return parseBool();
+            if (c == 'n') { pos += 4; return null; }
+            return parseNumber();
+        }
+
+        private java.util.Map<String, Object> parseObject() {
+            java.util.Map<String, Object> map = new java.util.LinkedHashMap<>();
+            pos++; // '{'
+            skipWs();
+            if (src.charAt(pos) == '}') { pos++; return map; }
+            while (true) {
+                skipWs();
+                String key = parseString();
+                skipWs();
+                pos++; // ':'
+                Object val = parseValue();
+                map.put(key, val);
+                skipWs();
+                char c = src.charAt(pos++);
+                if (c == '}') break;
+            }
+            return map;
+        }
+
+        private java.util.List<Object> parseArray() {
+            java.util.List<Object> list = new java.util.ArrayList<>();
+            pos++; // '['
+            skipWs();
+            if (src.charAt(pos) == ']') { pos++; return list; }
+            while (true) {
+                list.add(parseValue());
+                skipWs();
+                char c = src.charAt(pos++);
+                if (c == ']') break;
+            }
+            return list;
+        }
+
+        private String parseString() {
+            pos++; // '"'
+            StringBuilder sb = new StringBuilder();
+            while (pos < src.length()) {
+                char c = src.charAt(pos++);
+                if (c == '"') break;
+                if (c == '\\') {
+                    char e = src.charAt(pos++);
+                    if (e == '"' || e == '\\' || e == '/') sb.append(e);
+                    else if (e == 'b') sb.append('\b');
+                    else if (e == 'f') sb.append('\f');
+                    else if (e == 'n') sb.append('\n');
+                    else if (e == 'r') sb.append('\r');
+                    else if (e == 't') sb.append('\t');
+                    else if (e == 'u') {
+                        int code = Integer.parseInt(src.substring(pos, pos + 4), 16);
+                        sb.append((char) code);
+                        pos += 4;
+                    }
+                } else {
+                    sb.append(c);
+                }
+            }
+            return sb.toString();
+        }
+
+        private Object parseBool() {
+            if (src.startsWith("true", pos)) { pos += 4; return Boolean.TRUE; }
+            pos += 5; return Boolean.FALSE;
+        }
+
+        private Number parseNumber() {
+            int start = pos;
+            if (src.charAt(pos) == '-') pos++;
+            boolean isFloat = false;
+            while (pos < src.length()) {
+                char c = src.charAt(pos);
+                if (c >= '0' && c <= '9') pos++;
+                else if (c == '.' || c == 'e' || c == 'E' || c == '+' || c == '-') { isFloat = true; pos++; }
+                else break;
+            }
+            String s = src.substring(start, pos);
+            return isFloat ? Double.valueOf(s) : Long.valueOf(s);
+        }
+
+        private void skipWs() {
+            while (pos < src.length()) {
+                char c = src.charAt(pos);
+                if (c == ' ' || c == '\n' || c == '\r' || c == '\t') pos++;
+                else break;
+            }
+        }
+    }
 }
+

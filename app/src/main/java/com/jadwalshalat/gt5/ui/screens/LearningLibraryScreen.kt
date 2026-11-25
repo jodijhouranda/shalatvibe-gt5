@@ -1,6 +1,6 @@
 package com.jadwalshalat.gt5.ui.screens
 
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.automirrored.rounded.MenuBook
@@ -34,20 +35,25 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jadwalshalat.gt5.arabic.ArabicLesson
@@ -80,7 +86,6 @@ fun LearningLibraryScreen(
         else buildGlobalSearchHits(query, hubState, arabicState.lessons)
     }
 
-    // Resolve Continue Learning Card
     val continueFiqh = remember(hubState.lastCourseId, hubState.lastBlockId, hubState.seriesCourses) {
         val cid = hubState.lastCourseId
         val bid = hubState.lastBlockId
@@ -94,130 +99,98 @@ fun LearningLibraryScreen(
     }
     val continueArabic = arabicState.lastOpenedLesson
 
-    val trackPairs = remember(hubState.tracks) {
-        hubState.tracks.chunked(2)
-    }
-
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
             .background(palette.background),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 28.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // Header
+        // 1. Editorial Spacious Header
         item(key = "library_header") {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Top
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
+                        text = "PUSTAKA ILMU",
+                        color = palette.emeraldPrimary,
+                        fontSize = 10.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.4.sp
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
                         text = "Pustaka Belajar",
                         color = palette.textPrimary,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold
+                        fontSize = 26.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.5).sp
                     )
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "${hubState.tracks.size} Bidang Ilmu • Video, Teks & Kitab PDF",
+                        text = "Kajian berseri, transkrip tersinkron & kitab PDF",
                         color = palette.textSecondary,
-                        fontSize = 12.sp
+                        fontSize = 12.5.sp
                     )
                 }
 
                 val syncing = hubState.isSyncing || arabicState.isSyncing
-                Surface(
-                    onClick = onSyncAll,
-                    enabled = !syncing,
-                    shape = CircleShape,
-                    color = palette.cardSurface,
-                    border = BorderStroke(1.dp, palette.cardBorder),
-                    modifier = Modifier.size(38.dp)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(top = 4.dp)
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        if (syncing) {
-                            CircularProgressIndicator(
-                                color = palette.emeraldPrimary,
-                                strokeWidth = 2.dp,
-                                modifier = Modifier.size(17.dp)
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Icons.Rounded.Sync,
-                                contentDescription = "Sinkronkan semua materi",
-                                tint = palette.emeraldPrimary,
-                                modifier = Modifier.size(19.dp)
-                            )
+                    Surface(
+                        onClick = onSyncAll,
+                        enabled = !syncing,
+                        shape = CircleShape,
+                        color = palette.pillBg,
+                        modifier = Modifier.size(38.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            if (syncing) {
+                                CircularProgressIndicator(
+                                    color = palette.emeraldPrimary,
+                                    strokeWidth = 2.dp,
+                                    modifier = Modifier.size(17.dp)
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Rounded.Sync,
+                                    contentDescription = "Sinkronkan semua materi",
+                                    tint = palette.emeraldPrimary,
+                                    modifier = Modifier.size(19.dp)
+                                )
+                            }
                         }
                     }
-                }
 
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Surface(
-                    onClick = onOpenSyncSettings,
-                    shape = CircleShape,
-                    color = palette.cardSurface,
-                    border = BorderStroke(1.dp, palette.cardBorder),
-                    modifier = Modifier.size(38.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Rounded.Settings,
-                            contentDescription = "Pengaturan sinkronisasi",
-                            tint = palette.textSecondary,
-                            modifier = Modifier.size(18.dp)
-                        )
+                    Surface(
+                        onClick = onOpenSyncSettings,
+                        shape = CircleShape,
+                        color = palette.pillBg,
+                        modifier = Modifier.size(38.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Rounded.Settings,
+                                contentDescription = "Pengaturan sinkronisasi",
+                                tint = palette.textSecondary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
             }
         }
 
-        // Global Search Bar
+        // 2. Borderless Pill Search Bar
         item(key = "global_search") {
-            OutlinedTextField(
+            TonalSearchPill(
                 value = hubState.searchQuery,
                 onValueChange = onSearchQueryChange,
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = RoundedCornerShape(14.dp),
-                placeholder = {
-                    Text(
-                        text = "Cari istilah (Riba, Gharar, Mudharabah), topik, atau modul...",
-                        color = palette.textMuted,
-                        fontSize = 12.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Rounded.Search,
-                        contentDescription = null,
-                        tint = palette.textMuted,
-                        modifier = Modifier.size(19.dp)
-                    )
-                },
-                trailingIcon = {
-                    if (isSearching) {
-                        IconButton(onClick = { onSearchQueryChange("") }) {
-                            Icon(
-                                imageVector = Icons.Rounded.Close,
-                                contentDescription = "Hapus pencarian",
-                                tint = palette.textMuted,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-                },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = palette.cardSurface,
-                    unfocusedContainerColor = palette.cardSurface,
-                    focusedBorderColor = palette.emeraldPrimary,
-                    unfocusedBorderColor = palette.cardBorder,
-                    focusedTextColor = palette.textPrimary,
-                    unfocusedTextColor = palette.textPrimary
-                )
+                placeholder = "Cari istilah (Riba, Gharar), topik, atau modul..."
             )
         }
 
@@ -267,38 +240,44 @@ fun LearningLibraryScreen(
                 )
             }
         } else {
-            // Continue Learning Hero Card
+            // 3. Characterful "Lanjutkan Terakhir" Hero Card
             if (continueFiqh != null || continueArabic != null) {
                 item(key = "continue_card") {
                     if (continueFiqh != null &&
                         (hubState.lastTrackId == continueFiqh.first.id || continueArabic == null)
                     ) {
                         val (course, ep, block) = continueFiqh
-                        ContinueLearningBanner(
-                            badge = "${course.title} • Seri ${ep.episodeNumber}",
+                        val total = course.totalBlockCount.coerceAtLeast(1)
+                        val done = hubState.completedCountForCourse(course.id)
+                        ContinueLearningHeroCard(
+                            eyebrow = "LANJUTKAN TERAKHIR • SERI ${ep.episodeNumber}",
                             title = block.title,
-                            subtitle = "${block.timeRangeLabel} • Hal. Kitab ${block.pdfPageHint}",
-                            accentColor = palette.goldAccent,
+                            subtitle = "${block.timeRangeLabel} • Kitab Hal. ${block.pdfPageHint}",
+                            progressFraction = done.toFloat() / total.toFloat(),
                             onClick = {
                                 onOpenTopicBlock(course.id, ep.id, block.id, null)
                             }
                         )
                     } else if (continueArabic != null) {
-                        ContinueLearningBanner(
-                            badge = "Bahasa Arab • ${continueArabic.dayLabel}",
+                        val total = arabicState.lessons.size.coerceAtLeast(1)
+                        val done = arabicState.completedCount
+                        ContinueLearningHeroCard(
+                            eyebrow = "LANJUTKAN TERAKHIR • ${continueArabic.dayLabel.uppercase()}",
                             title = continueArabic.title,
                             subtitle = "${continueArabic.sourceName} • ${continueArabic.segmentRangeLabel}",
-                            accentColor = palette.emeraldPrimary,
+                            progressFraction = done.toFloat() / total.toFloat(),
                             onClick = { onOpenArabicLesson(continueArabic) }
                         )
                     }
                 }
             }
 
-            // Section Title
+            // 4. Section Title
             item(key = "grid_section_title") {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 2.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
@@ -306,84 +285,100 @@ fun LearningLibraryScreen(
                         text = "Koleksi Materi",
                         color = palette.textPrimary,
                         fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.2).sp
                     )
                     Text(
-                        text = "Sync terakhir: ${arabicState.lastSyncLabel}",
+                        text = "${hubState.tracks.size} Bidang • ${arabicState.lastSyncLabel}",
                         color = palette.textMuted,
                         fontSize = 11.sp
                     )
                 }
             }
 
-            // 2-Column Scalable Grid
-            items(trackPairs, key = { pair -> pair.joinToString("_") { it.id } }) { rowTracks ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    for (track in rowTracks) {
-                        val (progressText, fraction, detailText) = resolveTrackStats(
-                            track = track,
-                            hubState = hubState,
-                            arabicState = arabicState
-                        )
-                        CourseGridCard(
-                            track = track,
-                            progressText = progressText,
-                            progressFraction = fraction,
-                            detailText = detailText,
-                            onClick = { onOpenTrack(track) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    if (rowTracks.size == 1) {
-                        Spacer(modifier = Modifier.weight(1f))
-                    }
-                }
+            // 5. Full-Width Editorial Course Showcase Cards (Zero Borders & Zero Placeholder Boxes)
+            items(hubState.tracks, key = { it.id }) { track ->
+                val stats = resolveTrackEditorialStats(
+                    track = track,
+                    hubState = hubState,
+                    arabicState = arabicState
+                )
+                EditorialCourseCard(
+                    track = track,
+                    arabicSubtitle = stats.arabicCallout,
+                    progressText = stats.progressText,
+                    progressFraction = stats.fraction,
+                    detailText = stats.detailText,
+                    onClick = { onOpenTrack(track) }
+                )
             }
+        }
+    }
+}
 
-            // Future-proof extensibility hint
-            item(key = "extensibility_footer") {
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = palette.cardSurface,
-                    border = BorderStroke(1.dp, palette.cardBorder),
+@Composable
+private fun TonalSearchPill(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String
+) {
+    val palette = LocalShalatVibePalette.current
+    Surface(
+        shape = CircleShape,
+        color = palette.pillBg,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Search,
+                contentDescription = null,
+                tint = palette.textMuted,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Box(modifier = Modifier.weight(1f)) {
+                if (value.isEmpty()) {
+                    Text(
+                        text = placeholder,
+                        color = palette.textMuted,
+                        fontSize = 12.5.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                BasicTextField(
+                    value = value,
+                    onValueChange = onValueChange,
+                    singleLine = true,
+                    cursorBrush = SolidColor(palette.emeraldPrimary),
+                    textStyle = TextStyle(
+                        color = palette.textPrimary,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Normal
+                    ),
                     modifier = Modifier.fillMaxWidth()
+                )
+            }
+            if (value.isNotEmpty()) {
+                Spacer(modifier = Modifier.width(6.dp))
+                Surface(
+                    onClick = { onValueChange("") },
+                    shape = CircleShape,
+                    color = palette.cardSurface,
+                    modifier = Modifier.size(22.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(palette.emeraldSoft),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.School,
-                                contentDescription = null,
-                                tint = palette.emeraldPrimary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Pustaka Siap Dikembangkan",
-                                color = palette.textPrimary,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                text = "Materi baru (Hadis, Aqidah, Tafsir) otomatis muncul sebagai kartu baru cukup lewat JSON manifest + Sync ↻.",
-                                color = palette.textSecondary,
-                                fontSize = 11.sp,
-                                lineHeight = 15.sp
-                            )
-                        }
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Rounded.Close,
+                            contentDescription = "Hapus pencarian",
+                            tint = palette.textSecondary,
+                            modifier = Modifier.size(14.dp)
+                        )
                     }
                 }
             }
@@ -392,133 +387,185 @@ fun LearningLibraryScreen(
 }
 
 @Composable
-private fun ContinueLearningBanner(
-    badge: String,
+private fun ContinueLearningHeroCard(
+    eyebrow: String,
     title: String,
     subtitle: String,
-    accentColor: Color,
+    progressFraction: Float,
     onClick: () -> Unit
 ) {
     val palette = LocalShalatVibePalette.current
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
-        color = palette.highlightSurface,
-        border = BorderStroke(1.dp, palette.highlightBorder),
+        shape = RoundedCornerShape(24.dp),
+        color = Color.Transparent,
         modifier = Modifier.fillMaxWidth()
     ) {
-        Row(
-            modifier = Modifier.padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(24.dp))
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(
+                            Color(0xFF103F3A),
+                            Color(0xFF0A292A),
+                            Color(0xFF1C2318)
+                        )
+                    )
+                )
         ) {
-            Box(
+            Canvas(modifier = Modifier.matchParentSize()) {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(Color(0xFFF5B041).copy(alpha = 0.24f), Color.Transparent),
+                        center = Offset(size.width * 0.90f, size.height * 0.85f),
+                        radius = 100.dp.toPx()
+                    ),
+                    radius = 100.dp.toPx(),
+                    center = Offset(size.width * 0.90f, size.height * 0.85f)
+                )
+            }
+
+            Column(
                 modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(accentColor.copy(alpha = 0.16f)),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .padding(18.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Rounded.PlayArrow,
-                    contentDescription = null,
-                    tint = accentColor,
-                    modifier = Modifier.size(22.dp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(7.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFFBBF24))
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = eyebrow,
+                        color = Color(0xFFFDE68A),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.2.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = title,
+                            color = Color.White,
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                            lineHeight = 22.sp,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = subtitle,
+                            color = Color(0xFFD1FAE5).copy(alpha = 0.78f),
+                            fontSize = 11.5.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(Color.White),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.PlayArrow,
+                            contentDescription = "Lanjut putar",
+                            tint = Color(0xFF0A292A),
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                LinearProgressIndicator(
+                    progress = { progressFraction.coerceIn(0.04f, 1f) },
+                    color = Color(0xFFFCD34D),
+                    trackColor = Color.White.copy(alpha = 0.16f),
+                    strokeCap = StrokeCap.Round,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp)
+                        .clip(CircleShape)
                 )
             }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "LANJUTKAN TERAKHIR • $badge",
-                    color = accentColor,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = title,
-                    color = palette.textPrimary,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = subtitle,
-                    color = palette.textSecondary,
-                    fontSize = 11.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Icon(
-                imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
-                contentDescription = null,
-                tint = palette.textSecondary,
-                modifier = Modifier.size(18.dp)
-            )
         }
     }
 }
 
 @Composable
-private fun CourseGridCard(
+private fun EditorialCourseCard(
     track: LearningTrackEntry,
+    arabicSubtitle: String,
     progressText: String,
     progressFraction: Float,
     detailText: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    onClick: () -> Unit
 ) {
     val palette = LocalShalatVibePalette.current
     val accent = remember(track.accentHex, palette.emeraldPrimary) {
         parseHexColor(track.accentHex, palette.emeraldPrimary)
     }
-    val icon = remember(track.iconName) {
-        resolveTrackIcon(track.iconName)
-    }
 
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(22.dp),
         color = palette.cardSurface,
-        border = BorderStroke(1.dp, palette.cardBorder),
-        modifier = modifier
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
+        Column(modifier = Modifier.padding(18.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(accent.copy(alpha = 0.14f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = accent,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-
                 if (track.badge.isNotBlank()) {
                     Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = accent.copy(alpha = 0.12f)
+                        shape = CircleShape,
+                        color = accent.copy(alpha = if (palette.isDark) 0.14f else 0.11f)
                     ) {
                         Text(
-                            text = track.badge,
+                            text = track.badge.uppercase(),
                             color = accent,
-                            fontSize = 9.sp,
+                            fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                            letterSpacing = 0.5.sp,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                } else {
+                    Spacer(modifier = Modifier.width(1.dp))
+                }
+
+                if (arabicSubtitle.isNotBlank()) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                        Text(
+                            text = arabicSubtitle,
+                            color = accent,
+                            fontSize = 14.5.sp,
+                            fontWeight = FontWeight.Bold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -531,55 +578,83 @@ private fun CourseGridCard(
             Text(
                 text = track.title,
                 color = palette.textPrimary,
-                fontSize = 15.sp,
+                fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
+                letterSpacing = (-0.2).sp,
                 maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                minLines = 2
-            )
-
-            Spacer(modifier = Modifier.height(2.dp))
-
-            Text(
-                text = track.subtitle,
-                color = palette.textSecondary,
-                fontSize = 11.sp,
-                lineHeight = 14.sp,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                minLines = 2
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            LinearProgressIndicator(
-                progress = { progressFraction.coerceIn(0f, 1f) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(5.dp)
-                    .clip(RoundedCornerShape(3.dp)),
-                color = accent,
-                trackColor = palette.pillBg,
-                strokeCap = StrokeCap.Round
-            )
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            Text(
-                text = progressText,
-                color = palette.textPrimary,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Text(
-                text = detailText,
-                color = palette.textMuted,
-                fontSize = 10.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+
+            if (track.subtitle.isNotBlank()) {
+                Spacer(modifier = Modifier.height(3.dp))
+                Text(
+                    text = track.subtitle,
+                    color = palette.textSecondary,
+                    fontSize = 12.5.sp,
+                    lineHeight = 18.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = progressText,
+                            color = palette.textPrimary,
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = detailText,
+                            color = palette.textMuted,
+                            fontSize = 11.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    LinearProgressIndicator(
+                        progress = { progressFraction.coerceIn(0f, 1f) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(5.dp)
+                            .clip(CircleShape),
+                        color = accent,
+                        trackColor = palette.pillBg,
+                        strokeCap = StrokeCap.Round
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(CircleShape)
+                        .background(palette.pillBg),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                        contentDescription = null,
+                        tint = palette.textPrimary,
+                        modifier = Modifier.size(17.dp)
+                    )
+                }
+            }
         }
     }
 }
@@ -598,82 +673,108 @@ private fun SearchHitCard(
     }
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(18.dp),
         color = palette.cardSurface,
-        border = BorderStroke(1.dp, palette.cardBorder),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = badgeColor.copy(alpha = 0.14f)
+                    shape = CircleShape,
+                    color = badgeColor.copy(alpha = 0.13f)
                 ) {
                     Text(
                         text = hit.badge,
                         color = badgeColor,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                     )
                 }
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = hit.title,
                     color = palette.textPrimary,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.5.sp,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
                 if (hit.subtitle.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = hit.subtitle,
                         color = palette.textSecondary,
-                        fontSize = 11.sp,
+                        fontSize = 12.sp,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
             }
-            Spacer(modifier = Modifier.width(8.dp))
-            Icon(
-                imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
-                contentDescription = null,
-                tint = palette.textMuted,
-                modifier = Modifier.size(18.dp)
-            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Box(
+                modifier = Modifier
+                    .size(30.dp)
+                    .clip(CircleShape)
+                    .background(palette.pillBg),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                    contentDescription = null,
+                    tint = palette.textSecondary,
+                    modifier = Modifier.size(15.dp)
+                )
+            }
         }
     }
 }
 
-private fun resolveTrackStats(
+private data class TrackEditorialStats(
+    val progressText: String,
+    val fraction: Float,
+    val detailText: String,
+    val arabicCallout: String
+)
+
+private fun resolveTrackEditorialStats(
     track: LearningTrackEntry,
     hubState: LearningHubUiState,
     arabicState: ArabicStudyUiState
-): Triple<String, Float, String> {
+): TrackEditorialStats {
     return when (track.type) {
         LearningTrackType.DAILY_MODULES -> {
             val total = arabicState.lessons.size
             val done = arabicState.completedCount
             val fraction = if (total > 0) done.toFloat() / total.toFloat() else 0f
-            Triple("$done/$total modul", fraction, "${arabicState.favoriteIds.size} favorit")
+            TrackEditorialStats(
+                progressText = "$done / $total modul selesai",
+                fraction = fraction,
+                detailText = "${arabicState.favoriteIds.size} favorit",
+                arabicCallout = "العربية للناطقين بغيرها"
+            )
         }
         LearningTrackType.SERIES_COURSE -> {
             val course = hubState.seriesCourses[track.id]
             if (course == null) {
-                Triple("Tersedia", 0f, "Ketuk untuk memuat")
+                TrackEditorialStats(
+                    progressText = "Siap dipelajari",
+                    fraction = 0f,
+                    detailText = "Ketuk untuk memuat",
+                    arabicCallout = ""
+                )
             } else {
                 val totalBlocks = course.totalBlockCount
                 val doneBlocks = hubState.completedCountForCourse(course.id)
                 val fraction = if (totalBlocks > 0) doneBlocks.toFloat() / totalBlocks.toFloat() else 0f
-                Triple(
-                    "$doneBlocks/$totalBlocks blok tema",
-                    fraction,
-                    "${course.episodes.size} seri • ${course.glossary.size} istilah"
+                TrackEditorialStats(
+                    progressText = "$doneBlocks / $totalBlocks blok tema",
+                    fraction = fraction,
+                    detailText = "${course.glossary.size} istilah",
+                    arabicCallout = course.arabicTitle
                 )
             }
         }
@@ -755,6 +856,7 @@ private fun parseHexColor(hex: String, fallback: Color): Color {
     }.getOrDefault(fallback)
 }
 
+@Suppress("unused")
 private fun resolveTrackIcon(iconName: String): ImageVector {
     return when (iconName.lowercase()) {
         "balance" -> Icons.Rounded.Balance

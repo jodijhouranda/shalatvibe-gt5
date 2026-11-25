@@ -27,11 +27,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Contrast
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
-import androidx.compose.material.icons.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Repeat
@@ -115,11 +115,11 @@ fun ArabicStudyRoomScreen(
             .background(palette.background)
             .statusBarsPadding()
     ) {
-        // 1. Compact Top Study Bar
+        // 1. Sleek Tonal Top Study Bar
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(palette.cardSurface)
+                .background(palette.pillBg)
                 .padding(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -159,8 +159,7 @@ fun ArabicStudyRoomScreen(
             Surface(
                 onClick = onCycleReadingMode,
                 shape = CircleShape,
-                color = palette.pillBg,
-                border = BorderStroke(1.dp, palette.cardBorder)
+                color = palette.cardSurface
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -185,7 +184,7 @@ fun ArabicStudyRoomScreen(
             if (lesson.hasVideo) {
                 IconButton(onClick = openInYouTubeApp) {
                     Icon(
-                        imageVector = Icons.Rounded.OpenInNew,
+                        imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
                         contentDescription = "Buka di aplikasi YouTube",
                         tint = palette.textSecondary,
                         modifier = Modifier.size(19.dp)
@@ -552,8 +551,7 @@ private fun SegmentChip(
     Surface(
         onClick = onClick,
         shape = CircleShape,
-        color = bg,
-        border = if (selected) null else BorderStroke(1.dp, palette.cardBorder)
+        color = bg
     ) {
         Text(
             text = label,

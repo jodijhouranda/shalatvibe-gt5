@@ -1,7 +1,7 @@
 package com.jadwalshalat.gt5.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.MenuBook
@@ -35,12 +36,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -49,9 +49,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jadwalshalat.gt5.learning.CourseEpisode
@@ -89,11 +96,11 @@ fun CourseOverviewScreen(
             .fillMaxSize()
             .background(palette.background)
     ) {
-        // Top Header
+        // Sleek Borderless Header
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+                .padding(horizontal = 10.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onBack) {
@@ -109,13 +116,14 @@ fun CourseOverviewScreen(
                     color = palette.textPrimary,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.2).sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = course.instructor,
                     color = palette.textSecondary,
-                    fontSize = 11.sp,
+                    fontSize = 12.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -124,47 +132,69 @@ fun CourseOverviewScreen(
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 28.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Course Hero + Quick Action Pills
+            // Characterful Editorial Course Hero (Zero Borders)
             item(key = "course_hero") {
-                Surface(
-                    shape = RoundedCornerShape(18.dp),
-                    color = palette.cardSurface,
-                    border = BorderStroke(1.dp, palette.cardBorder),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        if (course.arabicTitle.isNotBlank()) {
-                            Text(
-                                text = course.arabicTitle,
-                                color = palette.goldAccent,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    Color(0xFF103F3A),
+                                    Color(0xFF0A292A),
+                                    Color(0xFF1A2218)
+                                )
                             )
+                        )
+                ) {
+                    Canvas(modifier = Modifier.matchParentSize()) {
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(Color(0xFFF5B041).copy(alpha = 0.20f), Color.Transparent),
+                                center = Offset(size.width * 0.88f, size.height * 0.18f),
+                                radius = 110.dp.toPx()
+                            ),
+                            radius = 110.dp.toPx(),
+                            center = Offset(size.width * 0.88f, size.height * 0.18f)
+                        )
+                    }
+
+                    Column(modifier = Modifier.padding(18.dp)) {
+                        if (course.arabicTitle.isNotBlank()) {
+                            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                                Text(
+                                    text = course.arabicTitle,
+                                    color = Color(0xFFFCD34D),
+                                    fontSize = 17.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                             Spacer(modifier = Modifier.height(4.dp))
                         }
                         Text(
                             text = course.subtitle,
-                            color = palette.textSecondary,
+                            color = Color(0xFFD1FAE5).copy(alpha = 0.82f),
                             fontSize = 12.sp
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(14.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Progres Belajar",
-                                color = palette.textPrimary,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold
+                                text = "Progres Daurah",
+                                color = Color.White.copy(alpha = 0.85f),
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.Medium
                             )
                             Text(
-                                text = "$doneBlocks / $totalBlocks Blok Tema Selesai",
-                                color = palette.emeraldPrimary,
+                                text = "$doneBlocks / $totalBlocks Blok Tema",
+                                color = Color(0xFF6EE7B7),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -174,10 +204,10 @@ fun CourseOverviewScreen(
                             progress = { progressFraction },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(7.dp)
-                                .clip(RoundedCornerShape(4.dp)),
-                            color = palette.emeraldPrimary,
-                            trackColor = palette.pillBg,
+                                .height(5.dp)
+                                .clip(CircleShape),
+                            color = Color(0xFF34D399),
+                            trackColor = Color.White.copy(alpha = 0.15f),
                             strokeCap = StrokeCap.Round
                         )
 
@@ -185,13 +215,12 @@ fun CourseOverviewScreen(
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Surface(
                                 onClick = { onOpenFullBookPdf(1) },
-                                shape = RoundedCornerShape(12.dp),
-                                color = palette.emeraldSoft,
-                                border = BorderStroke(1.dp, palette.emeraldPrimary.copy(alpha = 0.35f)),
+                                shape = RoundedCornerShape(14.dp),
+                                color = Color.White.copy(alpha = 0.14f),
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Row(
@@ -202,13 +231,13 @@ fun CourseOverviewScreen(
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Rounded.MenuBook,
                                         contentDescription = null,
-                                        tint = palette.emeraldPrimary,
+                                        tint = Color(0xFF6EE7B7),
                                         modifier = Modifier.size(16.dp)
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
-                                        text = "Kitab PDF (${course.bookTotalPages} Hal)",
-                                        color = palette.emeraldPrimary,
+                                        text = "Kitab (${course.bookTotalPages} Hal)",
+                                        color = Color.White,
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Bold,
                                         maxLines = 1
@@ -218,9 +247,8 @@ fun CourseOverviewScreen(
 
                             Surface(
                                 onClick = { showGlossaryBrowser = true },
-                                shape = RoundedCornerShape(12.dp),
-                                color = palette.goldAccent.copy(alpha = 0.12f),
-                                border = BorderStroke(1.dp, palette.goldAccent.copy(alpha = 0.35f)),
+                                shape = RoundedCornerShape(14.dp),
+                                color = Color(0xFFF5B041).copy(alpha = 0.22f),
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Row(
@@ -231,13 +259,13 @@ fun CourseOverviewScreen(
                                     Icon(
                                         imageVector = Icons.Rounded.Bookmark,
                                         contentDescription = null,
-                                        tint = palette.goldAccent,
+                                        tint = Color(0xFFFCD34D),
                                         modifier = Modifier.size(16.dp)
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
-                                        text = "Kamus (${course.glossary.size} Istilah)",
-                                        color = palette.goldAccent,
+                                        text = "Kamus (${course.glossary.size})",
+                                        color = Color(0xFFFDE68A),
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Bold,
                                         maxLines = 1
@@ -249,7 +277,7 @@ fun CourseOverviewScreen(
                 }
             }
 
-            // Episodes Accordion List
+            // Borderless Tonal Episodes List
             items(course.episodes, key = { it.id }) { episode ->
                 val isExpanded = expandedEpisodes[episode.id] == true
                 EpisodeAccordionCard(
@@ -310,40 +338,36 @@ private fun EpisodeAccordionCard(
     val palette = LocalShalatVibePalette.current
     val doneInEp = episode.blocks.count { completedBlockIds.contains(it.id) }
     val totalInEp = episode.blocks.size
+    val allDone = doneInEp == totalInEp && totalInEp > 0
 
     Surface(
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(22.dp),
         color = palette.cardSurface,
-        border = BorderStroke(
-            1.dp,
-            if (isExpanded) palette.emeraldPrimary.copy(alpha = 0.45f) else palette.cardBorder
-        ),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column {
             Surface(
                 onClick = onToggleExpand,
-                color = androidx.compose.ui.graphics.Color.Transparent
+                color = Color.Transparent
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(14.dp),
+                        .padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(34.dp)
+                            .size(36.dp)
                             .clip(CircleShape)
                             .background(
-                                if (doneInEp == totalInEp && totalInEp > 0) palette.emeraldSoft
-                                else palette.goldAccent.copy(alpha = 0.14f)
+                                if (allDone) palette.emeraldSoft else palette.goldSoft
                             ),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "${episode.episodeNumber}",
-                            color = if (doneInEp == totalInEp && totalInEp > 0) palette.emeraldPrimary else palette.goldAccent,
+                            color = if (allDone) palette.emeraldPrimary else palette.goldAccent,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -355,16 +379,16 @@ private fun EpisodeAccordionCard(
                         Text(
                             text = episode.title,
                             color = palette.textPrimary,
-                            fontSize = 14.sp,
+                            fontSize = 14.5.sp,
                             fontWeight = FontWeight.Bold,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
                         )
                         Spacer(modifier = Modifier.height(3.dp))
                         Text(
-                            text = "${episode.durationLabel} • ${episode.blocks.size} Blok Tema • Kitab ${episode.pdfRangeLabel} • $doneInEp/$totalInEp selesai",
+                            text = "${episode.durationLabel} • ${episode.blocks.size} Blok • Kitab ${episode.pdfRangeLabel} • $doneInEp/$totalInEp",
                             color = palette.textSecondary,
-                            fontSize = 11.sp
+                            fontSize = 11.5.sp
                         )
                     }
 
@@ -387,16 +411,17 @@ private fun EpisodeAccordionCard(
                         text = episode.summary,
                         color = palette.textSecondary,
                         fontSize = 12.sp,
-                        lineHeight = 17.sp
+                        lineHeight = 18.sp,
+                        modifier = Modifier.padding(horizontal = 2.dp)
                     )
 
                     Surface(
                         onClick = onOpenEpisodePdf,
-                        shape = RoundedCornerShape(10.dp),
+                        shape = CircleShape,
                         color = palette.pillBg
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
@@ -407,9 +432,9 @@ private fun EpisodeAccordionCard(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "Buka Bab Majlis ${episode.episodeNumber} di Kitab PDF (${episode.pdfRangeLabel})",
+                                text = "Buka Bab Majlis ${episode.episodeNumber} di Kitab (${episode.pdfRangeLabel})",
                                 color = palette.emeraldPrimary,
-                                fontSize = 11.sp,
+                                fontSize = 11.5.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
@@ -442,25 +467,21 @@ private fun TopicBlockItemCard(
     val palette = LocalShalatVibePalette.current
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         color = if (isCompleted) palette.highlightSurface else palette.cardSurfaceElevated,
-        border = BorderStroke(
-            1.dp,
-            if (isCompleted) palette.highlightBorder else palette.cardBorder
-        ),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(13.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
-                    shape = RoundedCornerShape(8.dp),
+                    shape = CircleShape,
                     color = palette.emeraldSoft
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
@@ -473,7 +494,7 @@ private fun TopicBlockItemCard(
                         Text(
                             text = block.timeRangeLabel,
                             color = palette.emeraldPrimary,
-                            fontSize = 10.sp,
+                            fontSize = 10.5.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -482,15 +503,15 @@ private fun TopicBlockItemCard(
                 Spacer(modifier = Modifier.width(6.dp))
 
                 Surface(
-                    shape = RoundedCornerShape(8.dp),
+                    shape = CircleShape,
                     color = palette.pillBg
                 ) {
                     Text(
                         text = "Hal. ${block.pdfPageHint}",
                         color = palette.textSecondary,
-                        fontSize = 10.sp,
+                        fontSize = 10.5.sp,
                         fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp)
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }
 
@@ -509,13 +530,14 @@ private fun TopicBlockItemCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(7.dp))
 
             Text(
                 text = block.title,
                 color = palette.textPrimary,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold
+                fontSize = 13.5.sp,
+                fontWeight = FontWeight.Bold,
+                lineHeight = 18.sp
             )
 
             if (block.summary.isNotBlank()) {
@@ -523,8 +545,8 @@ private fun TopicBlockItemCard(
                 Text(
                     text = block.summary,
                     color = palette.textSecondary,
-                    fontSize = 11.sp,
-                    lineHeight = 15.sp,
+                    fontSize = 11.5.sp,
+                    lineHeight = 16.sp,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -534,22 +556,22 @@ private fun TopicBlockItemCard(
                 block.keyTermIds.mapNotNull { course.glossaryById(it) }
             }
             if (resolvedTerms.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(7.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
                     resolvedTerms.forEach { term ->
                         Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = palette.goldAccent.copy(alpha = 0.12f)
+                            shape = CircleShape,
+                            color = palette.goldSoft
                         ) {
                             Text(
                                 text = "${term.arabic} • ${term.term}",
                                 color = palette.goldAccent,
                                 fontSize = 10.sp,
-                                fontWeight = FontWeight.Medium,
-                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -590,13 +612,13 @@ fun GlossaryBrowserBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = 18.dp)
                 .padding(bottom = 24.dp)
         ) {
             Text(
                 text = "Kamus Istilah Fiqih Muamalah",
                 color = palette.textPrimary,
-                fontSize = 17.sp,
+                fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
@@ -604,21 +626,43 @@ fun GlossaryBrowserBottomSheet(
                 color = palette.textSecondary,
                 fontSize = 12.sp
             )
-            Spacer(modifier = Modifier.height(10.dp))
-            OutlinedTextField(
-                value = search,
-                onValueChange = { search = it },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                placeholder = { Text("Cari istilah Arab atau Indonesia...", fontSize = 12.sp) },
-                leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = palette.goldAccent,
-                    unfocusedBorderColor = palette.cardBorder
-                )
-            )
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+            Surface(
+                shape = CircleShape,
+                color = palette.pillBg,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Search,
+                        contentDescription = null,
+                        tint = palette.textMuted,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Box(modifier = Modifier.weight(1f)) {
+                        if (search.isEmpty()) {
+                            Text(
+                                text = "Cari istilah Arab atau Indonesia...",
+                                color = palette.textMuted,
+                                fontSize = 12.5.sp
+                            )
+                        }
+                        BasicTextField(
+                            value = search,
+                            onValueChange = { search = it },
+                            singleLine = true,
+                            cursorBrush = SolidColor(palette.goldAccent),
+                            textStyle = TextStyle(color = palette.textPrimary, fontSize = 13.sp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
             LazyColumn(
                 modifier = Modifier.height(360.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -626,12 +670,11 @@ fun GlossaryBrowserBottomSheet(
                 items(filtered, key = { it.id }) { term ->
                     Surface(
                         onClick = { onSelectTerm(term) },
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(16.dp),
                         color = palette.cardSurfaceElevated,
-                        border = BorderStroke(1.dp, palette.cardBorder),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
+                        Column(modifier = Modifier.padding(13.dp)) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -640,25 +683,25 @@ fun GlossaryBrowserBottomSheet(
                                 Text(
                                     text = term.arabic,
                                     color = palette.goldAccent,
-                                    fontSize = 14.sp,
+                                    fontSize = 15.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
                                     text = "Seri ${term.episodeNumber}",
                                     color = palette.textMuted,
-                                    fontSize = 10.sp
+                                    fontSize = 10.5.sp
                                 )
                             }
                             Text(
                                 text = "${term.term} (${term.transliteration})",
                                 color = palette.textPrimary,
-                                fontSize = 13.sp,
+                                fontSize = 13.5.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
                                 text = term.meaning,
                                 color = palette.textSecondary,
-                                fontSize = 11.sp,
+                                fontSize = 11.5.sp,
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -694,14 +737,14 @@ fun GlossaryTermBottomSheet(
             Text(
                 text = term.arabic,
                 color = palette.goldAccent,
-                fontSize = 22.sp,
+                fontSize = 23.sp,
                 fontWeight = FontWeight.Bold
             )
             Column {
                 Text(
                     text = term.term,
                     color = palette.textPrimary,
-                    fontSize = 17.sp,
+                    fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
@@ -712,19 +755,18 @@ fun GlossaryTermBottomSheet(
             }
 
             Surface(
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(16.dp),
                 color = palette.cardSurfaceElevated,
-                border = BorderStroke(1.dp, palette.cardBorder),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.padding(12.dp)) {
+                Column(modifier = Modifier.padding(14.dp)) {
                     Text(
                         text = "Arti & Definisi",
                         color = palette.emeraldPrimary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold
                     )
-                    Spacer(modifier = Modifier.height(3.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = term.meaning,
                         color = palette.textPrimary,
@@ -736,23 +778,22 @@ fun GlossaryTermBottomSheet(
 
             if (term.fiqhNote.isNotBlank()) {
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(16.dp),
                     color = palette.highlightSurface,
-                    border = BorderStroke(1.dp, palette.highlightBorder),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
+                    Column(modifier = Modifier.padding(14.dp)) {
                         Text(
                             text = "Catatan Kaidah Syaikh",
                             color = palette.emeraldPrimary,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
-                        Spacer(modifier = Modifier.height(3.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = term.fiqhNote,
                             color = palette.textPrimary,
-                            fontSize = 12.sp,
+                            fontSize = 12.5.sp,
                             lineHeight = 18.sp
                         )
                     }
@@ -761,23 +802,22 @@ fun GlossaryTermBottomSheet(
 
             if (term.exampleInVideo.isNotBlank()) {
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = palette.goldAccent.copy(alpha = 0.08f),
-                    border = BorderStroke(1.dp, palette.goldAccent.copy(alpha = 0.25f)),
+                    shape = RoundedCornerShape(16.dp),
+                    color = palette.goldSoft,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
+                    Column(modifier = Modifier.padding(14.dp)) {
                         Text(
                             text = "Contoh Kasus di Kajian",
                             color = palette.goldAccent,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
-                        Spacer(modifier = Modifier.height(3.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = term.exampleInVideo,
                             color = palette.textPrimary,
-                            fontSize = 12.sp,
+                            fontSize = 12.5.sp,
                             lineHeight = 18.sp
                         )
                     }
@@ -787,25 +827,25 @@ fun GlossaryTermBottomSheet(
             if (term.blockId.isNotBlank()) {
                 Surface(
                     onClick = { onJumpToVideo(term) },
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(16.dp),
                     color = palette.emeraldPrimary,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
-                        modifier = Modifier.padding(vertical = 12.dp),
+                        modifier = Modifier.padding(vertical = 13.dp),
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.PlayArrow,
                             contentDescription = null,
-                            tint = palette.cardSurface,
+                            tint = if (palette.isDark) Color(0xFF03231D) else Color.White,
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "Putar Contoh di Video",
-                            color = palette.cardSurface,
+                            text = "Putar Penjelasan di Video",
+                            color = if (palette.isDark) Color(0xFF03231D) else Color.White,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold
                         )

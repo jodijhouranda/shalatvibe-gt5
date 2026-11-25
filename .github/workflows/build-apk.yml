@@ -68,12 +68,12 @@ jobs:
           APK_FILE="Jadwal-${TAG}-release.apk"
           cat > /tmp/release_notes.md <<'NOTES'
           Rilis resmi **Jadwal** (Release APK teroptimasi R8 + *signed keystore* permanen):
-          - Desain modern Kotlin + Jetpack Compose + Material 3 (*AMOLED Dark* & *Serene Light*)
-          - **Tab Jadwal**: *Dynamic Atmosphere Hero Card*, *Solar Arc*, *live countdown* 1 detik, Kalender Hijriah offline, 52 kota Indonesia, override getar per shalat, & *Home Screen Widget*
-          - **Tab Belajar**: Modul Bahasa Arab harian (TAFL) *Split-View* YouTube presisi menit + sub-segmen + *Auto-Loop* + PDF Viewer native + *Hybrid Sync* (`lessons/catalog.json`)
-          - **Tab Kiblat**: Kompas presisi bergaya bezel Huawei Watch GT 5
-          - **Tab GT 5 Hub**: Pratinjau layar bulat GT 5, Readiness Check 4-poin, Tes Getar 5 detik, & checklist Huawei Health
-          - Ikon baru **Jadwal** (huruf **ج** + sabit & titik matahari emas)
+          - **Redesign Tonal Modern**: Tampilan baru **Tab Jadwal**, **Pustaka Belajar**, & **Ruang Belajar** dengan *tonal layering* bersih tanpa tumpukan border, hero card berkarakter, serta tipografi editorial yang lega (*AMOLED Dark* & *Serene Light*)
+          - **Transkrip Fiqh Muamalah Terkalibrasi**: Seluruh 5 seri kajian Syaikh Abdussalam asy-Syuwai'ir diselaraskan kata demi kata dengan teks Arab kitab resmi *Tafrigh Daurah Tabuk* & *timestamp* rekaman asli per ±15–30 detik, lengkap dengan *auto-highlight* dan *auto-scroll* mengikuti pemutar YouTube
+          - **Tab Jadwal**: *Atmosphere Hero Card*, *Solar Arc*, *live countdown* 1 detik, Kalender Hijriah offline, 52 kota Indonesia, override getar per shalat, & *Home Screen Widget*
+          - **Tab Belajar**: Kursus Berseri (*Split-View* video + transkrip interaktif + glosarium + PDF kitab 96 hal.) & Bahasa Arab harian (TAFL) + *Auto-Loop* + *Hybrid Sync*
+          - **Tab Kiblat & GT 5 Hub**: Kompas bezel Huawei Watch GT 5, pratinjau layar bulat GT 5, Readiness Check 4-poin, & Tes Getar 5 detik
+          - Ikon **Jadwal** (huruf **ج** + sabit & titik matahari emas)
           NOTES
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "$APK_FILE" --clobber

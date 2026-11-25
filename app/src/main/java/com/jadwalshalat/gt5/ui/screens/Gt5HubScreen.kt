@@ -169,9 +169,8 @@ fun Gt5HubScreen(
         // 5. Huawei Health Guide Checklist & Theme shortcuts
         item(key = "guide_and_theme") {
             Surface(
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(22.dp),
                 color = palette.cardSurface,
-                border = BorderStroke(1.dp, palette.cardBorder),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column {
@@ -218,7 +217,8 @@ fun Gt5HubScreen(
                     }
 
                     HorizontalDivider(
-                        color = palette.cardBorder,
+                        thickness = 0.5.dp,
+                        color = palette.hairline,
                         modifier = Modifier.padding(horizontal = 16.dp)
                     )
 
@@ -270,9 +270,8 @@ fun Gt5HubScreen(
         // 6. Last Alarm Log Footer Card
         item(key = "last_log") {
             Surface(
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(18.dp),
                 color = palette.cardSurface,
-                border = BorderStroke(1.dp, palette.cardBorder),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -326,7 +325,6 @@ private fun WatchGt5LivePreviewCard(state: ShalatVibeUiState) {
     Surface(
         shape = RoundedCornerShape(24.dp),
         color = palette.cardSurface,
-        border = BorderStroke(1.dp, palette.cardBorder),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
@@ -481,9 +479,8 @@ private fun ReadinessHealthCheckCard(
 ) {
     val palette = LocalShalatVibePalette.current
     Surface(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(22.dp),
         color = palette.cardSurface,
-        border = BorderStroke(1.dp, palette.cardBorder),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -557,9 +554,8 @@ private fun HealthCheckTile(
 
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(16.dp),
         color = bg,
-        border = BorderStroke(1.dp, fg.copy(alpha = 0.25f)),
         modifier = modifier
     ) {
         Row(
@@ -603,9 +599,8 @@ private fun TestVibeLabCard(
     val isCounting = delayedCountdown > 0
 
     Surface(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(22.dp),
         color = palette.cardSurface,
-        border = BorderStroke(1.dp, palette.cardBorder),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -635,7 +630,7 @@ private fun TestVibeLabCard(
             Button(
                 onClick = onTestDelayed5s,
                 enabled = !isCounting,
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = palette.emeraldPrimary,
                     contentColor = if (palette.isDark) Color(0xFF03231D) else Color.White,
@@ -659,27 +654,32 @@ private fun TestVibeLabCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            OutlinedButton(
+            Surface(
                 onClick = onTestImmediate,
-                shape = RoundedCornerShape(14.dp),
-                border = BorderStroke(1.dp, palette.cardBorder),
+                shape = RoundedCornerShape(16.dp),
+                color = palette.pillBg,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(44.dp)
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.Send,
-                    contentDescription = null,
-                    tint = palette.emeraldPrimary,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Kirim Notifikasi Tes Sekarang",
-                    color = palette.textPrimary,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.Send,
+                        contentDescription = null,
+                        tint = palette.emeraldPrimary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Kirim Notifikasi Tes Sekarang",
+                        color = palette.textPrimary,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
         }
     }
@@ -700,9 +700,8 @@ private fun ReminderSettingsCard(
     val minuteOptions = listOf(5, 10, 15, 20, 30)
 
     Surface(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(22.dp),
         color = palette.cardSurface,
-        border = BorderStroke(1.dp, palette.cardBorder),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -722,7 +721,7 @@ private fun ReminderSettingsCard(
                 onCheckedChange = onToggleMasterReminder
             )
 
-            HorizontalDivider(color = palette.cardBorder, modifier = Modifier.padding(vertical = 10.dp))
+            HorizontalDivider(thickness = 0.5.dp, color = palette.hairline, modifier = Modifier.padding(vertical = 10.dp))
 
             Text(
                 text = "Jeda getar sebelum waktu shalat (Global)",

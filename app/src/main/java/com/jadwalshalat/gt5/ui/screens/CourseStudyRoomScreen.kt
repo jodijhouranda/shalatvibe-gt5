@@ -3,18 +3,24 @@ package com.jadwalshalat.gt5.ui.screens
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -23,7 +29,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -31,6 +38,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.automirrored.rounded.MenuBook
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.ExpandLess
@@ -48,15 +56,20 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -74,6 +87,7 @@ import com.jadwalshalat.gt5.ui.components.ArabicYouTubePlayerView
 import com.jadwalshalat.gt5.ui.components.PdfDocumentViewer
 import com.jadwalshalat.gt5.ui.components.YouTubePlayerController
 import com.jadwalshalat.gt5.ui.theme.LocalShalatVibePalette
+import kotlinx.coroutines.launch
 import java.io.File
 
 private enum class StudyPaneTab {
@@ -102,13 +116,15 @@ fun CourseStudyRoomScreen(
 ) {
     val context = LocalContext.current
     val palette = LocalShalatVibePalette.current
+    val scope = rememberCoroutineScope()
     BackHandler(onBack = onBack)
 
-    // Pertahankan YouTubePlayerController per youtubeVideoId agar pindah blok di seri yang sama instan
+    // Continuous playback across block segments (loop disabled by default so segments flow naturally)
     val ytController = remember(episode.youtubeVideoId) {
         YouTubePlayerController(
             initialStartSec = block.startSec,
-            initialEndSec = block.endSec
+            initialEndSec = block.endSec,
+            initialLoopEnabled = false
         )
     }
 
@@ -125,8 +141,47 @@ fun CourseStudyRoomScreen(
 
     var activePane by remember(block.id) { mutableStateOf(StudyPaneTab.TRANSCRIPT) }
     var isVideoCollapsed by remember { mutableStateOf(false) }
-    var activeSegmentId by remember(block.id) { mutableStateOf<String?>(null) }
     var selectedTerm by remember { mutableStateOf<GlossaryTerm?>(null) }
+
+    // Live active segment tracking current video seconds
+    val currentSec = ytController.currentSeconds
+    val activeSegmentIndex by remember(block.id, block.segments, currentSec) {
+        derivedStateOf {
+            val segs = block.segments
+            if (segs.isEmpty()) -1
+            else {
+                val exact = segs.indexOfFirst { currentSec >= it.startSec && currentSec < it.endSec }
+                if (exact >= 0) exact
+                else if (currentSec >= segs.last().endSec) segs.lastIndex
+                else 0
+            }
+        }
+    }
+
+    val transcriptListState = rememberLazyListState()
+    var isAutoFollowEnabled by remember(block.id) { mutableStateOf(true) }
+    var isProgrammaticScroll by remember { mutableStateOf(false) }
+
+    // Detect manual user scrolling to pause auto-scroll without interrupting reading
+    LaunchedEffect(transcriptListState.isScrollInProgress) {
+        if (transcriptListState.isScrollInProgress && !isProgrammaticScroll) {
+            isAutoFollowEnabled = false
+        }
+    }
+
+    // Auto-scroll smoothly when the active segment changes while playing/following
+    LaunchedEffect(activeSegmentIndex, isAutoFollowEnabled, activePane) {
+        if (activePane == StudyPaneTab.TRANSCRIPT && isAutoFollowEnabled && activeSegmentIndex >= 0) {
+            // Item 0 in LazyColumn is the block summary strip; segment i is at index i + 1
+            val targetItemIndex = activeSegmentIndex + 1
+            isProgrammaticScroll = true
+            try {
+                transcriptListState.animateScrollToItem(targetItemIndex)
+            } finally {
+                isProgrammaticScroll = false
+            }
+        }
+    }
 
     val openExternalYouTube: () -> Unit = {
         val sec = ytController.currentSeconds.takeIf { it > 0 } ?: block.startSec
@@ -135,7 +190,7 @@ fun CourseStudyRoomScreen(
     }
 
     val videoHeight by animateDpAsState(
-        targetValue = if (isVideoCollapsed) 1.dp else 204.dp,
+        targetValue = if (isVideoCollapsed) 1.dp else 198.dp,
         animationSpec = tween(240),
         label = "course_video_height"
     )
@@ -146,12 +201,12 @@ fun CourseStudyRoomScreen(
             .background(palette.background)
             .statusBarsPadding()
     ) {
-        // 1. Compact Header Bar
+        // 1. Sleek Borderless Theatre Header
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(palette.cardSurface)
-                .padding(horizontal = 8.dp, vertical = 6.dp),
+                .background(palette.pillBg)
+                .padding(horizontal = 6.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onBack) {
@@ -166,7 +221,7 @@ fun CourseStudyRoomScreen(
                 Text(
                     text = "Seri ${episode.episodeNumber} • ${block.title}",
                     color = palette.textPrimary,
-                    fontSize = 13.sp,
+                    fontSize = 13.5.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -183,8 +238,8 @@ fun CourseStudyRoomScreen(
             if (activePane == StudyPaneTab.PDF_BOOK) {
                 Surface(
                     onClick = onCycleReadingMode,
-                    shape = RoundedCornerShape(10.dp),
-                    color = palette.pillBg,
+                    shape = CircleShape,
+                    color = palette.cardSurface,
                     modifier = Modifier.padding(end = 4.dp)
                 ) {
                     Text(
@@ -192,12 +247,15 @@ fun CourseStudyRoomScreen(
                         color = palette.textPrimary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                     )
                 }
             }
 
-            IconButton(onClick = { isVideoCollapsed = !isVideoCollapsed }) {
+            IconButton(
+                onClick = { isVideoCollapsed = !isVideoCollapsed },
+                modifier = Modifier.size(34.dp)
+            ) {
                 Icon(
                     imageVector = if (isVideoCollapsed) Icons.Rounded.ExpandMore else Icons.Rounded.ExpandLess,
                     contentDescription = if (isVideoCollapsed) "Tampilkan video" else "Ciutkan video",
@@ -205,12 +263,30 @@ fun CourseStudyRoomScreen(
                 )
             }
 
-            IconButton(onClick = onToggleBlockCompleted) {
-                Icon(
-                    imageVector = Icons.Rounded.CheckCircle,
-                    contentDescription = "Tandai blok selesai",
-                    tint = if (isCompleted) palette.emeraldPrimary else palette.textMuted
-                )
+            Surface(
+                onClick = onToggleBlockCompleted,
+                shape = CircleShape,
+                color = if (isCompleted) palette.emeraldSoft else palette.cardSurface,
+                modifier = Modifier.padding(end = 6.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.CheckCircle,
+                        contentDescription = "Tandai blok selesai",
+                        tint = if (isCompleted) palette.emeraldPrimary else palette.textMuted,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = if (isCompleted) "Selesai" else "Tandai",
+                        color = if (isCompleted) palette.emeraldPrimary else palette.textSecondary,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
 
@@ -219,7 +295,7 @@ fun CourseStudyRoomScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(videoHeight)
-                .background(palette.cardSurface)
+                .background(Color.Black)
         ) {
             ArabicYouTubePlayerView(
                 videoId = episode.youtubeVideoId,
@@ -229,140 +305,151 @@ fun CourseStudyRoomScreen(
             )
         }
 
-        // 3. Playback Controls & Speed Toolbar
-        Surface(
-            color = palette.cardSurface,
-            border = BorderStroke(1.dp, palette.cardBorder),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Surface(
-                    onClick = { ytController.togglePlayPause() },
-                    shape = CircleShape,
-                    color = palette.emeraldPrimary,
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = if (ytController.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                            contentDescription = "Play/Pause",
-                            tint = palette.cardSurface,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
-
-                Surface(
-                    onClick = { ytController.replayWindow() },
-                    shape = CircleShape,
-                    color = palette.pillBg,
-                    modifier = Modifier.size(30.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Rounded.Replay,
-                            contentDescription = "Ulangi blok",
-                            tint = palette.textPrimary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                }
-
-                Surface(
-                    onClick = { ytController.setLoop(!ytController.loopEnabled) },
-                    shape = RoundedCornerShape(8.dp),
-                    color = if (ytController.loopEnabled) palette.emeraldSoft else palette.pillBg
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 5.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Repeat,
-                            contentDescription = "Loop blok",
-                            tint = if (ytController.loopEnabled) palette.emeraldPrimary else palette.textSecondary,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(modifier = Modifier.width(3.dp))
-                        Text(
-                            text = "Loop",
-                            color = if (ytController.loopEnabled) palette.emeraldPrimary else palette.textSecondary,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-
-                listOf(0.75f, 1.0f, 1.25f).forEach { speed ->
-                    val active = kotlin.math.abs(ytController.playbackRate - speed) < 0.05f
-                    Surface(
-                        onClick = { ytController.setSpeed(speed) },
-                        shape = RoundedCornerShape(8.dp),
-                        color = if (active) palette.goldAccent.copy(alpha = 0.16f) else palette.pillBg
-                    ) {
-                        Text(
-                            text = if (speed == 1.0f) "1x" else "${speed}x",
-                            color = if (active) palette.goldAccent else palette.textSecondary,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 5.dp)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                Text(
-                    text = ArabicCatalogParser.formatTimestamp(
-                        ytController.currentSeconds.takeIf { it > 0 } ?: block.startSec
-                    ),
-                    color = palette.textSecondary,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium
-                )
-
-                IconButton(
-                    onClick = openExternalYouTube,
-                    modifier = Modifier.size(28.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
-                        contentDescription = "Buka di YouTube",
-                        tint = palette.textSecondary,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            }
-        }
-
-        // 4. Dual-Mode Toggle [ Teks & Arti | Buku PDF ]
+        // 3. Unified Borderless Playback Controls & Speed Toolbar
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(palette.background)
-                .padding(horizontal = 14.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                .background(palette.pillBg)
+                .padding(horizontal = 12.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            StudyModeTabButton(
-                label = "Teks & Arti",
-                icon = Icons.Rounded.Translate,
-                selected = activePane == StudyPaneTab.TRANSCRIPT,
-                onClick = { activePane = StudyPaneTab.TRANSCRIPT },
-                modifier = Modifier.weight(1f)
+            Surface(
+                onClick = { ytController.togglePlayPause() },
+                shape = CircleShape,
+                color = palette.emeraldPrimary,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = if (ytController.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                        contentDescription = "Play/Pause",
+                        tint = if (palette.isDark) Color(0xFF03231D) else Color.White,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+
+            Surface(
+                onClick = {
+                    isAutoFollowEnabled = true
+                    ytController.replayWindow()
+                },
+                shape = CircleShape,
+                color = palette.cardSurfaceElevated,
+                modifier = Modifier.size(30.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Rounded.Replay,
+                        contentDescription = "Ulangi blok",
+                        tint = palette.textPrimary,
+                        modifier = Modifier.size(15.dp)
+                    )
+                }
+            }
+
+            Surface(
+                onClick = { ytController.setLoop(!ytController.loopEnabled) },
+                shape = CircleShape,
+                color = if (ytController.loopEnabled) palette.emeraldSoft else palette.cardSurfaceElevated
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Repeat,
+                        contentDescription = "Loop blok",
+                        tint = if (ytController.loopEnabled) palette.emeraldPrimary else palette.textSecondary,
+                        modifier = Modifier.size(13.dp)
+                    )
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Text(
+                        text = "Loop",
+                        color = if (ytController.loopEnabled) palette.emeraldPrimary else palette.textSecondary,
+                        fontSize = 10.5.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            listOf(0.75f, 1.0f, 1.25f).forEach { speed ->
+                val active = kotlin.math.abs(ytController.playbackRate - speed) < 0.05f
+                Surface(
+                    onClick = { ytController.setSpeed(speed) },
+                    shape = CircleShape,
+                    color = if (active) palette.goldSoft else palette.cardSurfaceElevated
+                ) {
+                    Text(
+                        text = if (speed == 1.0f) "1x" else "${speed}x",
+                        color = if (active) palette.goldAccent else palette.textSecondary,
+                        fontSize = 10.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            Text(
+                text = "${ArabicCatalogParser.formatTimestamp(currentSec.takeIf { it > 0 } ?: block.startSec)} / ${ArabicCatalogParser.formatTimestamp(block.endSec)}",
+                style = TextStyle(
+                    color = palette.textPrimary,
+                    fontSize = 11.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFeatureSettings = "tnum"
+                )
             )
-            StudyModeTabButton(
-                label = "Kitab PDF (Hal. ${block.pdfPageHint})",
-                icon = Icons.AutoMirrored.Rounded.MenuBook,
-                selected = activePane == StudyPaneTab.PDF_BOOK,
-                onClick = { activePane = StudyPaneTab.PDF_BOOK },
-                modifier = Modifier.weight(1f)
-            )
+
+            IconButton(
+                onClick = openExternalYouTube,
+                modifier = Modifier.size(26.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
+                    contentDescription = "Buka di YouTube",
+                    tint = palette.textSecondary,
+                    modifier = Modifier.size(15.dp)
+                )
+            }
+        }
+
+        // 4. Sleek Tonal Segmented Switcher [ Teks & Arti | Kitab PDF ]
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(palette.background)
+                .padding(horizontal = 14.dp, vertical = 9.dp)
+        ) {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = palette.pillBg,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    SegmentedModeButton(
+                        label = "Teks & Arti",
+                        icon = Icons.Rounded.Translate,
+                        selected = activePane == StudyPaneTab.TRANSCRIPT,
+                        onClick = { activePane = StudyPaneTab.TRANSCRIPT },
+                        modifier = Modifier.weight(1f)
+                    )
+                    SegmentedModeButton(
+                        label = "Kitab PDF • Hal. ${block.pdfPageHint}",
+                        icon = Icons.AutoMirrored.Rounded.MenuBook,
+                        selected = activePane == StudyPaneTab.PDF_BOOK,
+                        onClick = { activePane = StudyPaneTab.PDF_BOOK },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
         }
 
         // 5. Dual-Mode Content Pane
@@ -370,29 +457,30 @@ fun CourseStudyRoomScreen(
             when (activePane) {
                 StudyPaneTab.TRANSCRIPT -> {
                     LazyColumn(
+                        state = transcriptListState,
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 4.dp, bottom = 24.dp),
+                        contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 2.dp, bottom = 28.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        // Block Summary & Glossary Pills
+                        // Compact Borderless Summary Strip & Key Glossary Pills
                         item(key = "block_summary") {
                             Surface(
-                                shape = RoundedCornerShape(14.dp),
-                                color = palette.cardSurface,
-                                border = BorderStroke(1.dp, palette.cardBorder),
+                                shape = RoundedCornerShape(18.dp),
+                                color = palette.pillBg,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Column(modifier = Modifier.padding(14.dp)) {
                                     Text(
-                                        text = "Ringkasan Blok",
+                                        text = "RINGKASAN BAHASAN • TAFRIGH RESMI",
                                         color = palette.emeraldPrimary,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 0.8.sp
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
                                         text = block.summary,
-                                        color = palette.textPrimary,
+                                        color = palette.textSecondary,
                                         fontSize = 12.sp,
                                         lineHeight = 18.sp
                                     )
@@ -401,14 +489,7 @@ fun CourseStudyRoomScreen(
                                         block.keyTermIds.mapNotNull { course.glossaryById(it) }
                                     }
                                     if (keyTerms.isNotEmpty()) {
-                                        Spacer(modifier = Modifier.height(10.dp))
-                                        Text(
-                                            text = "Ketuk Istilah untuk Penjelasan & Contoh:",
-                                            color = palette.textSecondary,
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Medium
-                                        )
-                                        Spacer(modifier = Modifier.height(6.dp))
+                                        Spacer(modifier = Modifier.height(9.dp))
                                         FlowRow(
                                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                                             verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -425,25 +506,22 @@ fun CourseStudyRoomScreen(
                             }
                         }
 
-                        // Timestamped Transcript Cards
-                        items(block.segments, key = { it.id }) { segment ->
+                        // Continuous Timestamped Transcript Cards (Auto-Highlight + Auto-Scroll)
+                        itemsIndexed(block.segments, key = { _, seg -> seg.id }) { idx, segment ->
+                            val isActive = idx == activeSegmentIndex
                             TranscriptSegmentCard(
                                 segment = segment,
                                 course = course,
-                                isActive = activeSegmentId == segment.id,
+                                isActive = isActive,
                                 onPlaySegment = {
-                                    activeSegmentId = segment.id
-                                    ytController.setSegmentWindow(
-                                        startSec = segment.startSec,
-                                        endSec = segment.endSec,
-                                        seekNow = true
-                                    )
+                                    isAutoFollowEnabled = true
+                                    ytController.seekTo(segment.startSec, autoPlay = true)
                                 },
                                 onTapGlossaryTerm = { term -> selectedTerm = term }
                             )
                         }
 
-                        // Completion Footer
+                        // Sleek Borderless Bottom Actions
                         item(key = "study_footer") {
                             StudyBlockBottomActions(
                                 isCompleted = isCompleted,
@@ -451,6 +529,52 @@ fun CourseStudyRoomScreen(
                                 onToggleCompleted = onToggleBlockCompleted,
                                 onCompleteAndNext = onCompleteAndNext
                             )
+                        }
+                    }
+
+                    // Floating "Ikuti Video" pill when user manually scrolled away
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = !isAutoFollowEnabled && activeSegmentIndex >= 0,
+                        enter = fadeIn(),
+                        exit = fadeOut(),
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(end = 16.dp, bottom = 18.dp)
+                    ) {
+                        Surface(
+                            onClick = {
+                                isAutoFollowEnabled = true
+                                scope.launch {
+                                    isProgrammaticScroll = true
+                                    try {
+                                        transcriptListState.animateScrollToItem(activeSegmentIndex + 1)
+                                    } finally {
+                                        isProgrammaticScroll = false
+                                    }
+                                }
+                            },
+                            shape = CircleShape,
+                            color = palette.emeraldPrimary,
+                            shadowElevation = 6.dp
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.ArrowDownward,
+                                    contentDescription = null,
+                                    tint = if (palette.isDark) Color(0xFF03231D) else Color.White,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Ikuti Video (${ArabicCatalogParser.formatTimestamp(currentSec)})",
+                                    color = if (palette.isDark) Color(0xFF03231D) else Color.White,
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                 }
@@ -517,6 +641,7 @@ fun CourseStudyRoomScreen(
             onJumpToVideo = { target ->
                 selectedTerm = null
                 if (target.blockId == block.id && target.exampleTimeSec > 0) {
+                    isAutoFollowEnabled = true
                     ytController.seekTo(target.exampleTimeSec, autoPlay = true)
                 } else {
                     val found = course.findEpisodeAndBlock(target.blockId)
@@ -556,7 +681,7 @@ fun CourseFullBookPdfScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(palette.cardSurface)
+                .background(palette.pillBg)
                 .padding(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -586,8 +711,8 @@ fun CourseFullBookPdfScreen(
             }
             Surface(
                 onClick = onCycleReadingMode,
-                shape = RoundedCornerShape(10.dp),
-                color = palette.pillBg,
+                shape = CircleShape,
+                color = palette.cardSurface,
                 modifier = Modifier.padding(end = 6.dp)
             ) {
                 Text(
@@ -595,7 +720,7 @@ fun CourseFullBookPdfScreen(
                     color = palette.textPrimary,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                    modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp)
                 )
             }
         }
@@ -636,22 +761,23 @@ fun CourseFullBookPdfScreen(
 }
 
 @Composable
-private fun StudyModeTabButton(
+private fun SegmentedModeButton(
     label: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val palette = LocalShalatVibePalette.current
+    val bg by animateColorAsState(
+        targetValue = if (selected) palette.cardSurface else Color.Transparent,
+        animationSpec = tween(180),
+        label = "seg_mode_bg"
+    )
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(12.dp),
-        color = if (selected) palette.emeraldPrimary else palette.cardSurface,
-        border = BorderStroke(
-            1.dp,
-            if (selected) palette.emeraldPrimary else palette.cardBorder
-        ),
+        color = bg,
         modifier = modifier
     ) {
         Row(
@@ -662,15 +788,15 @@ private fun StudyModeTabButton(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = if (selected) palette.cardSurface else palette.textSecondary,
-                modifier = Modifier.size(16.dp)
+                tint = if (selected) palette.emeraldPrimary else palette.textSecondary,
+                modifier = Modifier.size(15.dp)
             )
             Spacer(modifier = Modifier.width(6.dp))
             Text(
                 text = label,
-                color = if (selected) palette.cardSurface else palette.textPrimary,
+                color = if (selected) palette.textPrimary else palette.textSecondary,
                 fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -688,85 +814,134 @@ private fun TranscriptSegmentCard(
     onTapGlossaryTerm: (GlossaryTerm) -> Unit
 ) {
     val palette = LocalShalatVibePalette.current
-    Surface(
-        shape = RoundedCornerShape(14.dp),
-        color = if (isActive) palette.highlightSurface else palette.cardSurface,
-        border = BorderStroke(
-            1.dp,
-            if (isActive) palette.highlightBorder else palette.cardBorder
-        ),
-        modifier = Modifier.fillMaxWidth()
+    val containerColor by animateColorAsState(
+        targetValue = if (isActive) palette.highlightSurface else palette.cardSurface,
+        animationSpec = tween(220),
+        label = "transcript_bg"
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(containerColor)
+            .clickable(onClick = onPlaySegment)
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min)
+        ) {
+            if (isActive) {
+                Box(
+                    modifier = Modifier
+                        .width(4.dp)
+                        .fillMaxHeight()
+                        .padding(vertical = 12.dp)
+                        .clip(RoundedCornerShape(topEnd = 4.dp, bottomEnd = 4.dp))
+                        .background(palette.emeraldBright)
+                )
+            }
+
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(
+                        start = if (isActive) 12.dp else 15.dp,
+                        end = 15.dp,
+                        top = 14.dp,
+                        bottom = 14.dp
+                    )
             ) {
-                Surface(
-                    onClick = onPlaySegment,
-                    shape = RoundedCornerShape(8.dp),
-                    color = palette.emeraldSoft
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    Surface(
+                        shape = CircleShape,
+                        color = if (isActive) palette.emeraldPrimary else palette.pillBg
                     ) {
-                        Icon(
-                            imageVector = Icons.Rounded.PlayArrow,
-                            contentDescription = "Putar bagian ini",
-                            tint = palette.emeraldPrimary,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "Putar ${segment.timeRangeLabel}",
-                            color = palette.emeraldPrimary,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Row(
+                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (isActive) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(6.dp)
+                                        .clip(CircleShape)
+                                        .background(if (palette.isDark) Color(0xFF03231D) else Color.White)
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Rounded.PlayArrow,
+                                    contentDescription = "Putar bagian ini",
+                                    tint = palette.textSecondary,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(5.dp))
+                            Text(
+                                text = if (isActive) {
+                                    "${segment.timeRangeLabel} • Diputar"
+                                } else {
+                                    segment.timeRangeLabel
+                                },
+                                style = TextStyle(
+                                    color = if (isActive) {
+                                        if (palette.isDark) Color(0xFF03231D) else Color.White
+                                    } else {
+                                        palette.textSecondary
+                                    },
+                                    fontSize = 10.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFeatureSettings = "tnum"
+                                )
+                            )
+                        }
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(10.dp))
-
-            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                Text(
-                    text = segment.arabic,
-                    color = palette.textPrimary,
-                    fontSize = 18.sp,
-                    lineHeight = 30.sp,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Start
-                )
-            }
-
-            if (segment.indonesian.isNotBlank()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = segment.indonesian,
-                    color = palette.textSecondary,
-                    fontSize = 13.sp,
-                    lineHeight = 19.sp
-                )
-            }
-
-            val terms = remember(segment.termIds, course.glossary) {
-                segment.termIds.mapNotNull { course.glossaryById(it) }
-            }
-            if (terms.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(10.dp))
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    terms.forEach { term ->
-                        GlossaryChip(
-                            term = term,
-                            onClick = { onTapGlossaryTerm(term) }
-                        )
+
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                    Text(
+                        text = segment.arabic,
+                        color = palette.textPrimary,
+                        fontSize = 19.sp,
+                        lineHeight = 32.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Start
+                    )
+                }
+
+                if (segment.indonesian.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = segment.indonesian,
+                        color = if (isActive) palette.textPrimary.copy(alpha = 0.88f) else palette.textSecondary,
+                        fontSize = 13.sp,
+                        lineHeight = 20.sp
+                    )
+                }
+
+                val terms = remember(segment.termIds, course.glossary) {
+                    segment.termIds.mapNotNull { course.glossaryById(it) }
+                }
+                if (terms.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        terms.forEach { term ->
+                            GlossaryChip(
+                                term = term,
+                                onClick = { onTapGlossaryTerm(term) }
+                            )
+                        }
                     }
                 }
             }
@@ -782,12 +957,11 @@ private fun GlossaryChip(
     val palette = LocalShalatVibePalette.current
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(10.dp),
-        color = palette.goldAccent.copy(alpha = 0.14f),
-        border = BorderStroke(1.dp, palette.goldAccent.copy(alpha = 0.38f))
+        shape = CircleShape,
+        color = palette.goldSoft
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
@@ -800,7 +974,7 @@ private fun GlossaryChip(
             Text(
                 text = "${term.arabic} • ${term.term}",
                 color = palette.goldAccent,
-                fontSize = 11.sp,
+                fontSize = 10.5.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -820,21 +994,17 @@ private fun StudyBlockBottomActions(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 6.dp, bottom = 12.dp),
+            .padding(top = 8.dp, bottom = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Surface(
             onClick = onToggleCompleted,
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(16.dp),
             color = if (isCompleted) palette.emeraldSoft else palette.cardSurface,
-            border = BorderStroke(
-                1.dp,
-                if (isCompleted) palette.emeraldPrimary else palette.cardBorder
-            ),
             modifier = Modifier.weight(1f)
         ) {
             Row(
-                modifier = Modifier.padding(vertical = 11.dp, horizontal = 10.dp),
+                modifier = Modifier.padding(vertical = 13.dp, horizontal = 10.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -848,7 +1018,7 @@ private fun StudyBlockBottomActions(
                 Text(
                     text = if (isCompleted) "Selesai ✓" else "Tandai Selesai",
                     color = if (isCompleted) palette.emeraldPrimary else palette.textPrimary,
-                    fontSize = 12.sp,
+                    fontSize = 12.5.sp,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -857,19 +1027,19 @@ private fun StudyBlockBottomActions(
         if (hasNextBlock) {
             Surface(
                 onClick = onCompleteAndNext,
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(16.dp),
                 color = palette.emeraldPrimary,
                 modifier = Modifier.weight(1f)
             ) {
                 Row(
-                    modifier = Modifier.padding(vertical = 11.dp, horizontal = 10.dp),
+                    modifier = Modifier.padding(vertical = 13.dp, horizontal = 10.dp),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Lanjut Blok Berikutnya",
-                        color = palette.cardSurface,
-                        fontSize = 12.sp,
+                        text = "Blok Berikutnya",
+                        color = if (palette.isDark) Color(0xFF03231D) else Color.White,
+                        fontSize = 12.5.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -878,7 +1048,7 @@ private fun StudyBlockBottomActions(
                     Icon(
                         imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
                         contentDescription = null,
-                        tint = palette.cardSurface,
+                        tint = if (palette.isDark) Color(0xFF03231D) else Color.White,
                         modifier = Modifier.size(16.dp)
                     )
                 }

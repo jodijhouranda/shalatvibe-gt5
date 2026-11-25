@@ -4,7 +4,6 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -21,13 +20,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.LightMode
-import androidx.compose.material.icons.rounded.AccountBalance
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.ChevronRight
@@ -37,11 +34,11 @@ import androidx.compose.material.icons.rounded.NightsStay
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.NotificationsOff
 import androidx.compose.material.icons.rounded.Tune
-import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.material.icons.rounded.Watch
 import androidx.compose.material.icons.rounded.WbCloudy
 import androidx.compose.material.icons.rounded.WbSunny
 import androidx.compose.material.icons.rounded.WbTwilight
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
@@ -98,34 +95,28 @@ fun ScheduleScreen(
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // 1. Minimal Top Bar
+        // 1. Sleek Borderless Top Bar (Location + Method subtitle + GT5 status pill + Theme toggle)
         item(key = "top_bar") {
             ScheduleTopBar(
                 cityName = state.cityName,
                 methodLabel = shortMethodLabel(state.calculationMethod.name),
+                timezoneLabel = state.zoneId.id.substringAfter('/').replace('_', ' '),
+                useIhtiyat = state.useIhtiyat,
+                missingPermCount = state.missingCriticalPermissionCount,
                 isDark = palette.isDark,
                 onOpenCityPicker = onOpenCityPicker,
                 onOpenMethodPicker = onOpenMethodPicker,
+                onNavigateToGt5Hub = onNavigateToGt5Hub,
                 onOpenThemePicker = onOpenThemePicker
             )
         }
 
-        // 2. Compact Readiness Alert Pill (hanya muncul jika izin kritis belum lengkap)
-        if (state.missingCriticalPermissionCount > 0) {
-            item(key = "perm_pill") {
-                PermissionNoticePill(
-                    missingCount = state.missingCriticalPermissionCount,
-                    onClick = onNavigateToGt5Hub
-                )
-            }
-        }
-
-        // 3. Dynamic Atmosphere Hero Card + Solar Arc
+        // 2. Characterful Dynamic Atmosphere Hero Card + Wide Solar Horizon Arc
         item(key = "hero_card") {
             DynamicHeroCard(state = state)
         }
 
-        // 4. Date Switcher
+        // 3. Sleek Borderless Date Switcher
         item(key = "date_switcher") {
             DateSwitcherBar(
                 dateLabel = state.selectedDateHeaderLabel,
@@ -137,14 +128,36 @@ fun ScheduleScreen(
             )
         }
 
-        // 5. Prayer Schedule Cards
-        items(state.prayerRows, key = { it.type.name }) { row ->
-            PrayerScheduleRowCard(
-                row = row,
-                reminderActive = state.reminderActive,
-                onToggleEnabled = { onTogglePrayer(row.type) },
-                onRowClick = { onOpenPrayerDetail(row.type) }
-            )
+        // 4. Unified Tonal Prayer Schedule Surface (Replaces 6 heavy bordered cards)
+        item(key = "prayer_schedule_card") {
+            Surface(
+                shape = RoundedCornerShape(24.dp),
+                color = palette.cardSurface,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    state.prayerRows.forEachIndexed { idx, row ->
+                        PrayerScheduleRowItem(
+                            row = row,
+                            reminderActive = state.reminderActive,
+                            onToggleEnabled = { onTogglePrayer(row.type) },
+                            onRowClick = { onOpenPrayerDetail(row.type) }
+                        )
+                        if (idx < state.prayerRows.lastIndex && !row.isNext && !state.prayerRows[idx + 1].isNext) {
+                            HorizontalDivider(
+                                thickness = 0.5.dp,
+                                color = palette.hairline,
+                                modifier = Modifier.padding(horizontal = 14.dp)
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -153,41 +166,45 @@ fun ScheduleScreen(
 private fun ScheduleTopBar(
     cityName: String,
     methodLabel: String,
+    timezoneLabel: String,
+    useIhtiyat: Boolean,
+    missingPermCount: Int,
     isDark: Boolean,
     onOpenCityPicker: () -> Unit,
     onOpenMethodPicker: () -> Unit,
+    onNavigateToGt5Hub: () -> Unit,
     onOpenThemePicker: () -> Unit
 ) {
     val palette = LocalShalatVibePalette.current
 
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Surface(
-            onClick = onOpenCityPicker,
-            shape = CircleShape,
-            color = palette.cardSurface,
-            border = BorderStroke(1.dp, palette.cardBorder),
-            modifier = Modifier.weight(1f)
-        ) {
+        Column(modifier = Modifier.weight(1f)) {
             Row(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .clickable(onClick = onOpenCityPicker)
+                    .padding(vertical = 2.dp)
             ) {
                 Icon(
                     imageVector = Icons.Rounded.LocationOn,
                     contentDescription = "Pilih lokasi",
                     tint = palette.emeraldPrimary,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(17.dp)
                 )
-                Spacer(modifier = Modifier.width(6.dp))
+                Spacer(modifier = Modifier.width(5.dp))
                 Text(
                     text = cityName,
                     color = palette.textPrimary,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.2).sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false)
@@ -197,44 +214,65 @@ private fun ScheduleTopBar(
                     imageVector = Icons.Rounded.KeyboardArrowDown,
                     contentDescription = null,
                     tint = palette.textSecondary,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(17.dp)
+                )
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable(onClick = onOpenMethodPicker)
+                    .padding(start = 22.dp, top = 1.dp, bottom = 2.dp, end = 6.dp)
+            ) {
+                Text(
+                    text = buildString {
+                        append(methodLabel)
+                        append(" • ")
+                        append(shortZoneTag(timezoneLabel))
+                        if (useIhtiyat) append(" • Ihtiyat +2m")
+                    },
+                    color = palette.textSecondary,
+                    fontSize = 11.5.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
 
+        // Compact Tonal GT 5 Readiness Pill
         Surface(
-            onClick = onOpenMethodPicker,
+            onClick = onNavigateToGt5Hub,
             shape = CircleShape,
-            color = palette.cardSurface,
-            border = BorderStroke(1.dp, palette.cardBorder)
+            color = if (missingPermCount > 0) palette.statusWarnBg else palette.pillBg
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 11.dp, vertical = 9.dp),
+                modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Rounded.AccountBalance,
-                    contentDescription = "Metode hisab",
-                    tint = palette.textSecondary,
-                    modifier = Modifier.size(14.dp)
+                Box(
+                    modifier = Modifier
+                        .size(7.dp)
+                        .clip(CircleShape)
+                        .background(if (missingPermCount > 0) palette.statusWarnFg else palette.emeraldBright)
                 )
-                Spacer(modifier = Modifier.width(5.dp))
+                Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = methodLabel,
-                    color = palette.textPrimary,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1
+                    text = if (missingPermCount > 0) "$missingPermCount Izin" else "GT 5",
+                    color = if (missingPermCount > 0) palette.statusWarnFg else palette.emeraldPrimary,
+                    fontSize = 11.5.sp,
+                    fontWeight = FontWeight.Bold
                 )
             }
         }
 
+        // Borderless Tonal Theme Icon Button
         Surface(
             onClick = onOpenThemePicker,
             shape = CircleShape,
-            color = palette.cardSurface,
-            border = BorderStroke(1.dp, palette.cardBorder),
-            modifier = Modifier.size(38.dp)
+            color = palette.pillBg,
+            modifier = Modifier.size(36.dp)
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
@@ -249,52 +287,11 @@ private fun ScheduleTopBar(
 }
 
 @Composable
-private fun PermissionNoticePill(
-    missingCount: Int,
-    onClick: () -> Unit
-) {
-    val palette = LocalShalatVibePalette.current
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(14.dp),
-        color = palette.statusWarnBg,
-        border = BorderStroke(1.dp, palette.statusWarnFg.copy(alpha = 0.35f)),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.WarningAmber,
-                contentDescription = null,
-                tint = palette.statusWarnFg,
-                modifier = Modifier.size(18.dp)
-            )
-            Spacer(modifier = Modifier.width(10.dp))
-            Text(
-                text = "$missingCount izin GT 5 belum aktif • Ketuk untuk aktifkan",
-                color = palette.statusWarnFg,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.weight(1f)
-            )
-            Icon(
-                imageVector = Icons.Rounded.ChevronRight,
-                contentDescription = null,
-                tint = palette.statusWarnFg,
-                modifier = Modifier.size(18.dp)
-            )
-        }
-    }
-}
-
-@Composable
 private fun DynamicHeroCard(state: ShalatVibeUiState) {
     val palette = LocalShalatVibePalette.current
     val atmosphere = heroAtmosphereFor(state.currentPhase, palette.isDark)
     val animatedProgress by animateFloatAsState(
-        targetValue = state.solarProgress.coerceIn(0.02f, 0.98f),
+        targetValue = state.solarProgress.coerceIn(0.03f, 0.97f),
         animationSpec = tween(durationMillis = 700, easing = FastOutSlowInEasing),
         label = "solar_progress"
     )
@@ -302,7 +299,7 @@ private fun DynamicHeroCard(state: ShalatVibeUiState) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(26.dp))
+            .clip(RoundedCornerShape(28.dp))
             .background(
                 Brush.linearGradient(
                     colors = listOf(
@@ -313,50 +310,86 @@ private fun DynamicHeroCard(state: ShalatVibeUiState) {
                 )
             )
     ) {
-        // Subtle geometric Islamic 8-point star watermark in corners
+        // Ambient radial glow + subtle Islamic geometric watermark
         Canvas(modifier = Modifier.matchParentSize()) {
-            val watermarkColor = Color.White.copy(alpha = 0.045f)
-            drawIslamicStarWatermark(
-                center = Offset(size.width * 0.92f, size.height * 0.18f),
-                radius = 64.dp.toPx(),
-                color = watermarkColor
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(atmosphere.orbColor.copy(alpha = 0.16f), Color.Transparent),
+                    center = Offset(size.width * 0.84f, size.height * 0.16f),
+                    radius = 120.dp.toPx()
+                ),
+                radius = 120.dp.toPx(),
+                center = Offset(size.width * 0.84f, size.height * 0.16f)
             )
             drawIslamicStarWatermark(
-                center = Offset(size.width * 0.08f, size.height * 0.85f),
-                radius = 52.dp.toPx(),
-                color = watermarkColor
+                center = Offset(size.width * 0.90f, size.height * 0.22f),
+                radius = 58.dp.toPx(),
+                color = Color.White.copy(alpha = 0.045f)
             )
         }
 
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 20.dp),
+                .padding(horizontal = 18.dp, vertical = 18.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Solar Arc + Countdown overlay
+            // Top Phase & Hijri Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "${atmosphere.phaseLabel.uppercase()} • ${state.currentPhase.displayName.uppercase()}",
+                    color = Color(0xFFD1FAE5).copy(alpha = 0.85f),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.3.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                if (state.hijriDateLabel.isNotBlank()) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Surface(
+                        shape = CircleShape,
+                        color = Color.White.copy(alpha = 0.11f)
+                    ) {
+                        Text(
+                            text = state.hijriDateLabel,
+                            color = Color.White.copy(alpha = 0.92f),
+                            fontSize = 10.5.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Wide Solar Horizon Arc + Generously Spaced Editorial Countdown
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(148.dp),
+                    .height(140.dp),
                 contentAlignment = Alignment.BottomCenter
             ) {
                 Canvas(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(148.dp)
+                        .height(140.dp)
                 ) {
                     val strokePx = 4.dp.toPx()
-                    val diameter = minOf(size.width - 36.dp.toPx(), 248.dp.toPx())
+                    val diameter = minOf(size.width - 28.dp.toPx(), 262.dp.toPx())
                     val topLeft = Offset(
                         x = (size.width - diameter) / 2f,
                         y = 14.dp.toPx()
                     )
                     val arcSize = Size(diameter, diameter)
-
-                    // Background arc track (195° to 345° -> sweep 150°? Better: 190° sweep 160°)
-                    val startAngle = 190f
-                    val maxSweep = 160f
+                    val startAngle = 192f
+                    val maxSweep = 156f
 
                     drawArc(
                         color = atmosphere.arcTrackColor,
@@ -384,7 +417,6 @@ private fun DynamicHeroCard(state: ShalatVibeUiState) {
                         style = Stroke(width = strokePx + 1.dp.toPx(), cap = StrokeCap.Round)
                     )
 
-                    // Glowing celestial orb at the tip of the arc
                     val angleRad = Math.toRadians((startAngle + activeSweep).toDouble())
                     val r = diameter / 2f
                     val centerX = topLeft.x + r
@@ -394,43 +426,35 @@ private fun DynamicHeroCard(state: ShalatVibeUiState) {
 
                     drawCircle(
                         color = atmosphere.orbColor.copy(alpha = 0.28f),
-                        radius = 12.dp.toPx(),
+                        radius = 11.dp.toPx(),
                         center = Offset(orbX, orbY)
                     )
                     drawCircle(
                         color = atmosphere.orbColor,
-                        radius = 5.5.dp.toPx(),
+                        radius = 5.dp.toPx(),
                         center = Offset(orbX, orbY)
                     )
                 }
 
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.padding(bottom = 4.dp)
+                    modifier = Modifier.padding(bottom = 10.dp)
                 ) {
-                    Text(
-                        text = atmosphere.phaseLabel.uppercase(),
-                        color = Color.White.copy(alpha = 0.68f),
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        letterSpacing = 1.4.sp
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = state.countdownFormatted,
                         style = TextStyle(
                             color = Color.White,
-                            fontSize = 40.sp,
+                            fontSize = 36.sp,
                             fontWeight = FontWeight.Bold,
                             fontFeatureSettings = "tnum",
-                            letterSpacing = (-0.5).sp
+                            letterSpacing = (-0.6).sp
                         )
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
+                    Spacer(modifier = Modifier.height(3.dp))
                     Text(
                         text = "Menuju ${state.nextPrayer.displayName} • ${state.nextPrayerTimeFormatted}",
                         color = Color(0xFFD1FAE5),
-                        fontSize = 15.sp,
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -438,28 +462,14 @@ private fun DynamicHeroCard(state: ShalatVibeUiState) {
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Gregorian & Hijri Date line
-            Text(
-                text = if (state.hijriDateLabel.isNotBlank()) {
-                    "${state.gregorianDateLabel}  •  ${state.hijriDateLabel}"
-                } else {
-                    state.gregorianDateLabel
-                },
-                color = Color.White.copy(alpha = 0.78f),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // GT 5 Next Vibration Frosted Pill
+            // Integrated Frosted Watch Dock (no harsh border)
             Surface(
-                shape = CircleShape,
-                color = Color.White.copy(alpha = 0.13f),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.16f))
+                shape = RoundedCornerShape(16.dp),
+                color = Color.White.copy(alpha = 0.11f),
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 13.dp, vertical = 7.dp),
+                    modifier = Modifier.padding(horizontal = 13.dp, vertical = 9.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
@@ -468,14 +478,15 @@ private fun DynamicHeroCard(state: ShalatVibeUiState) {
                         tint = Color(0xFF6EE7B7),
                         modifier = Modifier.size(15.dp)
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = state.nextGt5TriggerSummary,
-                        color = Color.White.copy(alpha = 0.95f),
-                        fontSize = 12.sp,
+                        color = Color.White.copy(alpha = 0.94f),
+                        fontSize = 11.5.sp,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
                     )
                 }
             }
@@ -491,7 +502,7 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawIslamicStarWate
     val side = radius * 1.35f
     val topLeft = Offset(center.x - side / 2f, center.y - side / 2f)
     val squareSize = Size(side, side)
-    val stroke = Stroke(width = 1.5.dp.toPx())
+    val stroke = Stroke(width = 1.4.dp.toPx())
     drawRect(color = color, topLeft = topLeft, size = squareSize, style = stroke)
     rotate(degrees = 45f, pivot = center) {
         drawRect(color = color, topLeft = topLeft, size = squareSize, style = stroke)
@@ -512,12 +523,12 @@ private fun DateSwitcherBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 4.dp, bottom = 2.dp),
+            .padding(horizontal = 2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         IconButton(
             onClick = onPreviousDay,
-            modifier = Modifier.size(34.dp)
+            modifier = Modifier.size(32.dp)
         ) {
             Icon(
                 imageVector = Icons.Rounded.ChevronLeft,
@@ -533,7 +544,7 @@ private fun DateSwitcherBar(
             Text(
                 text = dateLabel,
                 color = palette.textPrimary,
-                fontSize = 14.sp,
+                fontSize = 13.5.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -566,7 +577,7 @@ private fun DateSwitcherBar(
 
         IconButton(
             onClick = onNextDay,
-            modifier = Modifier.size(34.dp)
+            modifier = Modifier.size(32.dp)
         ) {
             Icon(
                 imageVector = Icons.Rounded.ChevronRight,
@@ -578,7 +589,7 @@ private fun DateSwitcherBar(
 }
 
 @Composable
-private fun PrayerScheduleRowCard(
+private fun PrayerScheduleRowItem(
     row: PrayerRowUi,
     reminderActive: Boolean,
     onToggleEnabled: () -> Unit,
@@ -587,65 +598,60 @@ private fun PrayerScheduleRowCard(
     val palette = LocalShalatVibePalette.current
     val haptic = LocalHapticFeedback.current
 
-    val containerColor by animateColorAsState(
-        targetValue = if (row.isNext) palette.highlightSurface else palette.cardSurface,
+    val rowBg by animateColorAsState(
+        targetValue = if (row.isNext) palette.highlightSurface else Color.Transparent,
         animationSpec = tween(250),
         label = "row_bg"
     )
-    val borderColor by animateColorAsState(
-        targetValue = if (row.isNext) palette.highlightBorder else palette.cardBorder,
-        animationSpec = tween(250),
-        label = "row_border"
-    )
 
-    val rowAlpha = if (row.isPassed && !row.isNext) 0.62f else 1f
+    val rowAlpha = if (row.isPassed && !row.isNext) 0.56f else 1f
     val bellActive = reminderActive && row.isEnabled
 
-    Surface(
-        shape = RoundedCornerShape(18.dp),
-        color = containerColor,
-        border = BorderStroke(if (row.isNext) 1.5.dp else 1.dp, borderColor),
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .alpha(rowAlpha)
             .clip(RoundedCornerShape(18.dp))
+            .background(rowBg)
             .clickable(onClick = onRowClick)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 13.dp),
+                .padding(horizontal = 12.dp, vertical = if (row.isNext) 13.dp else 11.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Celestial Prayer Icon
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(
-                        if (row.isNext) palette.emeraldPrimary.copy(alpha = 0.16f)
-                        else palette.pillBg
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = prayerIcon(row.type),
-                    contentDescription = null,
-                    tint = if (row.isNext) palette.emeraldPrimary else palette.textSecondary,
-                    modifier = Modifier.size(20.dp)
+            if (row.isNext) {
+                Box(
+                    modifier = Modifier
+                        .width(3.5.dp)
+                        .height(26.dp)
+                        .clip(CircleShape)
+                        .background(palette.emeraldBright)
                 )
+                Spacer(modifier = Modifier.width(10.dp))
             }
+
+            Icon(
+                imageVector = prayerIcon(row.type),
+                contentDescription = null,
+                tint = when {
+                    row.isNext -> palette.emeraldPrimary
+                    row.type == PrayerType.TERBIT || row.type == PrayerType.MAGHRIB -> palette.goldAccent
+                    else -> palette.textSecondary
+                },
+                modifier = Modifier.size(19.dp)
+            )
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // Name + Next badge + Reminder subtitle
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = row.type.displayName,
                         color = palette.textPrimary,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold
+                        fontSize = if (row.isNext) 15.5.sp else 14.5.sp,
+                        fontWeight = if (row.isNext) FontWeight.Bold else FontWeight.SemiBold
                     )
                     if (row.isNext) {
                         Spacer(modifier = Modifier.width(8.dp))
@@ -656,9 +662,9 @@ private fun PrayerScheduleRowCard(
                             Text(
                                 text = "Berikutnya",
                                 color = if (palette.isDark) Color(0xFF03231D) else Color.White,
-                                fontSize = 10.sp,
+                                fontSize = 9.5.sp,
                                 fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
                             )
                         }
                     } else if (row.hasCustomOverride && row.isEnabled) {
@@ -671,24 +677,23 @@ private fun PrayerScheduleRowCard(
                         )
                     }
                 }
-                Spacer(modifier = Modifier.height(2.dp))
+                Spacer(modifier = Modifier.height(1.dp))
                 Text(
                     text = row.reminderSubtitle,
-                    color = palette.textSecondary,
-                    fontSize = 12.sp,
+                    color = if (row.isNext) palette.emeraldPrimary else palette.textSecondary,
+                    fontSize = 11.5.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
 
-            Spacer(modifier = Modifier.width(10.dp))
+            Spacer(modifier = Modifier.width(8.dp))
 
-            // Tabular Prayer Time
             Text(
                 text = row.formattedTime,
                 style = TextStyle(
                     color = if (row.isNext) palette.emeraldPrimary else palette.textPrimary,
-                    fontSize = 18.sp,
+                    fontSize = if (row.isNext) 18.sp else 16.sp,
                     fontWeight = FontWeight.Bold,
                     fontFeatureSettings = "tnum"
                 )
@@ -696,19 +701,14 @@ private fun PrayerScheduleRowCard(
 
             Spacer(modifier = Modifier.width(10.dp))
 
-            // Lightweight interactive Bell / Vibrate Toggle Button
             Surface(
                 onClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     onToggleEnabled()
                 },
                 shape = CircleShape,
-                color = if (bellActive) {
-                    palette.emeraldPrimary.copy(alpha = if (palette.isDark) 0.22f else 0.14f)
-                } else {
-                    palette.pillBg
-                },
-                modifier = Modifier.size(36.dp)
+                color = if (bellActive) palette.emeraldSoft else palette.pillBg,
+                modifier = Modifier.size(32.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
@@ -719,7 +719,7 @@ private fun PrayerScheduleRowCard(
                         },
                         contentDescription = if (bellActive) "Nonaktifkan getar" else "Aktifkan getar",
                         tint = if (bellActive) palette.emeraldPrimary else palette.textMuted,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(16.dp)
                     )
                 }
             }
@@ -746,5 +746,15 @@ private fun shortMethodLabel(enumName: String): String {
         "UMM_AL_QURA" -> "Umm Al-Qura"
         "ISNA" -> "ISNA"
         else -> enumName.replace('_', ' ')
+    }
+}
+
+private fun shortZoneTag(cityRegion: String): String {
+    return when {
+        cityRegion.contains("Jakarta", ignoreCase = true) ||
+            cityRegion.contains("Pontianak", ignoreCase = true) -> "WIB"
+        cityRegion.contains("Makassar", ignoreCase = true) -> "WITA"
+        cityRegion.contains("Jayapura", ignoreCase = true) -> "WIT"
+        else -> cityRegion
     }
 }

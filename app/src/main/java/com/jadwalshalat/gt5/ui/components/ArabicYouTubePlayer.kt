@@ -21,7 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.OpenInNew
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.PlayCircleOutline
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -51,7 +51,8 @@ import com.jadwalshalat.gt5.ui.theme.LocalShalatVibePalette
 @Stable
 class YouTubePlayerController(
     initialStartSec: Int,
-    initialEndSec: Int
+    initialEndSec: Int,
+    initialLoopEnabled: Boolean = true
 ) {
     internal var webView: WebView? = null
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -64,7 +65,7 @@ class YouTubePlayerController(
         internal set
     var playbackRate by mutableFloatStateOf(1.0f)
         internal set
-    var loopEnabled by mutableStateOf(true)
+    var loopEnabled by mutableStateOf(initialLoopEnabled)
         internal set
     var windowStartSec by mutableIntStateOf(initialStartSec)
         internal set
@@ -130,7 +131,9 @@ class YouTubePlayerController(
 
     internal fun onBridgeTime(sec: Int) {
         mainHandler.post {
-            currentSeconds = sec
+            if (currentSeconds != sec) {
+                currentSeconds = sec
+            }
         }
     }
 
@@ -264,7 +267,7 @@ fun ArabicYouTubePlayerView(
                     )
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.OpenInNew,
+                        imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp)
                     )

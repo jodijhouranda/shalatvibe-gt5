@@ -25,12 +25,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.MenuBook
 import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material.icons.rounded.BookmarkBorder
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.CloudSync
-import androidx.compose.material.icons.rounded.MenuBook
 import androidx.compose.material.icons.rounded.PictureAsPdf
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.PlayCircleFilled
@@ -108,8 +108,9 @@ fun ArabicCatalogScreen(
                     Text(
                         text = "Belajar Arab",
                         color = palette.textPrimary,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.4).sp
                     )
                     Text(
                         text = "Modul TAFL Harian • Video YouTube & PDF",
@@ -122,8 +123,7 @@ fun ArabicCatalogScreen(
                     onClick = onSyncNow,
                     enabled = !state.isSyncing,
                     shape = CircleShape,
-                    color = palette.cardSurface,
-                    border = BorderStroke(1.dp, palette.cardBorder),
+                    color = palette.pillBg,
                     modifier = Modifier.size(38.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
@@ -149,8 +149,7 @@ fun ArabicCatalogScreen(
                 Surface(
                     onClick = onOpenSyncSettings,
                     shape = CircleShape,
-                    color = palette.cardSurface,
-                    border = BorderStroke(1.dp, palette.cardBorder),
+                    color = palette.pillBg,
                     modifier = Modifier.size(38.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
@@ -176,7 +175,7 @@ fun ArabicCatalogScreen(
             )
         }
 
-        // Search input
+        // Search input (borderless tonal pill)
         item(key = "search_bar") {
             OutlinedTextField(
                 value = state.searchQuery,
@@ -209,12 +208,12 @@ fun ArabicCatalogScreen(
                     }
                 },
                 singleLine = true,
-                shape = RoundedCornerShape(16.dp),
+                shape = CircleShape,
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = palette.cardSurface,
-                    unfocusedContainerColor = palette.cardSurface,
-                    focusedBorderColor = palette.emeraldPrimary,
-                    unfocusedBorderColor = palette.cardBorder,
+                    focusedContainerColor = palette.pillBg,
+                    unfocusedContainerColor = palette.pillBg,
+                    focusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = Color.Transparent,
                     focusedTextColor = palette.textPrimary,
                     unfocusedTextColor = palette.textPrimary
                 ),
@@ -222,7 +221,7 @@ fun ArabicCatalogScreen(
             )
         }
 
-        // Filter Chips
+        // Filter Chips (borderless tonal pills)
         item(key = "filter_chips") {
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -230,15 +229,14 @@ fun ArabicCatalogScreen(
                 items(LessonFilter.entries) { filter ->
                     val selected = filter == state.selectedFilter
                     val bg by animateColorAsState(
-                        targetValue = if (selected) palette.emeraldPrimary else palette.cardSurface,
+                        targetValue = if (selected) palette.emeraldPrimary else palette.pillBg,
                         animationSpec = tween(180),
                         label = "filter_bg"
                     )
                     Surface(
                         onClick = { onSelectFilter(filter) },
                         shape = CircleShape,
-                        color = bg,
-                        border = if (selected) null else BorderStroke(1.dp, palette.cardBorder)
+                        color = bg
                     ) {
                         Text(
                             text = filter.label,
@@ -260,9 +258,8 @@ fun ArabicCatalogScreen(
         if (state.filteredLessons.isEmpty()) {
             item(key = "empty_state") {
                 Surface(
-                    shape = RoundedCornerShape(20.dp),
+                    shape = RoundedCornerShape(22.dp),
                     color = palette.cardSurface,
-                    border = BorderStroke(1.dp, palette.cardBorder),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
@@ -272,7 +269,7 @@ fun ArabicCatalogScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.MenuBook,
+                            imageVector = Icons.AutoMirrored.Rounded.MenuBook,
                             contentDescription = null,
                             tint = palette.textMuted,
                             modifier = Modifier.size(34.dp)
@@ -319,7 +316,7 @@ private fun DailyStudyHeroCard(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(22.dp))
+            .clip(RoundedCornerShape(24.dp))
             .background(
                 Brush.linearGradient(
                     colors = listOf(
@@ -376,7 +373,7 @@ private fun DailyStudyHeroCard(
                 trackColor = Color.White.copy(alpha = 0.18f),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(7.dp)
+                    .height(6.dp)
                     .clip(CircleShape)
             )
 
@@ -384,9 +381,8 @@ private fun DailyStudyHeroCard(
                 Spacer(modifier = Modifier.height(14.dp))
                 Surface(
                     onClick = { onContinueClick(continueLesson) },
-                    shape = RoundedCornerShape(14.dp),
-                    color = Color.White.copy(alpha = 0.14f),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)),
+                    shape = RoundedCornerShape(16.dp),
+                    color = Color.White.copy(alpha = 0.13f),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -444,15 +440,11 @@ private fun ArabicLessonCard(
     val palette = LocalShalatVibePalette.current
 
     Surface(
-        shape = RoundedCornerShape(20.dp),
-        color = palette.cardSurface,
-        border = BorderStroke(
-            if (isCompleted) 1.2.dp else 1.dp,
-            if (isCompleted) palette.emeraldPrimary.copy(alpha = 0.55f) else palette.cardBorder
-        ),
+        shape = RoundedCornerShape(22.dp),
+        color = if (isCompleted) palette.highlightSurface else palette.cardSurface,
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(22.dp))
             .clickable(onClick = onClick)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
