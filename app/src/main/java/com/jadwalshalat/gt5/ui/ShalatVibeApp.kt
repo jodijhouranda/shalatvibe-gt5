@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.credentials.CredentialManager
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.jadwalshalat.gt5.cloud.attemptAutoSignIn
 import com.jadwalshalat.gt5.cloud.authStateFlow
@@ -80,6 +81,7 @@ import com.jadwalshalat.gt5.ui.screens.LearningLibraryScreen
 import com.jadwalshalat.gt5.ui.screens.QiblaScreen
 import com.jadwalshalat.gt5.ui.screens.ScheduleScreen
 import com.jadwalshalat.gt5.ui.theme.LocalShalatVibePalette
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 
 @Composable
@@ -102,9 +104,15 @@ fun ShalatVibeApp(
     val credentialManager = remember(context) { CredentialManager.create(context) }
 
     // Auth-gated Firebase Firestore cloud sync (zero Firestore calls while unauthenticated)
-    val auth = remember { FirebaseAuth.getInstance() }
-    val currentUser by remember(auth) { auth.authStateFlow() }
-        .collectAsStateWithLifecycle(initialValue = auth.currentUser)
+    val auth = remember(context) {
+        if (FirebaseApp.getApps(context).isNotEmpty()) {
+            runCatching { FirebaseAuth.getInstance() }.getOrNull()
+        } else {
+            null
+        }
+    }
+    val currentUser by remember(auth) { auth?.authStateFlow() ?: flowOf(null) }
+        .collectAsStateWithLifecycle(initialValue = auth?.currentUser)
 
     LaunchedEffect(Unit) {
         attemptAutoSignIn(
