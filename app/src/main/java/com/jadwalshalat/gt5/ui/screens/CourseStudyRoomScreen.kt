@@ -13,6 +13,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,11 +30,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
@@ -49,21 +54,25 @@ import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material.icons.rounded.Replay
 import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -99,6 +108,7 @@ import com.jadwalshalat.gt5.learning.GlossaryTerm
 import com.jadwalshalat.gt5.learning.SeriesCourse
 import com.jadwalshalat.gt5.learning.TopicBlock
 import com.jadwalshalat.gt5.learning.TranscriptSegment
+import com.jadwalshalat.gt5.ui.components.AdaptiveBreakpoints
 import com.jadwalshalat.gt5.ui.components.ArabicYouTubePlayerView
 import com.jadwalshalat.gt5.ui.components.PdfDocumentViewer
 import com.jadwalshalat.gt5.ui.components.YouTubePlayerController
@@ -240,24 +250,25 @@ fun CourseStudyRoomScreen(
         }
     }
 
-    // Auto-scroll smoothly when the active segment changes while playing/following
-    LaunchedEffect(activeSegmentIndex, isAutoFollowEnabled, activePane) {
-        if (activePane == StudyPaneTab.TRANSCRIPT && isAutoFollowEnabled && activeSegmentIndex >= 0 && !phraseMode && pendingKamusDraft == null) {
-            // Item 0: Kamus quick tools strip, Item 1: block summary strip; segment i is at index i + 2
-            val targetItemIndex = activeSegmentIndex + 2
-            isProgrammaticScroll = true
-            try {
-                transcriptListState.animateScrollToItem(targetItemIndex)
-            } finally {
-                isProgrammaticScroll = false
-            }
-        }
-    }
-
     val openExternalYouTube: () -> Unit = {
         val sec = ytController.currentSeconds.takeIf { it > 0 } ?: block.startSec
         val url = "https://www.youtube.com/watch?v=${episode.youtubeVideoId}&t=${sec}s"
         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+    }
+
+    val movableYouTubePlayer = remember(episode.youtubeVideoId) {
+        movableContentOf<Modifier> { playerModifier ->
+            ArabicYouTubePlayerView(
+                videoId = episode.youtubeVideoId,
+                controller = ytController,
+                onOpenExternalYouTube = openExternalYouTube,
+                modifier = playerModifier
+            )
+        }
+    }
+
+    val keyTerms = remember(block.keyTermIds, course.glossary) {
+        block.keyTermIds.mapNotNull { course.glossaryById(it) }
     }
 
     val videoHeight by animateDpAsState(
@@ -361,550 +372,417 @@ fun CourseStudyRoomScreen(
             }
         }
 
-        // 2. Sticky YouTube Player
-        Box(
+        // 2. Adaptive Study Body: Tablet Split-Screen (42% Kiri / 58% Kanan) vs Phone Stacked
+        BoxWithConstraints(
             modifier = Modifier
+                .weight(1f)
                 .fillMaxWidth()
-                .height(videoHeight)
-                .background(Color.Black)
         ) {
-            ArabicYouTubePlayerView(
-                videoId = episode.youtubeVideoId,
-                controller = ytController,
-                onOpenExternalYouTube = openExternalYouTube,
-                modifier = Modifier.fillMaxSize()
-            )
-        }
+            val isSplitTablet = AdaptiveBreakpoints.useStudySplitPane(maxWidth, maxHeight)
+            val segmentHeaderOffset = if (isSplitTablet) 1 else 2
 
-        // 3. Unified Borderless Playback Controls & Speed Toolbar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(palette.pillBg)
-                .padding(horizontal = 12.dp, vertical = 7.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Surface(
-                onClick = { ytController.togglePlayPause() },
-                shape = CircleShape,
-                color = palette.emeraldPrimary,
-                modifier = Modifier.size(32.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = if (ytController.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                        contentDescription = "Play/Pause",
-                        tint = if (palette.isDark) Color(0xFF03231D) else Color.White,
-                        modifier = Modifier.size(18.dp)
-                    )
+            // Auto-scroll smoothly when the active segment changes while playing/following
+            LaunchedEffect(activeSegmentIndex, isAutoFollowEnabled, activePane, segmentHeaderOffset) {
+                if (activePane == StudyPaneTab.TRANSCRIPT && isAutoFollowEnabled && activeSegmentIndex >= 0 && !phraseMode && pendingKamusDraft == null) {
+                    val targetItemIndex = activeSegmentIndex + segmentHeaderOffset
+                    isProgrammaticScroll = true
+                    try {
+                        transcriptListState.animateScrollToItem(targetItemIndex)
+                    } finally {
+                        isProgrammaticScroll = false
+                    }
                 }
             }
 
-            Surface(
-                onClick = {
-                    isAutoFollowEnabled = true
-                    ytController.replayWindow()
-                },
-                shape = CircleShape,
-                color = palette.cardSurfaceElevated,
-                modifier = Modifier.size(30.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Rounded.Replay,
-                        contentDescription = "Ulangi blok",
-                        tint = palette.textPrimary,
-                        modifier = Modifier.size(15.dp)
-                    )
-                }
-            }
-
-            Surface(
-                onClick = { ytController.setLoop(!ytController.loopEnabled) },
-                shape = CircleShape,
-                color = if (ytController.loopEnabled) palette.emeraldSoft else palette.cardSurfaceElevated
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Repeat,
-                        contentDescription = "Loop blok",
-                        tint = if (ytController.loopEnabled) palette.emeraldPrimary else palette.textSecondary,
-                        modifier = Modifier.size(13.dp)
-                    )
-                    Spacer(modifier = Modifier.width(3.dp))
-                    Text(
-                        text = "Loop",
-                        color = if (ytController.loopEnabled) palette.emeraldPrimary else palette.textSecondary,
-                        fontSize = 10.5.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-
-            listOf(0.75f, 1.0f, 1.25f).forEach { speed ->
-                val active = kotlin.math.abs(ytController.playbackRate - speed) < 0.05f
-                Surface(
-                    onClick = { ytController.setSpeed(speed) },
-                    shape = CircleShape,
-                    color = if (active) palette.goldSoft else palette.cardSurfaceElevated
-                ) {
-                    Text(
-                        text = if (speed == 1.0f) "1x" else "${speed}x",
-                        color = if (active) palette.goldAccent else palette.textSecondary,
-                        fontSize = 10.5.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            Text(
-                text = "${ArabicCatalogParser.formatTimestamp(currentSec.takeIf { it > 0 } ?: block.startSec)} / ${ArabicCatalogParser.formatTimestamp(block.endSec)}",
-                style = TextStyle(
-                    color = palette.textPrimary,
-                    fontSize = 11.5.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFeatureSettings = "tnum"
-                )
-            )
-
-            IconButton(
-                onClick = openExternalYouTube,
-                modifier = Modifier.size(26.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
-                    contentDescription = "Buka di YouTube",
-                    tint = palette.textSecondary,
-                    modifier = Modifier.size(15.dp)
-                )
-            }
-        }
-
-        // 4. Sleek Tonal Segmented Switcher [ Teks & Arti | Kitab PDF ]
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(palette.background)
-                .padding(horizontal = 14.dp, vertical = 9.dp)
-        ) {
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = palette.pillBg,
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            val playbackControlsBar: @Composable (Boolean) -> Unit = { compactCardStyle ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        .then(
+                            if (compactCardStyle) {
+                                Modifier.padding(horizontal = 10.dp, vertical = 9.dp)
+                            } else {
+                                Modifier
+                                    .background(palette.pillBg)
+                                    .padding(horizontal = 12.dp, vertical = 7.dp)
+                            }
+                        ),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    SegmentedModeButton(
-                        label = "Teks & Arti",
-                        icon = Icons.Rounded.Translate,
-                        selected = activePane == StudyPaneTab.TRANSCRIPT,
-                        onClick = { activePane = StudyPaneTab.TRANSCRIPT },
-                        modifier = Modifier.weight(1f)
+                    Surface(
+                        onClick = { ytController.togglePlayPause() },
+                        shape = CircleShape,
+                        color = palette.emeraldPrimary,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = if (ytController.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                                contentDescription = "Play/Pause",
+                                tint = if (palette.isDark) Color(0xFF03231D) else Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+
+                    Surface(
+                        onClick = {
+                            isAutoFollowEnabled = true
+                            ytController.replayWindow()
+                        },
+                        shape = CircleShape,
+                        color = palette.cardSurfaceElevated,
+                        modifier = Modifier.size(30.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Rounded.Replay,
+                                contentDescription = "Ulangi blok",
+                                tint = palette.textPrimary,
+                                modifier = Modifier.size(15.dp)
+                            )
+                        }
+                    }
+
+                    Surface(
+                        onClick = { ytController.setLoop(!ytController.loopEnabled) },
+                        shape = CircleShape,
+                        color = if (ytController.loopEnabled) palette.emeraldSoft else palette.cardSurfaceElevated
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Repeat,
+                                contentDescription = "Loop blok",
+                                tint = if (ytController.loopEnabled) palette.emeraldPrimary else palette.textSecondary,
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text(
+                                text = "Loop",
+                                color = if (ytController.loopEnabled) palette.emeraldPrimary else palette.textSecondary,
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    listOf(0.75f, 1.0f, 1.25f).forEach { speed ->
+                        val active = kotlin.math.abs(ytController.playbackRate - speed) < 0.05f
+                        Surface(
+                            onClick = { ytController.setSpeed(speed) },
+                            shape = CircleShape,
+                            color = if (active) palette.goldSoft else palette.cardSurfaceElevated
+                        ) {
+                            Text(
+                                text = if (speed == 1.0f) "1x" else "${speed}x",
+                                color = if (active) palette.goldAccent else palette.textSecondary,
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    Text(
+                        text = "${ArabicCatalogParser.formatTimestamp(currentSec.takeIf { it > 0 } ?: block.startSec)} / ${ArabicCatalogParser.formatTimestamp(block.endSec)}",
+                        style = TextStyle(
+                            color = palette.textPrimary,
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFeatureSettings = "tnum"
+                        )
                     )
-                    SegmentedModeButton(
-                        label = "Kitab PDF • Hal. ${block.pdfPageHint}",
-                        icon = Icons.AutoMirrored.Rounded.MenuBook,
-                        selected = activePane == StudyPaneTab.PDF_BOOK,
-                        onClick = { activePane = StudyPaneTab.PDF_BOOK },
-                        modifier = Modifier.weight(1f)
-                    )
+
+                    IconButton(
+                        onClick = openExternalYouTube,
+                        modifier = Modifier.size(26.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
+                            contentDescription = "Buka di YouTube",
+                            tint = palette.textSecondary,
+                            modifier = Modifier.size(15.dp)
+                        )
+                    }
                 }
             }
-        }
 
-        // 5. Dual-Mode Content Pane
-        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            when (activePane) {
-                StudyPaneTab.TRANSCRIPT -> {
-                    LazyColumn(
-                        state = transcriptListState,
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 2.dp, bottom = 28.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        // Item 0: Compact Kamus & Interactive Reader Tools Strip
-                        item(key = "course_kamus_tools") {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Surface(
-                                    onClick = onToggleHarakat,
-                                    shape = CircleShape,
-                                    color = if (showHarakat) palette.emeraldSoft else palette.pillBg,
-                                    modifier = Modifier.testTag("course_toggle_harakat_pill")
-                                ) {
-                                    Text(
-                                        text = if (showHarakat) "تَشْكِيل" else "Gundul",
-                                        color = if (showHarakat) palette.emeraldPrimary else palette.textSecondary,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                                    )
-                                }
-
-                                Surface(
-                                    onClick = {
-                                        if (phraseMode) {
-                                            resetPhraseSelection()
-                                        } else {
-                                            phraseMode = true
-                                            phraseStartSegIdx = -1
-                                            phraseStartWordIdx = -1
-                                        }
-                                    },
-                                    shape = CircleShape,
-                                    color = if (phraseMode) palette.goldAccent else palette.goldSoft,
-                                    modifier = Modifier.testTag("course_phrase_mode_pill")
-                                ) {
-                                    Text(
-                                        text = if (phraseMode) "Batal Frase" else "+ Frase",
-                                        color = if (phraseMode) Color.White else palette.goldAccent,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                                    )
-                                }
-
-                                Surface(
-                                    onClick = {
-                                        val currentSeg = block.segments.getOrNull(activeSegmentIndex.coerceAtLeast(0))
-                                        onClearKamusAiState()
-                                        pendingPhraseSelection = null
-                                        pendingKamusDraft = CourseKamusBridge.buildDraftFromTranscriptWord(
-                                            arabicPhrase = "",
-                                            course = course,
-                                            episode = episode,
-                                            block = block,
-                                            segment = currentSeg,
-                                            existingEntries = kamusEntries,
-                                            overrideKind = KamusEntryKind.WORD
-                                        ).copy(id = "", arabic = "")
-                                    },
-                                    shape = CircleShape,
-                                    color = palette.pillBg,
-                                    modifier = Modifier.testTag("course_manual_kamus_pill")
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.Edit,
-                                            contentDescription = "Catat kosakata",
-                                            tint = palette.emeraldPrimary,
-                                            modifier = Modifier.size(13.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text(
-                                            text = "Catat",
-                                            color = palette.textPrimary,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.SemiBold
-                                        )
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.weight(1f))
-
-                                Surface(
-                                    onClick = onOpenKamus,
-                                    shape = CircleShape,
-                                    color = palette.emeraldSoft,
-                                    modifier = Modifier.testTag("course_open_kamus_pill")
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.BookmarkAdd,
-                                            contentDescription = "Buka Kamus Saya",
-                                            tint = palette.emeraldPrimary,
-                                            modifier = Modifier.size(13.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text(
-                                            text = "Kamus ($kamusCount)",
-                                            color = palette.emeraldPrimary,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        // Item 1: Compact Borderless Summary Strip & Key Glossary Pills
-                        item(key = "block_summary") {
-                            Surface(
-                                shape = RoundedCornerShape(18.dp),
-                                color = palette.pillBg,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Column(modifier = Modifier.padding(14.dp)) {
-                                    Text(
-                                        text = "RINGKASAN BAHASAN • KETUK KATA ARAB UNTUK KAMUS & AI",
-                                        color = palette.emeraldPrimary,
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        letterSpacing = 0.6.sp
-                                    )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = block.summary,
-                                        color = palette.textSecondary,
-                                        fontSize = 12.sp,
-                                        lineHeight = 18.sp
-                                    )
-
-                                    val keyTerms = remember(block.keyTermIds, course.glossary) {
-                                        block.keyTermIds.mapNotNull { course.glossaryById(it) }
-                                    }
-                                    if (keyTerms.isNotEmpty()) {
-                                        Spacer(modifier = Modifier.height(9.dp))
-                                        FlowRow(
-                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                                        ) {
-                                            keyTerms.forEach { term ->
-                                                GlossaryChip(
-                                                    term = term,
-                                                    onClick = { selectedTerm = term }
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        // Continuous Timestamped Transcript Cards (Auto-Highlight + Interactive Arabic Words)
-                        itemsIndexed(block.segments, key = { _, seg -> seg.id }) { idx, segment ->
-                            val isActive = idx == activeSegmentIndex
-                            TranscriptSegmentCard(
-                                segment = segment,
-                                segmentIndex = idx,
-                                course = course,
-                                isActive = isActive,
-                                showHarakat = showHarakat,
-                                savedNormalizedKeys = savedNormalizedKeys,
-                                phraseMode = phraseMode,
-                                phraseStartSegIdx = phraseStartSegIdx,
-                                phraseStartWordIdx = phraseStartWordIdx,
-                                onPlaySegment = {
-                                    isAutoFollowEnabled = true
-                                    ytController.seekTo(segment.startSec, autoPlay = true)
-                                },
-                                onSpeakSegment = {
-                                    onSpeakArabic(segment.arabic)?.let(onShowMessage)
-                                },
-                                onTapWord = { tok, tokens ->
-                                    if (!phraseMode) {
-                                        openWordCollector(
-                                            arabicPhrase = tok.cleanArabic,
-                                            seg = segment,
-                                            overrideKind = KamusEntryKind.WORD,
-                                            selectionContext = CoursePhraseSelection(tokens, tok.index, tok.index)
-                                        )
-                                    } else if (phraseStartWordIdx < 0 || phraseStartSegIdx != idx) {
-                                        phraseStartSegIdx = idx
-                                        phraseStartWordIdx = tok.index
-                                        phraseStartSegment = segment
-                                        phraseStartTokens = tokens
-                                    } else {
-                                        val startIdx = minOf(phraseStartWordIdx, tok.index)
-                                        val endIdx = maxOf(phraseStartWordIdx, tok.index)
-                                        val phrase = ArabicTextUtils.buildPhraseFromRange(tokens, startIdx, endIdx)
-                                        resetPhraseSelection()
-                                        if (phrase.isNotBlank()) {
-                                            openWordCollector(
-                                                arabicPhrase = phrase,
-                                                seg = segment,
-                                                overrideKind = if (endIdx > startIdx) KamusEntryKind.PHRASE else KamusEntryKind.WORD,
-                                                selectionContext = CoursePhraseSelection(tokens, startIdx, endIdx)
-                                            )
-                                        }
-                                    }
-                                },
-                                onLongPressWord = { tok, tokens ->
-                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    phraseMode = true
-                                    phraseStartSegIdx = idx
-                                    phraseStartWordIdx = tok.index
-                                    phraseStartSegment = segment
-                                    phraseStartTokens = tokens
-                                },
-                                onTapGlossaryTerm = { term -> selectedTerm = term }
-                            )
-                        }
-
-                        // Sleek Borderless Bottom Actions
-                        item(key = "study_footer") {
-                            StudyBlockBottomActions(
-                                isCompleted = isCompleted,
-                                hasNextBlock = hasNextBlock,
-                                onToggleCompleted = onToggleBlockCompleted,
-                                onCompleteAndNext = onCompleteAndNext
-                            )
-                        }
-                    }
-
-                    // Floating Banner saat Mode Pilih Frase aktif
-                    if (phraseMode) {
-                        Surface(
-                            shape = CircleShape,
-                            color = palette.goldAccent,
-                            shadowElevation = 6.dp,
-                            modifier = Modifier
-                                .align(Alignment.TopCenter)
-                                .padding(horizontal = 12.dp, vertical = 10.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Text(
-                                    text = if (phraseStartWordIdx < 0) {
-                                        "Ketuk KATA AWAL frase"
-                                    } else {
-                                        "Ketuk KATA AKHIR frase"
-                                    },
-                                    color = Color.White,
-                                    fontSize = 11.5.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                if (phraseStartWordIdx >= 0 && phraseStartTokens.isNotEmpty()) {
-                                    Surface(
-                                        onClick = {
-                                            val seg = phraseStartSegment
-                                            val tokens = phraseStartTokens
-                                            val startIdx = phraseStartWordIdx
-                                            val single = ArabicTextUtils.buildPhraseFromRange(tokens, startIdx, startIdx)
-                                            resetPhraseSelection()
-                                            if (single.isNotBlank()) {
-                                                openWordCollector(
-                                                    arabicPhrase = single,
-                                                    seg = seg,
-                                                    overrideKind = KamusEntryKind.WORD,
-                                                    selectionContext = CoursePhraseSelection(tokens, startIdx, startIdx)
-                                                )
-                                            }
-                                        },
-                                        shape = CircleShape,
-                                        color = palette.emeraldPrimary
-                                    ) {
-                                        Text(
-                                            text = "1 Kata",
-                                            color = Color.White,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                                        )
-                                    }
-                                }
-                                Surface(
-                                    onClick = { resetPhraseSelection() },
-                                    shape = CircleShape,
-                                    color = Color.White.copy(alpha = 0.22f)
-                                ) {
-                                    Text(
-                                        text = "Batal",
-                                        color = Color.White,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // Floating "Ikuti Video" pill when user manually scrolled away
-                    androidx.compose.animation.AnimatedVisibility(
-                        visible = !isAutoFollowEnabled && activeSegmentIndex >= 0 && !phraseMode,
-                        enter = fadeIn(),
-                        exit = fadeOut(),
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(end = 16.dp, bottom = 18.dp)
-                    ) {
-                        Surface(
-                            onClick = {
-                                isAutoFollowEnabled = true
-                                scope.launch {
-                                    isProgrammaticScroll = true
-                                    try {
-                                        transcriptListState.animateScrollToItem(activeSegmentIndex + 2)
-                                    } finally {
-                                        isProgrammaticScroll = false
-                                    }
-                                }
-                            },
-                            shape = CircleShape,
+            val summaryCardContent: @Composable () -> Unit = {
+                Surface(
+                    shape = RoundedCornerShape(18.dp),
+                    color = palette.pillBg,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Text(
+                            text = "RINGKASAN BAHASAN • KETUK KATA ARAB UNTUK KAMUS & AI",
                             color = palette.emeraldPrimary,
-                            shadowElevation = 6.dp
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.6.sp
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = block.summary,
+                            color = palette.textSecondary,
+                            fontSize = 12.sp,
+                            lineHeight = 18.sp
+                        )
+
+                        if (keyTerms.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(9.dp))
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.ArrowDownward,
-                                    contentDescription = null,
-                                    tint = if (palette.isDark) Color(0xFF03231D) else Color.White,
-                                    modifier = Modifier.size(15.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "Ikuti Video (${ArabicCatalogParser.formatTimestamp(currentSec)})",
-                                    color = if (palette.isDark) Color(0xFF03231D) else Color.White,
-                                    fontSize = 11.5.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
+                                keyTerms.forEach { term ->
+                                    GlossaryChip(
+                                        term = term,
+                                        onClick = { selectedTerm = term }
+                                    )
+                                }
                             }
                         }
                     }
                 }
+            }
 
-                StudyPaneTab.PDF_BOOK -> {
-                    when {
-                        isLoadingPdf -> {
-                            Box(
+            val segmentedSwitcherBar: @Composable () -> Unit = {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(palette.background)
+                        .padding(horizontal = 14.dp, vertical = 9.dp)
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = palette.pillBg,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            SegmentedModeButton(
+                                label = "Teks & Arti",
+                                icon = Icons.Rounded.Translate,
+                                selected = activePane == StudyPaneTab.TRANSCRIPT,
+                                onClick = { activePane = StudyPaneTab.TRANSCRIPT },
+                                modifier = Modifier.weight(1f)
+                            )
+                            SegmentedModeButton(
+                                label = "Kitab PDF • Hal. ${block.pdfPageHint}",
+                                icon = Icons.AutoMirrored.Rounded.MenuBook,
+                                selected = activePane == StudyPaneTab.PDF_BOOK,
+                                onClick = { activePane = StudyPaneTab.PDF_BOOK },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+            }
+
+            val dualModeReaderContent: @Composable (Boolean) -> Unit = { includeSummaryInList ->
+                Box(modifier = Modifier.fillMaxSize()) {
+                    when (activePane) {
+                        StudyPaneTab.TRANSCRIPT -> {
+                            LazyColumn(
+                                state = transcriptListState,
                                 modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
+                                contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 2.dp, bottom = 28.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    CircularProgressIndicator(color = palette.emeraldPrimary)
-                                    Spacer(modifier = Modifier.height(10.dp))
-                                    Text(
-                                        text = "Memuat Kitab Fiqh Muamalah (95 Hal)...",
-                                        color = palette.textSecondary,
-                                        fontSize = 12.sp
+                                // Item 0: Compact Kamus & Interactive Reader Tools Strip
+                                item(key = "course_kamus_tools") {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Surface(
+                                            onClick = onToggleHarakat,
+                                            shape = CircleShape,
+                                            color = if (showHarakat) palette.emeraldSoft else palette.pillBg,
+                                            modifier = Modifier.testTag("course_toggle_harakat_pill")
+                                        ) {
+                                            Text(
+                                                text = if (showHarakat) "تَشْكِيل" else "Gundul",
+                                                color = if (showHarakat) palette.emeraldPrimary else palette.textSecondary,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                            )
+                                        }
+
+                                        Surface(
+                                            onClick = {
+                                                if (phraseMode) {
+                                                    resetPhraseSelection()
+                                                } else {
+                                                    phraseMode = true
+                                                    phraseStartSegIdx = -1
+                                                    phraseStartWordIdx = -1
+                                                }
+                                            },
+                                            shape = CircleShape,
+                                            color = if (phraseMode) palette.goldAccent else palette.goldSoft,
+                                            modifier = Modifier.testTag("course_phrase_mode_pill")
+                                        ) {
+                                            Text(
+                                                text = if (phraseMode) "Batal Frase" else "+ Frase",
+                                                color = if (phraseMode) Color.White else palette.goldAccent,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                            )
+                                        }
+
+                                        Surface(
+                                            onClick = {
+                                                val currentSeg = block.segments.getOrNull(activeSegmentIndex.coerceAtLeast(0))
+                                                onClearKamusAiState()
+                                                pendingPhraseSelection = null
+                                                pendingKamusDraft = CourseKamusBridge.buildDraftFromTranscriptWord(
+                                                    arabicPhrase = "",
+                                                    course = course,
+                                                    episode = episode,
+                                                    block = block,
+                                                    segment = currentSeg,
+                                                    existingEntries = kamusEntries,
+                                                    overrideKind = KamusEntryKind.WORD
+                                                ).copy(id = "", arabic = "")
+                                            },
+                                            shape = CircleShape,
+                                            color = palette.pillBg,
+                                            modifier = Modifier.testTag("course_manual_kamus_pill")
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Rounded.Edit,
+                                                    contentDescription = "Catat kosakata",
+                                                    tint = palette.emeraldPrimary,
+                                                    modifier = Modifier.size(13.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text(
+                                                    text = "Catat",
+                                                    color = palette.textPrimary,
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.SemiBold
+                                                )
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.weight(1f))
+
+                                        Surface(
+                                            onClick = onOpenKamus,
+                                            shape = CircleShape,
+                                            color = palette.emeraldSoft,
+                                            modifier = Modifier.testTag("course_open_kamus_pill")
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Rounded.BookmarkAdd,
+                                                    contentDescription = "Buka Kamus Saya",
+                                                    tint = palette.emeraldPrimary,
+                                                    modifier = Modifier.size(13.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text(
+                                                    text = "Kamus ($kamusCount)",
+                                                    color = palette.emeraldPrimary,
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Item 1 (Phone only): Compact Borderless Summary Strip & Key Glossary Pills
+                                if (includeSummaryInList) {
+                                    item(key = "block_summary") {
+                                        summaryCardContent()
+                                    }
+                                }
+
+                                // Continuous Timestamped Transcript Cards (Auto-Highlight + Interactive Arabic Words)
+                                itemsIndexed(block.segments, key = { _, seg -> seg.id }) { idx, segment ->
+                                    val isActive = idx == activeSegmentIndex
+                                    TranscriptSegmentCard(
+                                        segment = segment,
+                                        segmentIndex = idx,
+                                        course = course,
+                                        isActive = isActive,
+                                        showHarakat = showHarakat,
+                                        savedNormalizedKeys = savedNormalizedKeys,
+                                        phraseMode = phraseMode,
+                                        phraseStartSegIdx = phraseStartSegIdx,
+                                        phraseStartWordIdx = phraseStartWordIdx,
+                                        onPlaySegment = {
+                                            isAutoFollowEnabled = true
+                                            ytController.seekTo(segment.startSec, autoPlay = true)
+                                        },
+                                        onSpeakSegment = {
+                                            onSpeakArabic(segment.arabic)?.let(onShowMessage)
+                                        },
+                                        onTapWord = { tok, tokens ->
+                                            if (!phraseMode) {
+                                                openWordCollector(
+                                                    arabicPhrase = tok.cleanArabic,
+                                                    seg = segment,
+                                                    overrideKind = KamusEntryKind.WORD,
+                                                    selectionContext = CoursePhraseSelection(tokens, tok.index, tok.index)
+                                                )
+                                            } else if (phraseStartWordIdx < 0 || phraseStartSegIdx != idx) {
+                                                phraseStartSegIdx = idx
+                                                phraseStartWordIdx = tok.index
+                                                phraseStartSegment = segment
+                                                phraseStartTokens = tokens
+                                            } else {
+                                                val startIdx = minOf(phraseStartWordIdx, tok.index)
+                                                val endIdx = maxOf(phraseStartWordIdx, tok.index)
+                                                val phrase = ArabicTextUtils.buildPhraseFromRange(tokens, startIdx, endIdx)
+                                                resetPhraseSelection()
+                                                if (phrase.isNotBlank()) {
+                                                    openWordCollector(
+                                                        arabicPhrase = phrase,
+                                                        seg = segment,
+                                                        overrideKind = if (endIdx > startIdx) KamusEntryKind.PHRASE else KamusEntryKind.WORD,
+                                                        selectionContext = CoursePhraseSelection(tokens, startIdx, endIdx)
+                                                    )
+                                                }
+                                            }
+                                        },
+                                        onLongPressWord = { tok, tokens ->
+                                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            phraseMode = true
+                                            phraseStartSegIdx = idx
+                                            phraseStartWordIdx = tok.index
+                                            phraseStartSegment = segment
+                                            phraseStartTokens = tokens
+                                        },
+                                        onTapGlossaryTerm = { term -> selectedTerm = term }
                                     )
                                 }
-                            }
-                        }
-                        pdfFile != null -> {
-                            PdfDocumentViewer(
-                                pdfFile = pdfFile,
-                                readingMode = readingMode,
-                                initialPage = block.pdfPageHint,
-                                modifier = Modifier.fillMaxSize(),
-                                bottomActionContent = {
+
+                                // Sleek Borderless Bottom Actions
+                                item(key = "study_footer") {
                                     StudyBlockBottomActions(
                                         isCompleted = isCompleted,
                                         hasNextBlock = hasNextBlock,
@@ -912,23 +790,283 @@ fun CourseStudyRoomScreen(
                                         onCompleteAndNext = onCompleteAndNext
                                     )
                                 }
-                            )
-                        }
-                        else -> {
-                            Box(
+                            }
+
+                            // Floating Banner saat Mode Pilih Frase aktif
+                            if (phraseMode) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = palette.goldAccent,
+                                    shadowElevation = 6.dp,
+                                    modifier = Modifier
+                                        .align(Alignment.TopCenter)
+                                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Text(
+                                            text = if (phraseStartWordIdx < 0) {
+                                                "Ketuk KATA AWAL frase"
+                                            } else {
+                                                "Ketuk KATA AKHIR frase"
+                                            },
+                                            color = Color.White,
+                                            fontSize = 11.5.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        if (phraseStartWordIdx >= 0 && phraseStartTokens.isNotEmpty()) {
+                                            Surface(
+                                                onClick = {
+                                                    val seg = phraseStartSegment
+                                                    val tokens = phraseStartTokens
+                                                    val startIdx = phraseStartWordIdx
+                                                    val single = ArabicTextUtils.buildPhraseFromRange(tokens, startIdx, startIdx)
+                                                    resetPhraseSelection()
+                                                    if (single.isNotBlank()) {
+                                                        openWordCollector(
+                                                            arabicPhrase = single,
+                                                            seg = seg,
+                                                            overrideKind = KamusEntryKind.WORD,
+                                                            selectionContext = CoursePhraseSelection(tokens, startIdx, startIdx)
+                                                        )
+                                                    }
+                                                },
+                                                shape = CircleShape,
+                                                color = palette.emeraldPrimary
+                                            ) {
+                                                Text(
+                                                    text = "1 Kata",
+                                                    color = Color.White,
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                                )
+                                            }
+                                        }
+                                        Surface(
+                                            onClick = { resetPhraseSelection() },
+                                            shape = CircleShape,
+                                            color = Color.White.copy(alpha = 0.22f)
+                                        ) {
+                                            Text(
+                                                text = "Batal",
+                                                color = Color.White,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Floating "Ikuti Video" pill when user manually scrolled away
+                            androidx.compose.animation.AnimatedVisibility(
+                                visible = !isAutoFollowEnabled && activeSegmentIndex >= 0 && !phraseMode,
+                                enter = fadeIn(),
+                                exit = fadeOut(),
                                 modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(24.dp),
-                                contentAlignment = Alignment.Center
+                                    .align(Alignment.BottomEnd)
+                                    .padding(end = 16.dp, bottom = 18.dp)
                             ) {
-                                Text(
-                                    text = pdfError ?: "File PDF kitab tidak ditemukan.",
-                                    color = palette.textSecondary,
-                                    fontSize = 13.sp,
-                                    textAlign = TextAlign.Center
-                                )
+                                Surface(
+                                    onClick = {
+                                        isAutoFollowEnabled = true
+                                        scope.launch {
+                                            isProgrammaticScroll = true
+                                            try {
+                                                transcriptListState.animateScrollToItem(activeSegmentIndex + segmentHeaderOffset)
+                                            } finally {
+                                                isProgrammaticScroll = false
+                                            }
+                                        }
+                                    },
+                                    shape = CircleShape,
+                                    color = palette.emeraldPrimary,
+                                    shadowElevation = 6.dp
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.ArrowDownward,
+                                            contentDescription = null,
+                                            tint = if (palette.isDark) Color(0xFF03231D) else Color.White,
+                                            modifier = Modifier.size(15.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "Ikuti Video (${ArabicCatalogParser.formatTimestamp(currentSec)})",
+                                            color = if (palette.isDark) Color(0xFF03231D) else Color.White,
+                                            fontSize = 11.5.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
                             }
                         }
+
+                        StudyPaneTab.PDF_BOOK -> {
+                            when {
+                                isLoadingPdf -> {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            CircularProgressIndicator(color = palette.emeraldPrimary)
+                                            Spacer(modifier = Modifier.height(10.dp))
+                                            Text(
+                                                text = "Memuat Kitab Fiqh Muamalah (95 Hal)...",
+                                                color = palette.textSecondary,
+                                                fontSize = 12.sp
+                                            )
+                                        }
+                                    }
+                                }
+                                pdfFile != null -> {
+                                    PdfDocumentViewer(
+                                        pdfFile = pdfFile,
+                                        readingMode = readingMode,
+                                        initialPage = block.pdfPageHint,
+                                        modifier = Modifier.fillMaxSize(),
+                                        bottomActionContent = {
+                                            StudyBlockBottomActions(
+                                                isCompleted = isCompleted,
+                                                hasNextBlock = hasNextBlock,
+                                                onToggleCompleted = onToggleBlockCompleted,
+                                                onCompleteAndNext = onCompleteAndNext
+                                            )
+                                        }
+                                    )
+                                }
+                                else -> {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(24.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = pdfError ?: "File PDF kitab tidak ditemukan.",
+                                            color = palette.textSecondary,
+                                            fontSize = 13.sp,
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (isSplitTablet) {
+                // Opsi 1 — Split-Screen Seimbang (Video + Ringkasan 42% Kiri | Teks & Arti / Kitab PDF 58% Kanan)
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .testTag("course_study_tablet_split")
+                ) {
+                    if (!isVideoCollapsed) {
+                        Column(
+                            modifier = Modifier
+                                .weight(0.42f)
+                                .fillMaxHeight()
+                                .background(palette.background)
+                                .verticalScroll(rememberScrollState())
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(16f / 9f)
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(Color.Black)
+                            ) {
+                                movableYouTubePlayer(Modifier.fillMaxSize())
+                            }
+
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = palette.cardSurface,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                playbackControlsBar(true)
+                            }
+
+                            summaryCardContent()
+                        }
+
+                        VerticalDivider(
+                            thickness = 1.dp,
+                            color = palette.hairline
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(1.dp)
+                                .alpha(0f)
+                        ) {
+                            movableYouTubePlayer(Modifier.fillMaxSize())
+                        }
+                    }
+
+                    Column(
+                        modifier = Modifier
+                            .weight(if (isVideoCollapsed) 1f else 0.58f)
+                            .fillMaxHeight()
+                    ) {
+                        if (isVideoCollapsed) {
+                            playbackControlsBar(false)
+                            HorizontalDivider(thickness = 0.5.dp, color = palette.hairline)
+                        }
+                        segmentedSwitcherBar()
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth(),
+                            contentAlignment = Alignment.TopCenter
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .fillMaxWidth()
+                                    .then(
+                                        if (isVideoCollapsed) Modifier.widthIn(max = 960.dp) else Modifier
+                                    )
+                            ) {
+                                dualModeReaderContent(false)
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Phone / Portrait Stacked Layout (unchanged UX)
+                Column(modifier = Modifier.fillMaxSize()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(videoHeight)
+                            .background(Color.Black)
+                    ) {
+                        movableYouTubePlayer(Modifier.fillMaxSize())
+                    }
+
+                    playbackControlsBar(false)
+                    segmentedSwitcherBar()
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                    ) {
+                        dualModeReaderContent(true)
                     }
                 }
             }

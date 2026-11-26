@@ -155,6 +155,12 @@ class CourseRepository(context: Context) {
         return updated
     }
 
+    fun mergeCompletedBlocksFromCloud(cloudBlocks: Set<String>): Set<String> {
+        val merged = (getCompletedBlockIds() + cloudBlocks).filter { it.isNotBlank() }.toSet()
+        prefs.edit().putStringSet(KEY_COMPLETED_BLOCKS, merged).apply()
+        return merged
+    }
+
     fun recordLastOpened(trackId: String, courseId: String? = null, blockId: String? = null) {
         prefs.edit()
             .putString(KEY_LAST_TRACK_ID, trackId)

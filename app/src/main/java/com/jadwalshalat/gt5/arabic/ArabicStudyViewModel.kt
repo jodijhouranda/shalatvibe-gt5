@@ -4,13 +4,18 @@ import android.app.Application
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.firestore.FirebaseFirestoreException
+import com.jadwalshalat.gt5.cloud.CloudSyncState
+import com.jadwalshalat.gt5.cloud.NidaCloudSyncRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -34,13 +39,16 @@ data class ArabicStudyUiState(
     val pdfErrorMessage: String? = null,
     val activeLessonContent: ArabicLessonContent? = null,
     val isLoadingContent: Boolean = false,
+    val isExtractingContentFromPdf: Boolean = false,
+    val contentExtractionError: String? = null,
     val activeSeekSec: Int? = null,
     val showHarakat: Boolean = true,
     val kamusEntries: List<KamusEntry> = emptyList(),
     val kamusFilter: KamusFilter = KamusFilter.ALL,
     val kamusSearchQuery: String = "",
     val dueKamusCount: Int = 0,
-    val kamusAiState: KamusAiUiState = KamusAiUiState.Idle
+    val kamusAiState: KamusAiUiState = KamusAiUiState.Idle,
+    val cloudSyncState: CloudSyncState = CloudSyncState.SignedOut
 ) {
     val savedNormalizedKeys: Set<String>
         get() = kamusEntries.mapNotNull { it.normalizedKey.takeIf(String::isNotBlank) }.toSet()
@@ -76,14 +84,36 @@ class ArabicStudyViewModel(application: Application) : AndroidViewModel(applicat
     private val contentRepository = ArabicContentRepository(application.applicationContext)
     private val kamusRepository = KamusRepository(application.applicationContext)
     private val kamusAiRepository = KamusAiRepository(application.applicationContext)
+    private val cloudSyncRepository by lazy { NidaCloudSyncRepository(application.applicationContext) }
     private val ttsHelper = ArabicTtsHelper(application.applicationContext)
     private var aiLookupJob: Job? = null
+    private var lessonLoadJob: Job? = null
+    private var pdfExtractJob: Job? = null
+    private var cloudKamusJob: Job? = null
+    private var cloudProgressJob: Job? = null
+    private var cloudSyncUserId: String? = null
+    private var latestCourseBlockIds: Set<String> = emptySet()
 
     private val _uiState = MutableStateFlow(ArabicStudyUiState())
     val uiState: StateFlow<ArabicStudyUiState> = _uiState.asStateFlow()
 
     init {
         reloadFromLocal()
+        syncCatalogSilently()
+    }
+
+    private fun syncCatalogSilently() {
+        viewModelScope.launch {
+            val result = runCatching { repository.syncFromRemote() }.getOrNull() ?: return@launch
+            if (result.success) {
+                _uiState.update {
+                    it.copy(
+                        lessons = repository.loadLessons(),
+                        lastSyncLabel = repository.getLastSyncLabel()
+                    )
+                }
+            }
+        }
     }
 
     fun reloadFromLocal() {
@@ -113,6 +143,8 @@ class ArabicStudyViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun openLesson(lesson: ArabicLesson, initialSeekSec: Int? = null) {
+        lessonLoadJob?.cancel()
+        pdfExtractJob?.cancel()
         repository.setLastOpenedLessonId(lesson.id)
         _uiState.update {
             it.copy(
@@ -123,29 +155,96 @@ class ArabicStudyViewModel(application: Application) : AndroidViewModel(applicat
                 pdfErrorMessage = null,
                 activeLessonContent = null,
                 isLoadingContent = true,
+                isExtractingContentFromPdf = false,
+                contentExtractionError = null,
                 activeSeekSec = initialSeekSec
             )
         }
-        viewModelScope.launch {
-            val content = contentRepository.loadLessonContent(lesson)
+        lessonLoadJob = viewModelScope.launch {
+            val pdfDeferred = async { repository.resolvePdfFile(lesson) }
+            val contentDeferred = async { contentRepository.loadLessonContent(lesson) }
+
+            launch {
+                val file = pdfDeferred.await()
+                _uiState.update { state ->
+                    if (state.activeLesson?.id != lesson.id) state
+                    else state.copy(
+                        activePdfFile = file,
+                        isLoadingPdf = false,
+                        pdfErrorMessage = if (file == null) {
+                            "File PDF tidak ditemukan. Coba tekan Sync saat terhubung ke internet."
+                        } else null
+                    )
+                }
+            }
+
+            val content = contentDeferred.await()
             _uiState.update { state ->
                 if (state.activeLesson?.id != lesson.id) state
                 else state.copy(activeLessonContent = content, isLoadingContent = false)
             }
-        }
-        viewModelScope.launch {
-            val file = repository.resolvePdfFile(lesson)
-            _uiState.update { state ->
-                if (state.activeLesson?.id != lesson.id) state
-                else state.copy(
-                    activePdfFile = file,
-                    isLoadingPdf = false,
-                    pdfErrorMessage = if (file == null) {
-                        "File PDF tidak ditemukan. Coba tekan Sync saat terhubung ke internet."
-                    } else null
-                )
+
+            if (content == null) {
+                val file = pdfDeferred.await()
+                if (file != null && file.exists() && file.length() > 100L && _uiState.value.activeLesson?.id == lesson.id) {
+                    triggerPdfContentExtraction(lesson, file)
+                }
             }
         }
+    }
+
+    private fun triggerPdfContentExtraction(lesson: ArabicLesson, pdfFile: File) {
+        pdfExtractJob?.cancel()
+        _uiState.update { state ->
+            if (state.activeLesson?.id != lesson.id) state
+            else state.copy(
+                isExtractingContentFromPdf = true,
+                contentExtractionError = null
+            )
+        }
+        pdfExtractJob = viewModelScope.launch {
+            try {
+                val extracted = contentRepository.extractAndCacheFromPdf(lesson, pdfFile)
+                _uiState.update { state ->
+                    if (state.activeLesson?.id != lesson.id) state
+                    else state.copy(
+                        activeLessonContent = extracted,
+                        isExtractingContentFromPdf = false,
+                        contentExtractionError = null
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: TimeoutCancellationException) {
+                Log.e(TAG, "AI PDF extraction timed out for '${lesson.pdfFileName}'", e)
+                _uiState.update { state ->
+                    if (state.activeLesson?.id != lesson.id) state
+                    else state.copy(
+                        isExtractingContentFromPdf = false,
+                        contentExtractionError = "Ekstraksi teks interaktif AI melebihi batas waktu. Ketuk Ekstrak Teks untuk mencoba lagi."
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "AI PDF extraction failed for '${lesson.pdfFileName}'", e)
+                _uiState.update { state ->
+                    if (state.activeLesson?.id != lesson.id) state
+                    else state.copy(
+                        isExtractingContentFromPdf = false,
+                        contentExtractionError = e.localizedMessage?.takeIf { it.isNotBlank() }
+                            ?: "Gagal mengekstrak teks interaktif dari PDF. Pastikan koneksi internet aktif."
+                    )
+                }
+            }
+        }
+    }
+
+    fun retryExtractContentFromPdf() {
+        val current = _uiState.value
+        val lesson = current.activeLesson ?: return
+        val pdfFile = current.activePdfFile ?: return
+        if (current.isExtractingContentFromPdf || current.activeLessonContent != null) return
+        if (!pdfFile.exists() || pdfFile.length() <= 100L) return
+        triggerPdfContentExtraction(lesson, pdfFile)
     }
 
     fun openLessonClip(lessonId: String, startSec: Int) {
@@ -154,6 +253,8 @@ class ArabicStudyViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun closeLesson() {
+        lessonLoadJob?.cancel()
+        pdfExtractJob?.cancel()
         ttsHelper.stop()
         _uiState.update {
             it.copy(
@@ -163,6 +264,8 @@ class ArabicStudyViewModel(application: Application) : AndroidViewModel(applicat
                 pdfErrorMessage = null,
                 activeLessonContent = null,
                 isLoadingContent = false,
+                isExtractingContentFromPdf = false,
+                contentExtractionError = null,
                 activeSeekSec = null
             )
         }
@@ -180,6 +283,156 @@ class ArabicStudyViewModel(application: Application) : AndroidViewModel(applicat
         _uiState.update { it.copy(kamusSearchQuery = query) }
     }
 
+    fun startCloudSync(
+        userId: String,
+        email: String,
+        displayName: String,
+        localCourseBlockIds: Set<String> = emptySet(),
+        onCloudCourseBlocksReceived: (Set<String>) -> Unit = {}
+    ) {
+        if (userId.isBlank()) return
+        if (cloudSyncUserId == userId && cloudKamusJob?.isActive == true) return
+
+        stopCloudSync()
+        cloudSyncUserId = userId
+        latestCourseBlockIds = localCourseBlockIds
+        _uiState.update {
+            it.copy(cloudSyncState = CloudSyncState.Syncing(userId, email, displayName))
+        }
+
+        cloudKamusJob = viewModelScope.launch {
+            // 1. Unggah entri lokal yang belum ada di cloud agar data lama di HP tidak hilang
+            val localSnapshot = withContext(Dispatchers.IO) { kamusRepository.loadEntries() }
+            if (localSnapshot.isNotEmpty()) {
+                withContext(Dispatchers.IO) {
+                    cloudSyncRepository.uploadMissingLocalKamusEntries(userId, localSnapshot)
+                }
+            }
+
+            // 2. Pantau real-time snapshot Kamus Saya dari Firestore
+            cloudSyncRepository.observeKamusEntries(userId)
+                .catch { error ->
+                    val firestoreError = generateSequence(error) { it.cause }
+                        .filterIsInstance<FirebaseFirestoreException>()
+                        .firstOrNull()
+                    if (firestoreError == null && error is CancellationException) throw error
+                    val rootError = firestoreError ?: error
+                    Log.w(TAG, "Error observing cloud Kamus", rootError)
+                    if (cloudSyncUserId == userId) {
+                        _uiState.update {
+                            it.copy(
+                                cloudSyncState = CloudSyncState.Error(
+                                    userId = userId,
+                                    email = email,
+                                    displayName = displayName,
+                                    message = rootError.localizedMessage ?: "Gagal menyinkronkan Kamus."
+                                )
+                            )
+                        }
+                    }
+                }
+                .collect { cloudEntries ->
+                    val persisted = withContext(Dispatchers.IO) {
+                        kamusRepository.replaceAllFromCloud(cloudEntries)
+                    }
+                    val today = KamusSrsScheduler.todayEpochDay()
+                    _uiState.update {
+                        it.copy(
+                            kamusEntries = persisted,
+                            dueKamusCount = persisted.count { item -> KamusSrsScheduler.isDue(item, today) },
+                            cloudSyncState = CloudSyncState.Synced(
+                                userId = userId,
+                                email = email,
+                                displayName = displayName,
+                                syncedWordCount = persisted.size
+                            )
+                        )
+                    }
+                }
+        }
+
+        cloudProgressJob = viewModelScope.launch {
+            cloudSyncRepository.observeLearningProgress(userId)
+                .catch { error ->
+                    val firestoreError = generateSequence(error) { it.cause }
+                        .filterIsInstance<FirebaseFirestoreException>()
+                        .firstOrNull()
+                    if (firestoreError == null && error is CancellationException) throw error
+                    Log.w(TAG, "Error observing cloud progress", firestoreError ?: error)
+                }
+                .collect { doc ->
+                    val cloudCompleted = doc?.completedArabicIds?.toSet().orEmpty()
+                    val cloudFavorites = doc?.favoriteArabicIds?.toSet().orEmpty()
+                    val cloudBlocks = doc?.completedCourseBlockIds?.toSet().orEmpty()
+
+                    val (mergedCompleted, mergedFavorites) = repository.mergeProgressFromCloud(
+                        cloudCompleted = cloudCompleted,
+                        cloudFavorites = cloudFavorites
+                    )
+                    val mergedBlocks = latestCourseBlockIds + cloudBlocks
+                    latestCourseBlockIds = mergedBlocks
+                    if (cloudBlocks.isNotEmpty()) {
+                        onCloudCourseBlocksReceived(cloudBlocks)
+                    }
+
+                    _uiState.update {
+                        it.copy(
+                            completedIds = mergedCompleted,
+                            favoriteIds = mergedFavorites
+                        )
+                    }
+
+                    val localHadNewer = doc == null ||
+                        mergedCompleted.size > cloudCompleted.size ||
+                        mergedFavorites.size > cloudFavorites.size ||
+                        mergedBlocks.size > cloudBlocks.size
+                    if (localHadNewer && (mergedCompleted.isNotEmpty() || mergedFavorites.isNotEmpty() || mergedBlocks.isNotEmpty())) {
+                        pushProgressToCloud(userId, mergedCompleted, mergedFavorites, mergedBlocks, _uiState.value.lastOpenedLessonId)
+                    }
+                }
+        }
+    }
+
+    fun stopCloudSync() {
+        cloudKamusJob?.cancel()
+        cloudKamusJob = null
+        cloudProgressJob?.cancel()
+        cloudProgressJob = null
+        cloudSyncUserId = null
+        _uiState.update { it.copy(cloudSyncState = CloudSyncState.SignedOut) }
+    }
+
+    fun pushCourseBlocksToCloud(completedCourseBlockIds: Set<String>) {
+        latestCourseBlockIds = completedCourseBlockIds
+        val uid = cloudSyncUserId ?: return
+        val state = _uiState.value
+        pushProgressToCloud(
+            userId = uid,
+            completedArabicIds = state.completedIds,
+            favoriteArabicIds = state.favoriteIds,
+            completedCourseBlockIds = completedCourseBlockIds,
+            lastOpenedLessonId = state.lastOpenedLessonId
+        )
+    }
+
+    private fun pushProgressToCloud(
+        userId: String,
+        completedArabicIds: Set<String>,
+        favoriteArabicIds: Set<String>,
+        completedCourseBlockIds: Set<String>,
+        lastOpenedLessonId: String?
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            cloudSyncRepository.saveLearningProgress(
+                userId = userId,
+                completedArabicIds = completedArabicIds,
+                favoriteArabicIds = favoriteArabicIds,
+                completedCourseBlockIds = completedCourseBlockIds,
+                lastOpenedLessonId = lastOpenedLessonId
+            )
+        }
+    }
+
     fun saveKamusEntry(entry: KamusEntry) {
         val updated = kamusRepository.upsertEntry(entry)
         val today = KamusSrsScheduler.todayEpochDay()
@@ -188,6 +441,13 @@ class ArabicStudyViewModel(application: Application) : AndroidViewModel(applicat
                 kamusEntries = updated,
                 dueKamusCount = updated.count { item -> KamusSrsScheduler.isDue(item, today) }
             )
+        }
+        val uid = cloudSyncUserId ?: return
+        val persistedEntry = updated.firstOrNull {
+            it.id == entry.id || (entry.normalizedKey.isNotBlank() && it.normalizedKey == entry.normalizedKey)
+        } ?: updated.firstOrNull() ?: entry
+        viewModelScope.launch(Dispatchers.IO) {
+            cloudSyncRepository.upsertKamusEntry(uid, persistedEntry)
         }
     }
 
@@ -200,6 +460,10 @@ class ArabicStudyViewModel(application: Application) : AndroidViewModel(applicat
                 dueKamusCount = updated.count { item -> KamusSrsScheduler.isDue(item, today) }
             )
         }
+        val uid = cloudSyncUserId ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            cloudSyncRepository.deleteKamusEntry(uid, entryId)
+        }
     }
 
     fun gradeKamusSrs(entryId: String, remembered: Boolean) {
@@ -210,6 +474,11 @@ class ArabicStudyViewModel(application: Application) : AndroidViewModel(applicat
                 kamusEntries = updated,
                 dueKamusCount = updated.count { item -> KamusSrsScheduler.isDue(item, today) }
             )
+        }
+        val uid = cloudSyncUserId ?: return
+        val gradedEntry = updated.firstOrNull { it.id == entryId } ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            cloudSyncRepository.updateKamusSrs(uid, gradedEntry)
         }
     }
 
@@ -222,6 +491,11 @@ class ArabicStudyViewModel(application: Application) : AndroidViewModel(applicat
                 dueKamusCount = updated.count { item -> KamusSrsScheduler.isDue(item, today) }
             )
         }
+        val uid = cloudSyncUserId ?: return
+        val toggledEntry = updated.firstOrNull { it.id == entryId } ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            cloudSyncRepository.updateKamusSrs(uid, toggledEntry)
+        }
     }
 
     fun importKamusBackupJson(rawJson: String): Int {
@@ -232,6 +506,12 @@ class ArabicStudyViewModel(application: Application) : AndroidViewModel(applicat
                 kamusEntries = updated,
                 dueKamusCount = updated.count { item -> KamusSrsScheduler.isDue(item, today) }
             )
+        }
+        val uid = cloudSyncUserId
+        if (uid != null && addedCount > 0) {
+            viewModelScope.launch(Dispatchers.IO) {
+                cloudSyncRepository.uploadMissingLocalKamusEntries(uid, updated)
+            }
         }
         return addedCount
     }
@@ -310,6 +590,9 @@ class ArabicStudyViewModel(application: Application) : AndroidViewModel(applicat
 
     override fun onCleared() {
         super.onCleared()
+        stopCloudSync()
+        lessonLoadJob?.cancel()
+        pdfExtractJob?.cancel()
         aiLookupJob?.cancel()
         ttsHelper.shutdown()
     }
@@ -321,11 +604,17 @@ class ArabicStudyViewModel(application: Application) : AndroidViewModel(applicat
     fun toggleCompleted(lessonId: String) {
         val updated = repository.toggleCompleted(lessonId)
         _uiState.update { it.copy(completedIds = updated) }
+        val uid = cloudSyncUserId ?: return
+        val state = _uiState.value
+        pushProgressToCloud(uid, updated, state.favoriteIds, latestCourseBlockIds, state.lastOpenedLessonId)
     }
 
     fun toggleFavorite(lessonId: String) {
         val updated = repository.toggleFavorite(lessonId)
         _uiState.update { it.copy(favoriteIds = updated) }
+        val uid = cloudSyncUserId ?: return
+        val state = _uiState.value
+        pushProgressToCloud(uid, state.completedIds, updated, latestCourseBlockIds, state.lastOpenedLessonId)
     }
 
     fun cycleReadingMode() {

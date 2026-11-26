@@ -4,7 +4,12 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -23,11 +28,16 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.NavigationRailItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,9 +45,16 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.credentials.CredentialManager
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.google.firebase.auth.FirebaseAuth
+import com.jadwalshalat.gt5.cloud.attemptAutoSignIn
+import com.jadwalshalat.gt5.cloud.authStateFlow
+import com.jadwalshalat.gt5.ui.components.AdaptiveBreakpoints
 import com.jadwalshalat.gt5.arabic.ArabicStudyUiState
 import com.jadwalshalat.gt5.arabic.ArabicStudyViewModel
 import com.jadwalshalat.gt5.learning.CourseKamusBridge
@@ -82,6 +99,39 @@ fun ShalatVibeApp(
     val palette = LocalShalatVibePalette.current
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
+    val credentialManager = remember(context) { CredentialManager.create(context) }
+
+    // Auth-gated Firebase Firestore cloud sync (zero Firestore calls while unauthenticated)
+    val auth = remember { FirebaseAuth.getInstance() }
+    val currentUser by remember(auth) { auth.authStateFlow() }
+        .collectAsStateWithLifecycle(initialValue = auth.currentUser)
+
+    LaunchedEffect(Unit) {
+        attemptAutoSignIn(
+            context = context,
+            credentialManager = credentialManager,
+            onAuthSuccess = {},
+            onUnauthenticated = {},
+            scope = this
+        )
+    }
+
+    LaunchedEffect(currentUser?.uid) {
+        val user = currentUser
+        if (user != null && user.uid.isNotBlank()) {
+            arabicViewModel.startCloudSync(
+                userId = user.uid,
+                email = user.email.orEmpty(),
+                displayName = user.displayName.orEmpty(),
+                localCourseBlockIds = learningState.completedBlockIds,
+                onCloudCourseBlocksReceived = { cloudBlocks ->
+                    learningViewModel.mergeCompletedBlocksFromCloud(cloudBlocks)
+                }
+            )
+        } else {
+            arabicViewModel.stopCloudSync()
+        }
+    }
 
     var currentTab by remember { mutableStateOf(MainTab.SCHEDULE) }
     var showCitySheet by remember { mutableStateOf(false) }
@@ -133,6 +183,9 @@ fun ShalatVibeApp(
                 arabicViewModel.lookupKamusWithAi(ar, ctx, title, force)
             },
             onClearKamusAiState = { arabicViewModel.clearKamusAiState() },
+            cloudSyncState = arabicState.cloudSyncState,
+            onBeforeSignOut = { arabicViewModel.stopCloudSync() },
+            onAuthFeedback = { msg -> scope.launch { snackbarHostState.showSnackbar(msg) } },
             onBack = {
                 arabicViewModel.clearKamusAiState()
                 showArabicKamus = false
@@ -153,6 +206,9 @@ fun ShalatVibeApp(
             readingMode = arabicState.readingMode,
             lessonContent = arabicState.activeLessonContent,
             isLoadingContent = arabicState.isLoadingContent,
+            isExtractingContentFromPdf = arabicState.isExtractingContentFromPdf,
+            contentExtractionError = arabicState.contentExtractionError,
+            onRetryExtractContent = { arabicViewModel.retryExtractContentFromPdf() },
             initialSeekSec = arabicState.activeSeekSec,
             showHarakat = arabicState.showHarakat,
             savedNormalizedKeys = arabicState.savedNormalizedKeys,
@@ -199,8 +255,14 @@ fun ShalatVibeApp(
                     hasNextBlock = hasNextBlock,
                     readingMode = arabicState.readingMode,
                     onCycleReadingMode = { arabicViewModel.cycleReadingMode() },
-                    onToggleBlockCompleted = { learningViewModel.toggleBlockCompleted(block.id) },
-                    onCompleteAndNext = { learningViewModel.markCompletedAndOpenNext(course.id, block.id) },
+                    onToggleBlockCompleted = {
+                        learningViewModel.toggleBlockCompleted(block.id)
+                        arabicViewModel.pushCourseBlocksToCloud(learningViewModel.uiState.value.completedBlockIds)
+                    },
+                    onCompleteAndNext = {
+                        learningViewModel.markCompletedAndOpenNext(course.id, block.id)
+                        arabicViewModel.pushCourseBlocksToCloud(learningViewModel.uiState.value.completedBlockIds)
+                    },
                     onSelectOtherBlock = { epId, blkId, seekSec ->
                         learningViewModel.openTopicBlock(course.id, epId, blkId, seekSec)
                     },
@@ -247,94 +309,182 @@ fun ShalatVibeApp(
         else -> Unit
     }
 
-    Scaffold(
-        containerColor = palette.background,
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        bottomBar = {
-            androidx.compose.foundation.layout.Column(
-                modifier = Modifier.background(palette.navBarBg)
-            ) {
-                androidx.compose.material3.HorizontalDivider(
-                    thickness = 0.5.dp,
-                    color = palette.hairline
-                )
-                NavigationBar(
-                    containerColor = palette.navBarBg,
-                    tonalElevation = 0.dp
-                ) {
-                    MainTab.entries.forEach { tab ->
-                        val selected = tab == currentTab
-                        val selectedIcon = when (tab) {
-                            MainTab.SCHEDULE -> Icons.Rounded.CalendarMonth
-                            MainTab.ARABIC -> Icons.AutoMirrored.Rounded.MenuBook
-                            MainTab.QIBLA -> Icons.Rounded.Explore
-                            MainTab.GT5_HUB -> Icons.Rounded.Watch
-                        }
-                        val unselectedIcon = when (tab) {
-                            MainTab.SCHEDULE -> Icons.Outlined.CalendarMonth
-                            MainTab.ARABIC -> Icons.AutoMirrored.Outlined.MenuBook
-                            MainTab.QIBLA -> Icons.Outlined.Explore
-                            MainTab.GT5_HUB -> Icons.Outlined.Watch
-                        }
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(palette.background)
+    ) {
+        val useNavRail = AdaptiveBreakpoints.useNavigationRail(maxWidth)
 
-                        NavigationBarItem(
-                            selected = selected,
-                            onClick = { currentTab = tab },
-                            icon = {
-                                if (tab == MainTab.GT5_HUB && state.missingCriticalPermissionCount > 0) {
-                                    BadgedBox(
-                                        badge = {
-                                            Badge(
-                                                containerColor = palette.goldAccent,
-                                                modifier = Modifier
-                                                    .size(8.dp)
-                                                    .clip(CircleShape)
+        Scaffold(
+            containerColor = palette.background,
+            snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+            bottomBar = {
+                if (!useNavRail) {
+                    androidx.compose.foundation.layout.Column(
+                        modifier = Modifier.background(palette.navBarBg)
+                    ) {
+                        androidx.compose.material3.HorizontalDivider(
+                            thickness = 0.5.dp,
+                            color = palette.hairline
+                        )
+                        NavigationBar(
+                            containerColor = palette.navBarBg,
+                            tonalElevation = 0.dp
+                        ) {
+                            MainTab.entries.forEach { tab ->
+                                val selected = tab == currentTab
+                                val selectedIcon = when (tab) {
+                                    MainTab.SCHEDULE -> Icons.Rounded.CalendarMonth
+                                    MainTab.ARABIC -> Icons.AutoMirrored.Rounded.MenuBook
+                                    MainTab.QIBLA -> Icons.Rounded.Explore
+                                    MainTab.GT5_HUB -> Icons.Rounded.Watch
+                                }
+                                val unselectedIcon = when (tab) {
+                                    MainTab.SCHEDULE -> Icons.Outlined.CalendarMonth
+                                    MainTab.ARABIC -> Icons.AutoMirrored.Outlined.MenuBook
+                                    MainTab.QIBLA -> Icons.Outlined.Explore
+                                    MainTab.GT5_HUB -> Icons.Outlined.Watch
+                                }
+
+                                NavigationBarItem(
+                                    selected = selected,
+                                    onClick = { currentTab = tab },
+                                    icon = {
+                                        if (tab == MainTab.GT5_HUB && state.missingCriticalPermissionCount > 0) {
+                                            BadgedBox(
+                                                badge = {
+                                                    Badge(
+                                                        containerColor = palette.goldAccent,
+                                                        modifier = Modifier
+                                                            .size(8.dp)
+                                                            .clip(CircleShape)
+                                                    )
+                                                }
+                                            ) {
+                                                Icon(
+                                                    imageVector = if (selected) selectedIcon else unselectedIcon,
+                                                    contentDescription = tab.label
+                                                )
+                                            }
+                                        } else {
+                                            Icon(
+                                                imageVector = if (selected) selectedIcon else unselectedIcon,
+                                                contentDescription = tab.label
                                             )
                                         }
-                                    ) {
+                                    },
+                                    label = {
+                                        Text(
+                                            text = tab.label,
+                                            fontSize = 11.sp,
+                                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
+                                        )
+                                    },
+                                    colors = NavigationBarItemDefaults.colors(
+                                        selectedIconColor = palette.emeraldPrimary,
+                                        selectedTextColor = palette.emeraldPrimary,
+                                        indicatorColor = palette.emeraldSoft,
+                                        unselectedIconColor = palette.textMuted,
+                                        unselectedTextColor = palette.textMuted
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        ) { innerPadding ->
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(palette.background)
+                    .padding(innerPadding)
+            ) {
+                if (useNavRail) {
+                    NavigationRail(
+                        containerColor = palette.navBarBg,
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .testTag("tablet_navigation_rail")
+                    ) {
+                        Spacer(modifier = Modifier.height(14.dp))
+                        MainTab.entries.forEach { tab ->
+                            val selected = tab == currentTab
+                            val selectedIcon = when (tab) {
+                                MainTab.SCHEDULE -> Icons.Rounded.CalendarMonth
+                                MainTab.ARABIC -> Icons.AutoMirrored.Rounded.MenuBook
+                                MainTab.QIBLA -> Icons.Rounded.Explore
+                                MainTab.GT5_HUB -> Icons.Rounded.Watch
+                            }
+                            val unselectedIcon = when (tab) {
+                                MainTab.SCHEDULE -> Icons.Outlined.CalendarMonth
+                                MainTab.ARABIC -> Icons.AutoMirrored.Outlined.MenuBook
+                                MainTab.QIBLA -> Icons.Outlined.Explore
+                                MainTab.GT5_HUB -> Icons.Outlined.Watch
+                            }
+
+                            NavigationRailItem(
+                                selected = selected,
+                                onClick = { currentTab = tab },
+                                icon = {
+                                    if (tab == MainTab.GT5_HUB && state.missingCriticalPermissionCount > 0) {
+                                        BadgedBox(
+                                            badge = {
+                                                Badge(
+                                                    containerColor = palette.goldAccent,
+                                                    modifier = Modifier
+                                                        .size(8.dp)
+                                                        .clip(CircleShape)
+                                                )
+                                            }
+                                        ) {
+                                            Icon(
+                                                imageVector = if (selected) selectedIcon else unselectedIcon,
+                                                contentDescription = tab.label
+                                            )
+                                        }
+                                    } else {
                                         Icon(
                                             imageVector = if (selected) selectedIcon else unselectedIcon,
                                             contentDescription = tab.label
                                         )
                                     }
-                                } else {
-                                    Icon(
-                                        imageVector = if (selected) selectedIcon else unselectedIcon,
-                                        contentDescription = tab.label
+                                },
+                                label = {
+                                    Text(
+                                        text = tab.label,
+                                        fontSize = 11.sp,
+                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
                                     )
-                                }
-                            },
-                            label = {
-                                Text(
-                                    text = tab.label,
-                                    fontSize = 11.sp,
-                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
+                                },
+                                colors = NavigationRailItemDefaults.colors(
+                                    selectedIconColor = palette.emeraldPrimary,
+                                    selectedTextColor = palette.emeraldPrimary,
+                                    indicatorColor = palette.emeraldSoft,
+                                    unselectedIconColor = palette.textMuted,
+                                    unselectedTextColor = palette.textMuted
                                 )
-                            },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = palette.emeraldPrimary,
-                                selectedTextColor = palette.emeraldPrimary,
-                                indicatorColor = palette.emeraldSoft,
-                                unselectedIconColor = palette.textMuted,
-                                unselectedTextColor = palette.textMuted
                             )
-                        )
+                            Spacer(modifier = Modifier.height(6.dp))
+                        }
                     }
+                    VerticalDivider(
+                        thickness = 0.5.dp,
+                        color = palette.hairline
+                    )
                 }
-            }
-        }
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(palette.background)
-                .padding(innerPadding)
-        ) {
-            Crossfade(
-                targetState = currentTab,
-                animationSpec = tween(220),
-                label = "tab_crossfade"
-            ) { tab ->
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                ) {
+                    Crossfade(
+                        targetState = currentTab,
+                        animationSpec = tween(220),
+                        label = "tab_crossfade"
+                    ) { tab ->
                 when (tab) {
                     MainTab.SCHEDULE -> ScheduleScreen(
                         state = state,
@@ -383,6 +533,7 @@ fun ShalatVibeApp(
                                         },
                                         onToggleBlockCompleted = { blkId ->
                                             learningViewModel.toggleBlockCompleted(blkId)
+                                            arabicViewModel.pushCourseBlocksToCloud(learningViewModel.uiState.value.completedBlockIds)
                                         },
                                         savedNormalizedKeys = arabicState.savedNormalizedKeys,
                                         kamusEntries = arabicState.kamusEntries,
@@ -414,7 +565,10 @@ fun ShalatVibeApp(
                                             }
                                         },
                                         onOpenSyncSettings = { showArabicSyncSheet = true },
-                                        onOpenArabicKamus = { showArabicKamus = true }
+                                        onOpenArabicKamus = { showArabicKamus = true },
+                                        cloudSyncState = arabicState.cloudSyncState,
+                                        onBeforeSignOut = { arabicViewModel.stopCloudSync() },
+                                        onAuthFeedback = { msg -> scope.launch { snackbarHostState.showSnackbar(msg) } }
                                     )
                                 }
                             }
@@ -434,7 +588,10 @@ fun ShalatVibeApp(
                                     }
                                 },
                                 onOpenSyncSettings = { showArabicSyncSheet = true },
-                                onOpenArabicKamus = { showArabicKamus = true }
+                                onOpenArabicKamus = { showArabicKamus = true },
+                                cloudSyncState = arabicState.cloudSyncState,
+                                onBeforeSignOut = { arabicViewModel.stopCloudSync() },
+                                onAuthFeedback = { msg -> scope.launch { snackbarHostState.showSnackbar(msg) } }
                             )
                         }
                     }
@@ -503,6 +660,8 @@ fun ShalatVibeApp(
                     )
                 }
             }
+        }
+        }
         }
     }
 

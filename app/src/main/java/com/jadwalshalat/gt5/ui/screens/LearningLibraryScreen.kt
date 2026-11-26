@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -64,6 +66,10 @@ import com.jadwalshalat.gt5.learning.LearningHubUiState
 import com.jadwalshalat.gt5.learning.LearningSearchHit
 import com.jadwalshalat.gt5.learning.LearningTrackEntry
 import com.jadwalshalat.gt5.learning.LearningTrackType
+import com.jadwalshalat.gt5.cloud.CloudSyncState
+import com.jadwalshalat.gt5.ui.components.AdaptiveBreakpoints
+import com.jadwalshalat.gt5.ui.components.AdaptivePairRow
+import com.jadwalshalat.gt5.ui.components.CloudSyncBannerCard
 import com.jadwalshalat.gt5.ui.theme.LocalShalatVibePalette
 
 @Composable
@@ -77,7 +83,10 @@ fun LearningLibraryScreen(
     onSyncAll: () -> Unit,
     onOpenSyncSettings: () -> Unit,
     modifier: Modifier = Modifier,
-    onOpenArabicKamus: () -> Unit = {}
+    onOpenArabicKamus: () -> Unit = {},
+    cloudSyncState: CloudSyncState = CloudSyncState.SignedOut,
+    onBeforeSignOut: () -> Unit = {},
+    onAuthFeedback: (String) -> Unit = {}
 ) {
     val palette = LocalShalatVibePalette.current
     val query = hubState.searchQuery.trim()
@@ -101,13 +110,22 @@ fun LearningLibraryScreen(
     }
     val continueArabic = arabicState.lastOpenedLesson
 
-    LazyColumn(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
             .background(palette.background),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+        contentAlignment = Alignment.TopCenter
     ) {
+        val useTwoColumns = AdaptiveBreakpoints.useTwoColumnGrid(maxWidth)
+        val horizontalPad = if (useTwoColumns) 24.dp else 16.dp
+
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .widthIn(max = AdaptiveBreakpoints.WideCatalogMaxWidth),
+            contentPadding = PaddingValues(start = horizontalPad, end = horizontalPad, top = 16.dp, bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
         // 1. Editorial Spacious Header
         item(key = "library_header") {
             Row(
@@ -196,6 +214,17 @@ fun LearningLibraryScreen(
             )
         }
 
+        if (!isSearching) {
+            item(key = "cloud_sync_banner") {
+                CloudSyncBannerCard(
+                    syncState = cloudSyncState,
+                    onBeforeSignOut = onBeforeSignOut,
+                    onAuthFeedback = onAuthFeedback,
+                    compact = true
+                )
+            }
+        }
+
         if (isSearching) {
             item(key = "search_count") {
                 Text(
@@ -207,39 +236,46 @@ fun LearningLibraryScreen(
                 )
             }
 
-            items(searchHits, key = { it.id }) { hit ->
-                SearchHitCard(
-                    hit = hit,
-                    onClick = {
-                        when (hit.kind) {
-                            LearningSearchHit.Kind.TRACK -> {
-                                hubState.tracks.firstOrNull { it.id == hit.courseId }?.let(onOpenTrack)
-                            }
-                            LearningSearchHit.Kind.TOPIC_BLOCK -> {
-                                onOpenTopicBlock(hit.courseId, hit.episodeId, hit.blockId, null)
-                            }
-                            LearningSearchHit.Kind.GLOSSARY_TERM -> {
-                                val term = hit.glossaryTerm
-                                if (term != null && term.blockId.isNotBlank()) {
-                                    val ep = hubState.seriesCourses[hit.courseId]
-                                        ?.findEpisodeAndBlock(term.blockId)?.first
-                                    if (ep != null) {
-                                        onOpenTopicBlock(
-                                            hit.courseId,
-                                            ep.id,
-                                            term.blockId,
-                                            term.exampleTimeSec.takeIf { it > 0 }
-                                        )
-                                    }
-                                }
-                            }
-                            LearningSearchHit.Kind.ARABIC_LESSON -> {
-                                arabicState.lessons.firstOrNull { it.id == hit.lessonId }
-                                    ?.let(onOpenArabicLesson)
+            val openHit: (LearningSearchHit) -> Unit = { hit ->
+                when (hit.kind) {
+                    LearningSearchHit.Kind.TRACK -> {
+                        hubState.tracks.firstOrNull { it.id == hit.courseId }?.let(onOpenTrack)
+                    }
+                    LearningSearchHit.Kind.TOPIC_BLOCK -> {
+                        onOpenTopicBlock(hit.courseId, hit.episodeId, hit.blockId, null)
+                    }
+                    LearningSearchHit.Kind.GLOSSARY_TERM -> {
+                        val term = hit.glossaryTerm
+                        if (term != null && term.blockId.isNotBlank()) {
+                            val ep = hubState.seriesCourses[hit.courseId]
+                                ?.findEpisodeAndBlock(term.blockId)?.first
+                            if (ep != null) {
+                                onOpenTopicBlock(
+                                    hit.courseId,
+                                    ep.id,
+                                    term.blockId,
+                                    term.exampleTimeSec.takeIf { it > 0 }
+                                )
                             }
                         }
                     }
-                )
+                    LearningSearchHit.Kind.ARABIC_LESSON -> {
+                        arabicState.lessons.firstOrNull { it.id == hit.lessonId }
+                            ?.let(onOpenArabicLesson)
+                    }
+                }
+            }
+
+            if (useTwoColumns) {
+                items(searchHits.chunked(2), key = { pair -> "hit_row_${pair.first().id}" }) { pair ->
+                    AdaptivePairRow(pair = pair, horizontalSpacing = 12.dp) { hit ->
+                        SearchHitCard(hit = hit, onClick = { openHit(hit) })
+                    }
+                }
+            } else {
+                items(searchHits, key = { it.id }) { hit ->
+                    SearchHitCard(hit = hit, onClick = { openHit(hit) })
+                }
             }
         } else {
             // 3. Characterful "Lanjutkan Terakhir" Hero Card
@@ -365,23 +401,44 @@ fun LearningLibraryScreen(
                 }
             }
 
-            // 5. Full-Width Editorial Course Showcase Cards (Zero Borders & Zero Placeholder Boxes)
-            items(hubState.tracks, key = { it.id }) { track ->
-                val stats = resolveTrackEditorialStats(
-                    track = track,
-                    hubState = hubState,
-                    arabicState = arabicState
-                )
-                EditorialCourseCard(
-                    track = track,
-                    arabicSubtitle = stats.arabicCallout,
-                    progressText = stats.progressText,
-                    progressFraction = stats.fraction,
-                    detailText = stats.detailText,
-                    onClick = { onOpenTrack(track) }
-                )
+            // 5. Editorial Course Showcase Cards (2-column grid on tablet, full-width stack on phone)
+            if (useTwoColumns) {
+                items(hubState.tracks.chunked(2), key = { pair -> "track_row_${pair.first().id}" }) { pair ->
+                    AdaptivePairRow(pair = pair, horizontalSpacing = 14.dp) { track ->
+                        val stats = resolveTrackEditorialStats(
+                            track = track,
+                            hubState = hubState,
+                            arabicState = arabicState
+                        )
+                        EditorialCourseCard(
+                            track = track,
+                            arabicSubtitle = stats.arabicCallout,
+                            progressText = stats.progressText,
+                            progressFraction = stats.fraction,
+                            detailText = stats.detailText,
+                            onClick = { onOpenTrack(track) }
+                        )
+                    }
+                }
+            } else {
+                items(hubState.tracks, key = { it.id }) { track ->
+                    val stats = resolveTrackEditorialStats(
+                        track = track,
+                        hubState = hubState,
+                        arabicState = arabicState
+                    )
+                    EditorialCourseCard(
+                        track = track,
+                        arabicSubtitle = stats.arabicCallout,
+                        progressText = stats.progressText,
+                        progressFraction = stats.fraction,
+                        detailText = stats.detailText,
+                        onClick = { onOpenTrack(track) }
+                    )
+                }
             }
         }
+    }
     }
 }
 

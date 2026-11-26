@@ -9,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -67,6 +69,7 @@ import androidx.compose.ui.unit.sp
 import com.jadwalshalat.gt5.model.PrayerType
 import com.jadwalshalat.gt5.ui.PrayerRowUi
 import com.jadwalshalat.gt5.ui.ShalatVibeUiState
+import com.jadwalshalat.gt5.ui.components.AdaptiveBreakpoints
 import com.jadwalshalat.gt5.ui.theme.LocalShalatVibePalette
 import com.jadwalshalat.gt5.ui.theme.heroAtmosphereFor
 import kotlin.math.cos
@@ -88,72 +91,137 @@ fun ScheduleScreen(
 ) {
     val palette = LocalShalatVibePalette.current
 
-    LazyColumn(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
             .background(palette.background),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        contentAlignment = Alignment.TopCenter
     ) {
-        // 1. Sleek Borderless Top Bar (Location + Method subtitle + GT5 status pill + Theme toggle)
-        item(key = "top_bar") {
-            ScheduleTopBar(
-                cityName = state.cityName,
-                methodLabel = shortMethodLabel(state.calculationMethod.name),
-                timezoneLabel = state.zoneId.id.substringAfter('/').replace('_', ' '),
-                useIhtiyat = state.useIhtiyat,
-                missingPermCount = state.missingCriticalPermissionCount,
-                isDark = palette.isDark,
-                onOpenCityPicker = onOpenCityPicker,
-                onOpenMethodPicker = onOpenMethodPicker,
-                onNavigateToGt5Hub = onNavigateToGt5Hub,
-                onOpenThemePicker = onOpenThemePicker
-            )
-        }
+        val useTwoPane = maxWidth >= 760.dp
+        val horizontalPad = if (useTwoPane) 24.dp else 16.dp
 
-        // 2. Characterful Dynamic Atmosphere Hero Card + Wide Solar Horizon Arc
-        item(key = "hero_card") {
-            DynamicHeroCard(state = state)
-        }
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .widthIn(max = AdaptiveBreakpoints.WideCatalogMaxWidth),
+            contentPadding = PaddingValues(start = horizontalPad, end = horizontalPad, top = 12.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // 1. Sleek Borderless Top Bar (Location + Method subtitle + GT5 status pill + Theme toggle)
+            item(key = "top_bar") {
+                ScheduleTopBar(
+                    cityName = state.cityName,
+                    methodLabel = shortMethodLabel(state.calculationMethod.name),
+                    timezoneLabel = state.zoneId.id.substringAfter('/').replace('_', ' '),
+                    useIhtiyat = state.useIhtiyat,
+                    missingPermCount = state.missingCriticalPermissionCount,
+                    isDark = palette.isDark,
+                    onOpenCityPicker = onOpenCityPicker,
+                    onOpenMethodPicker = onOpenMethodPicker,
+                    onNavigateToGt5Hub = onNavigateToGt5Hub,
+                    onOpenThemePicker = onOpenThemePicker
+                )
+            }
 
-        // 3. Sleek Borderless Date Switcher
-        item(key = "date_switcher") {
-            DateSwitcherBar(
-                dateLabel = state.selectedDateHeaderLabel,
-                hijriLabel = state.hijriDateLabel,
-                isViewingToday = state.isViewingToday,
-                onPreviousDay = onPreviousDay,
-                onNextDay = onNextDay,
-                onResetToToday = onResetToToday
-            )
-        }
-
-        // 4. Unified Tonal Prayer Schedule Surface (Replaces 6 heavy bordered cards)
-        item(key = "prayer_schedule_card") {
-            Surface(
-                shape = RoundedCornerShape(24.dp),
-                color = palette.cardSurface,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    state.prayerRows.forEachIndexed { idx, row ->
-                        PrayerScheduleRowItem(
-                            row = row,
-                            reminderActive = state.reminderActive,
-                            onToggleEnabled = { onTogglePrayer(row.type) },
-                            onRowClick = { onOpenPrayerDetail(row.type) }
-                        )
-                        if (idx < state.prayerRows.lastIndex && !row.isNext && !state.prayerRows[idx + 1].isNext) {
-                            HorizontalDivider(
-                                thickness = 0.5.dp,
-                                color = palette.hairline,
-                                modifier = Modifier.padding(horizontal = 14.dp)
+            if (useTwoPane) {
+                item(key = "tablet_schedule_two_pane") {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Box(modifier = Modifier.weight(0.47f)) {
+                            DynamicHeroCard(state = state)
+                        }
+                        Column(
+                            modifier = Modifier.weight(0.53f),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            DateSwitcherBar(
+                                dateLabel = state.selectedDateHeaderLabel,
+                                hijriLabel = state.hijriDateLabel,
+                                isViewingToday = state.isViewingToday,
+                                onPreviousDay = onPreviousDay,
+                                onNextDay = onNextDay,
+                                onResetToToday = onResetToToday
                             )
+                            Surface(
+                                shape = RoundedCornerShape(24.dp),
+                                color = palette.cardSurface,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(6.dp),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    state.prayerRows.forEachIndexed { idx, row ->
+                                        PrayerScheduleRowItem(
+                                            row = row,
+                                            reminderActive = state.reminderActive,
+                                            onToggleEnabled = { onTogglePrayer(row.type) },
+                                            onRowClick = { onOpenPrayerDetail(row.type) }
+                                        )
+                                        if (idx < state.prayerRows.lastIndex && !row.isNext && !state.prayerRows[idx + 1].isNext) {
+                                            HorizontalDivider(
+                                                thickness = 0.5.dp,
+                                                color = palette.hairline,
+                                                modifier = Modifier.padding(horizontal = 14.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                // 2. Characterful Dynamic Atmosphere Hero Card + Wide Solar Horizon Arc
+                item(key = "hero_card") {
+                    DynamicHeroCard(state = state)
+                }
+
+                // 3. Sleek Borderless Date Switcher
+                item(key = "date_switcher") {
+                    DateSwitcherBar(
+                        dateLabel = state.selectedDateHeaderLabel,
+                        hijriLabel = state.hijriDateLabel,
+                        isViewingToday = state.isViewingToday,
+                        onPreviousDay = onPreviousDay,
+                        onNextDay = onNextDay,
+                        onResetToToday = onResetToToday
+                    )
+                }
+
+                // 4. Unified Tonal Prayer Schedule Surface (Replaces 6 heavy bordered cards)
+                item(key = "prayer_schedule_card") {
+                    Surface(
+                        shape = RoundedCornerShape(24.dp),
+                        color = palette.cardSurface,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            state.prayerRows.forEachIndexed { idx, row ->
+                                PrayerScheduleRowItem(
+                                    row = row,
+                                    reminderActive = state.reminderActive,
+                                    onToggleEnabled = { onTogglePrayer(row.type) },
+                                    onRowClick = { onOpenPrayerDetail(row.type) }
+                                )
+                                if (idx < state.prayerRows.lastIndex && !row.isNext && !state.prayerRows[idx + 1].isNext) {
+                                    HorizontalDivider(
+                                        thickness = 0.5.dp,
+                                        color = palette.hairline,
+                                        modifier = Modifier.padding(horizontal = 14.dp)
+                                    )
+                                }
+                            }
                         }
                     }
                 }

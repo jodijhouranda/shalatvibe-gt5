@@ -1,0 +1,152 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Reusable Zero-Trust Primitives ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isOptionalBoundedString(data, field, maxLen) {
+      return !(field in data) || data[field] == null || (data[field] is string && data[field].size() <= maxLen);
+    }
+
+    function isBoundedStringList(val, maxItems) {
+      return val is list && val.size() <= maxItems && (val.size() == 0 || val[0] is string);
+    }
+
+    // --- Validation Blueprints ---
+    function isValidKamusEntry(data) {
+      return data.keys().hasAll([
+               'arabic', 'kind', 'masteryStage', 'nextReviewEpochDay',
+               'createdAtMillis', 'reviewCount', 'createdAt', 'updatedAt'
+             ]) &&
+             data.keys().hasOnly([
+               'arabic', 'transliteration', 'meaning', 'turatsOrigin', 'synonymNote',
+               'kind', 'lessonId', 'lessonTitle', 'segmentLabel', 'segmentStartSec',
+               'contextSentence', 'personalNote', 'masteryStage', 'nextReviewEpochDay',
+               'createdAtMillis', 'reviewCount', 'createdAt', 'updatedAt'
+             ]) &&
+             data.arabic is string && data.arabic.size() >= 1 && data.arabic.size() <= 500 &&
+             isOptionalBoundedString(data, 'transliteration', 500) &&
+             isOptionalBoundedString(data, 'meaning', 2000) &&
+             isOptionalBoundedString(data, 'turatsOrigin', 1000) &&
+             isOptionalBoundedString(data, 'synonymNote', 1500) &&
+             data.kind is string && data.kind in ['word', 'phrase', 'idiom'] &&
+             isOptionalBoundedString(data, 'lessonId', 200) &&
+             isOptionalBoundedString(data, 'lessonTitle', 300) &&
+             isOptionalBoundedString(data, 'segmentLabel', 200) &&
+             (!('segmentStartSec' in data) || data.segmentStartSec == null || (data.segmentStartSec is int && data.segmentStartSec >= 0 && data.segmentStartSec <= 86400)) &&
+             isOptionalBoundedString(data, 'contextSentence', 2000) &&
+             isOptionalBoundedString(data, 'personalNote', 2000) &&
+             data.masteryStage is int && data.masteryStage >= 0 && data.masteryStage <= 5 &&
+             data.nextReviewEpochDay is int && data.nextReviewEpochDay >= 0 &&
+             data.createdAtMillis is int && data.createdAtMillis >= 0 &&
+             data.reviewCount is int && data.reviewCount >= 0 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidLearningProgress(data) {
+      return data.keys().hasAll([
+               'completedArabicIds', 'favoriteArabicIds', 'completedCourseBlockIds',
+               'createdAt', 'updatedAt'
+             ]) &&
+             data.keys().hasOnly([
+               'completedArabicIds', 'favoriteArabicIds', 'completedCourseBlockIds',
+               'lastOpenedLessonId', 'createdAt', 'updatedAt'
+             ]) &&
+             isBoundedStringList(data.completedArabicIds, 500) &&
+             isBoundedStringList(data.favoriteArabicIds, 500) &&
+             isBoundedStringList(data.completedCourseBlockIds, 500) &&
+             isOptionalBoundedString(data, 'lastOpenedLessonId', 200) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    // --- Per-User Private Subcollections ---
+    match /users/{userId} {
+
+      // Kamus Saya vocabulary entries
+      match /kamus/{entryId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(entryId);
+        allow list: if isOwner(userId);
+
+        allow create: if isSignedIn() &&
+                         isValidId(userId) &&
+                         isValidId(entryId) &&
+                         isValidKamusEntry(incoming()) &&
+                         isOwner(userId);
+
+        allow update: if isSignedIn() &&
+                         isValidId(userId) &&
+                         isValidId(entryId) &&
+                         isValidKamusEntry(incoming()) &&
+                         isOwner(userId) &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().createdAtMillis == existing().createdAtMillis &&
+                         (
+                           // Action: SRS review / mastery toggle
+                           incoming().diff(existing()).affectedKeys().hasOnly([
+                             'masteryStage', 'nextReviewEpochDay', 'reviewCount', 'updatedAt'
+                           ]) ||
+                           // Action: Full entry edit / merge sync
+                           incoming().diff(existing()).affectedKeys().hasOnly([
+                             'arabic', 'transliteration', 'meaning', 'turatsOrigin', 'synonymNote',
+                             'kind', 'lessonId', 'lessonTitle', 'segmentLabel', 'segmentStartSec',
+                             'contextSentence', 'personalNote', 'masteryStage', 'nextReviewEpochDay',
+                             'reviewCount', 'updatedAt'
+                           ])
+                         );
+
+        allow delete: if isOwner(userId) && isValidId(userId) && isValidId(entryId);
+      }
+
+      // Synced learning progress (completed lessons, favorites, course blocks)
+      match /progress/{progressId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(progressId);
+        allow list: if isOwner(userId);
+
+        allow create: if isSignedIn() &&
+                         isValidId(userId) &&
+                         isValidId(progressId) &&
+                         isValidLearningProgress(incoming()) &&
+                         isOwner(userId);
+
+        allow update: if isSignedIn() &&
+                         isValidId(userId) &&
+                         isValidId(progressId) &&
+                         isValidLearningProgress(incoming()) &&
+                         isOwner(userId) &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'completedArabicIds', 'favoriteArabicIds', 'completedCourseBlockIds',
+                           'lastOpenedLessonId', 'updatedAt'
+                         ]);
+
+        allow delete: if isOwner(userId) && isValidId(userId) && isValidId(progressId);
+      }
+    }
+  }
+}

@@ -130,6 +130,14 @@ class KamusRepository(context: Context) {
         return sorted to addedOrUpdated
     }
 
+    fun replaceAllFromCloud(cloudEntries: List<KamusEntry>): List<KamusEntry> = synchronized(lock) {
+        val sorted = cloudEntries
+            .filter { it.arabic.isNotBlank() }
+            .sortedByDescending { it.createdAtMillis }
+        writeEntriesLocked(sorted)
+        return sorted
+    }
+
     private fun writeEntriesLocked(entries: List<KamusEntry>) {
         val json = KamusCodec.toBackupJson(entries)
         runCatching {

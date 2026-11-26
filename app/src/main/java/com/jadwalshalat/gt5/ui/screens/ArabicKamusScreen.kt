@@ -11,6 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -28,6 +29,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -110,6 +112,10 @@ import com.jadwalshalat.gt5.arabic.KamusEntry
 import com.jadwalshalat.gt5.arabic.KamusEntryKind
 import com.jadwalshalat.gt5.arabic.KamusFilter
 import com.jadwalshalat.gt5.arabic.KamusSrsScheduler
+import com.jadwalshalat.gt5.cloud.CloudSyncState
+import com.jadwalshalat.gt5.ui.components.AdaptiveBreakpoints
+import com.jadwalshalat.gt5.ui.components.AdaptivePairRow
+import com.jadwalshalat.gt5.ui.components.CloudSyncBannerCard
 import com.jadwalshalat.gt5.ui.theme.LocalShalatVibePalette
 
 enum class KamusModeTab(val label: String) {
@@ -138,6 +144,9 @@ fun ArabicKamusScreen(
     kamusAiState: KamusAiUiState = KamusAiUiState.Idle,
     onLookupKamusAi: (arabic: String, contextSentence: String, lessonTitle: String, forceRefresh: Boolean) -> Unit = { _, _, _, _ -> },
     onClearKamusAiState: () -> Unit = {},
+    cloudSyncState: CloudSyncState = CloudSyncState.SignedOut,
+    onBeforeSignOut: () -> Unit = {},
+    onAuthFeedback: (String) -> Unit = {},
     onBack: () -> Unit
 ) {
     val palette = LocalShalatVibePalette.current
@@ -208,13 +217,19 @@ fun ArabicKamusScreen(
         }
     }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(palette.background)
             .windowInsetsPadding(WindowInsets.statusBars)
-            .navigationBarsPadding()
+            .navigationBarsPadding(),
+        contentAlignment = Alignment.TopCenter
     ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .widthIn(max = AdaptiveBreakpoints.WideCatalogMaxWidth)
+        ) {
         // 1. Sleek Top Header
         Row(
             modifier = Modifier
@@ -365,6 +380,18 @@ fun ArabicKamusScreen(
             }
         }
 
+        // 1b. Cloud Sync Banner (Google Sign-In <-> Web Nida Belajar)
+        CloudSyncBannerCard(
+            syncState = cloudSyncState,
+            onBeforeSignOut = onBeforeSignOut,
+            onAuthFeedback = { msg ->
+                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                onAuthFeedback(msg)
+            },
+            compact = true,
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp)
+        )
+
         // 2. Segmented Mode Switcher (Daftar | Flashcard SRS | Kuis Kalimat)
         Row(
             modifier = Modifier
@@ -446,28 +473,51 @@ fun ArabicKamusScreen(
                 )
             }
             KamusModeTab.FLASHCARD -> {
-                KamusFlashcardMode(
-                    entries = entries,
-                    dueEntries = dueEntries,
-                    showHarakat = showHarakat,
-                    onToggleHarakat = onToggleHarakat,
-                    onGradeSrs = onGradeSrs,
-                    onOpenLessonClip = onOpenLessonClip,
-                    onSpeakArabic = onSpeakArabic,
-                    onBackToList = { activeTab = KamusModeTab.LIST }
-                )
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.TopCenter
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .widthIn(max = AdaptiveBreakpoints.FlashcardMaxWidth)
+                    ) {
+                        KamusFlashcardMode(
+                            entries = entries,
+                            dueEntries = dueEntries,
+                            showHarakat = showHarakat,
+                            onToggleHarakat = onToggleHarakat,
+                            onGradeSrs = onGradeSrs,
+                            onOpenLessonClip = onOpenLessonClip,
+                            onSpeakArabic = onSpeakArabic,
+                            onBackToList = { activeTab = KamusModeTab.LIST }
+                        )
+                    }
+                }
             }
             KamusModeTab.CLOZE_QUIZ -> {
-                KamusClozeQuizMode(
-                    entries = entries,
-                    showHarakat = showHarakat,
-                    onToggleHarakat = onToggleHarakat,
-                    onGradeSrs = onGradeSrs,
-                    onOpenLessonClip = onOpenLessonClip,
-                    onSpeakArabic = onSpeakArabic,
-                    onBackToList = { activeTab = KamusModeTab.LIST }
-                )
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.TopCenter
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .widthIn(max = AdaptiveBreakpoints.FlashcardMaxWidth)
+                    ) {
+                        KamusClozeQuizMode(
+                            entries = entries,
+                            showHarakat = showHarakat,
+                            onToggleHarakat = onToggleHarakat,
+                            onGradeSrs = onGradeSrs,
+                            onOpenLessonClip = onOpenLessonClip,
+                            onSpeakArabic = onSpeakArabic,
+                            onBackToList = { activeTab = KamusModeTab.LIST }
+                        )
+                    }
+                }
             }
+        }
         }
     }
 
@@ -533,11 +583,14 @@ private fun KamusListMode(
         }
     }
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val useTwoColumns = AdaptiveBreakpoints.useTwoColumnGrid(maxWidth)
+
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
         // Hero Summary Card
         item(key = "kamus_hero") {
             KamusSrsHeroCard(
@@ -663,6 +716,25 @@ private fun KamusListMode(
                     }
                 }
             }
+        } else if (useTwoColumns) {
+            items(filteredEntries.chunked(2), key = { pair -> "kamus_row_${pair.first().id}" }) { pair ->
+                AdaptivePairRow(pair = pair, horizontalSpacing = 12.dp) { entry ->
+                    KamusEntryCard(
+                        entry = entry,
+                        today = today,
+                        showHarakat = showHarakat,
+                        onEdit = { onEditEntry(entry) },
+                        onDelete = { onDeleteEntry(entry.id) },
+                        onToggleMastered = { onToggleMastered(entry.id) },
+                        onOpenClip = {
+                            if (entry.lessonId.isNotBlank()) {
+                                onOpenLessonClip(entry.lessonId, entry.segmentStartSec)
+                            }
+                        },
+                        onSpeak = { onSpeakArabic(entry.arabic) }
+                    )
+                }
+            }
         } else {
             items(filteredEntries, key = { it.id }) { entry ->
                 KamusEntryCard(
@@ -681,6 +753,7 @@ private fun KamusListMode(
                 )
             }
         }
+    }
     }
 }
 

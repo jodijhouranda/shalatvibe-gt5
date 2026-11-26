@@ -3,10 +3,13 @@ package com.jadwalshalat.gt5.arabic
 import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.URLEncoder
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -119,10 +122,16 @@ class ArabicLessonRepository(context: Context) {
             )
         }
 
-        syncedCatalogFile.writeText(jsonText)
+        val mergedJsonText = mergeAutoDiscoveredGitHubPdfs(normalizedUrl, jsonText, parsed)
+        val finalParsed = runCatching { ArabicCatalogParser.parseCatalogJson(mergedJsonText) }
+            .getOrNull()
+            ?.takeIf { it.isNotEmpty() }
+            ?: parsed
+
+        syncedCatalogFile.writeText(mergedJsonText)
 
         var newlyCached = 0
-        for (lesson in parsed) {
+        for (lesson in finalParsed) {
             if (lesson.pdfFileName.isBlank()) continue
             val target = File(pdfCacheDir, lesson.pdfFileName)
             if (!target.exists() || target.length() < 1024L) {
@@ -145,6 +154,109 @@ class ArabicLessonRepository(context: Context) {
                 "Katalog mutakhir: ${all.size} modul siap dipelajari."
             }
         )
+    }
+
+    /**
+     * Jika URL sinkronisasi menunjuk ke `raw.githubusercontent.com/<owner>/<repo>/<branch>/<dir>/catalog.json`,
+     * periksa juga isi folder `<dir>/pdfs` melalui GitHub Contents API agar file `.pdf` baru yang
+     * belum sempat dicantumkan di `catalog.json` tetap langsung muncul di aplikasi.
+     */
+    private fun mergeAutoDiscoveredGitHubPdfs(
+        catalogUrl: String,
+        originalCatalogJson: String,
+        existingLessons: List<ArabicLesson>
+    ): String {
+        return runCatching {
+            val match = Regex(
+                "^https://raw\\.githubusercontent\\.com/([^/]+)/([^/]+)/([^/]+)/(.+)/[^/]+\\.json(?:\\?.*)?$"
+            ).find(catalogUrl) ?: return originalCatalogJson
+
+            val owner = match.groupValues[1]
+            val repo = match.groupValues[2]
+            val branch = match.groupValues[3]
+            val baseDir = match.groupValues[4].trim('/')
+            val pdfsDir = "$baseDir/pdfs"
+            val apiUrl = "https://api.github.com/repos/$owner/$repo/contents/$pdfsDir?ref=$branch"
+
+            val listingRaw = fetchText(apiUrl) ?: return originalCatalogJson
+            val filesArray = JSONArray(listingRaw)
+            if (filesArray.length() == 0) return originalCatalogJson
+
+            val knownPdfNames = existingLessons
+                .map { it.pdfFileName.trim().lowercase(Locale.US) }
+                .filter { it.isNotEmpty() }
+                .toHashSet()
+
+            val discoveredEntries = mutableListOf<JSONObject>()
+            for (i in 0 until filesArray.length()) {
+                val item = filesArray.optJSONObject(i) ?: continue
+                if (!item.optString("type").equals("file", ignoreCase = true)) continue
+                val name = item.optString("name").trim()
+                if (!name.endsWith(".pdf", ignoreCase = true)) continue
+                val sizeBytes = item.optLong("size", 0L)
+                if (sizeBytes <= 100L) continue
+                if (knownPdfNames.contains(name.lowercase(Locale.US))) continue
+
+                val downloadUrl = item.optString("download_url").trim().ifBlank {
+                    val encodedName = URLEncoder.encode(name, "UTF-8").replace("+", "%20")
+                    "https://raw.githubusercontent.com/$owner/$repo/$branch/$pdfsDir/$encodedName"
+                }
+
+                val stem = name.removeSuffix(".pdf").removeSuffix(".PDF")
+                val safeId = "auto_pdf_" + stem.lowercase(Locale.US)
+                    .replace(Regex("[^a-z0-9]+"), "_")
+                    .trim('_')
+                    .take(64)
+
+                val prettyTitle = stem
+                    .replace('_', ' ')
+                    .replace('-', ' ')
+                    .replace(Regex("\\s+"), " ")
+                    .trim()
+                    .ifBlank { name }
+
+                val category = if (prettyTitle.contains("video", ignoreCase = true)) {
+                    "VIDEO_ANALYSIS"
+                } else {
+                    "DAILY_LEXICAL"
+                }
+
+                discoveredEntries.add(
+                    JSONObject().apply {
+                        put("id", safeId)
+                        put("category", category)
+                        put("dayLabel", "PDF Baru")
+                        put("dateLabel", "Auto GitHub")
+                        put("title", prettyTitle)
+                        put("subtitle", "PDF baru terdeteksi otomatis dari GitHub — teks interaktif diekstrak oleh AI.")
+                        put("sourceName", "GitHub PDF")
+                        put("level", "CEFR B2–C1")
+                        put("youtubeVideoId", "")
+                        put("startSeconds", 0)
+                        put("endSeconds", 0)
+                        put("pdfFileName", name)
+                        put("pdfUrl", downloadUrl)
+                        put("driveFileId", "")
+                        put("segments", JSONArray())
+                    }
+                )
+            }
+
+            if (discoveredEntries.isEmpty()) return originalCatalogJson
+
+            val root = JSONObject(originalCatalogJson)
+            val existingArr = root.optJSONArray("lessons") ?: JSONArray()
+            val combinedArr = JSONArray()
+            // Taruh PDF baru paling atas agar langsung terlihat
+            for (entry in discoveredEntries) {
+                combinedArr.put(entry)
+            }
+            for (i in 0 until existingArr.length()) {
+                combinedArr.put(existingArr.get(i))
+            }
+            root.put("lessons", combinedArr)
+            root.toString()
+        }.getOrDefault(originalCatalogJson)
     }
 
     fun getCompletedIds(): Set<String> =
@@ -172,6 +284,19 @@ class ArabicLessonRepository(context: Context) {
         if (!next.add(lessonId)) next.remove(lessonId)
         prefs.edit().putStringSet(KEY_FAVORITE_IDS, next).apply()
         return next
+    }
+
+    fun mergeProgressFromCloud(
+        cloudCompleted: Set<String>,
+        cloudFavorites: Set<String>
+    ): Pair<Set<String>, Set<String>> {
+        val mergedCompleted = (getCompletedIds() + cloudCompleted).filter { it.isNotBlank() }.toSet()
+        val mergedFavorites = (getFavoriteIds() + cloudFavorites).filter { it.isNotBlank() }.toSet()
+        prefs.edit()
+            .putStringSet(KEY_COMPLETED_IDS, mergedCompleted)
+            .putStringSet(KEY_FAVORITE_IDS, mergedFavorites)
+            .apply()
+        return mergedCompleted to mergedFavorites
     }
 
     fun getLastOpenedLessonId(): String? = prefs.getString(KEY_LAST_OPENED_ID, null)

@@ -230,6 +230,11 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         _uiState.update { it.copy(completedBlockIds = updated) }
     }
 
+    fun mergeCompletedBlocksFromCloud(cloudBlocks: Set<String>) {
+        val merged = repo.mergeCompletedBlocksFromCloud(cloudBlocks)
+        _uiState.update { it.copy(completedBlockIds = merged) }
+    }
+
     fun markCompletedAndOpenNext(courseId: String, currentBlockId: String) {
         val updated = repo.markBlockCompleted(currentBlockId)
         val course = _uiState.value.seriesCourses[courseId]

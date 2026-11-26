@@ -9,15 +9,17 @@ import java.net.URL
 
 /**
  * Repositori hibrid untuk konten Teks Interaktif modul Bahasa Arab (.json):
- * 1. Cek cache lokal terunduh (`filesDir/arabic_content/<stem>.json`)
+ * 1. Cek cache lokal terunduh / hasil ekstraksi AI (`filesDir/arabic_content/<stem>.json`)
  * 2. Cek aset bawaan APK (`assets/arabic_lessons/content/<stem>.json`)
- * 3. Opsional: unduh otomatis dari GitHub/sumber jika modul baru masuk dari cron sinkronisasi;
- *    bila belum tersedia (404/offline), kembalikan null agar fallback halus ke PDF Asli.
+ * 3. Unduh otomatis dari GitHub/sumber jika modul baru masuk dari sinkronisasi
+ * 4. Jika JSON belum tersedia di GitHub namun PDF resminya ada, ekstrak otomatis
+ *    dengan Firebase AI Logic (Gemini) lalu simpan permanen ke cache lokal.
  */
 class ArabicContentRepository(context: Context) {
 
     private val appContext = context.applicationContext
     private val cacheDir = File(appContext.filesDir, "arabic_content").apply { mkdirs() }
+    private val pdfExtractor by lazy { ArabicPdfContentExtractor(appContext) }
 
     suspend fun loadLessonContent(lesson: ArabicLesson): ArabicLessonContent? = withContext(Dispatchers.IO) {
         val fileName = ArabicContentParser.contentFileNameForPdf(lesson.pdfFileName)
@@ -46,16 +48,41 @@ class ArabicContentRepository(context: Context) {
         if (!fetched.isNullOrBlank()) {
             val parsed = ArabicContentParser.parseContentJson(fetched)
             if (parsed != null) {
-                runCatching {
-                    val tmp = File(cacheDir, "$fileName.tmp")
-                    tmp.writeText(fetched, Charsets.UTF_8)
-                    if (cached.exists()) cached.delete()
-                    tmp.renameTo(cached)
-                }
+                writeCacheAtomically(cached, fileName, fetched)
                 return@withContext parsed
             }
         }
         null
+    }
+
+    suspend fun extractAndCacheFromPdf(
+        lesson: ArabicLesson,
+        pdfFile: File
+    ): ArabicLessonContent = withContext(Dispatchers.IO) {
+        val fileName = ArabicContentParser.contentFileNameForPdf(lesson.pdfFileName)
+        val cached = File(cacheDir, fileName)
+        if (cached.exists() && cached.length() > 30L) {
+            val raw = runCatching { cached.readText(Charsets.UTF_8) }.getOrNull()
+            val parsed = raw?.let { ArabicContentParser.parseContentJson(it) }
+            if (parsed != null) return@withContext parsed
+        }
+
+        val (parsed, rawJson) = pdfExtractor.extractFromPdf(lesson, pdfFile)
+        writeCacheAtomically(cached, fileName, rawJson)
+        parsed
+    }
+
+    private fun writeCacheAtomically(targetFile: File, fileName: String, content: String) {
+        runCatching {
+            cacheDir.mkdirs()
+            val tmp = File(cacheDir, "$fileName.tmp")
+            tmp.writeText(content, Charsets.UTF_8)
+            if (targetFile.exists()) targetFile.delete()
+            if (!tmp.renameTo(targetFile)) {
+                targetFile.writeText(content, Charsets.UTF_8)
+                tmp.delete()
+            }
+        }
     }
 
     private fun fetchText(urlStr: String): String? {

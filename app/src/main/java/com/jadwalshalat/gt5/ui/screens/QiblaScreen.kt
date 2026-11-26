@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -217,14 +218,20 @@ fun QiblaScreen(
     val needsCalibration = sensorAccuracy == SensorManager.SENSOR_STATUS_UNRELIABLE ||
         sensorAccuracy == SensorManager.SENSOR_STATUS_ACCURACY_LOW
 
-    Column(
+    Box(
         modifier = modifier
             .fillMaxSize()
-            .background(palette.background)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .background(palette.background),
+        contentAlignment = Alignment.TopCenter
     ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .widthIn(max = 560.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
         // Header Row
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -440,6 +447,7 @@ fun QiblaScreen(
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(horizontal = 16.dp)
         )
+        }
     }
 }
 

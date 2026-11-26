@@ -1,0 +1,150 @@
+{
+  "entities": {
+    "KamusEntryDoc": {
+      "title": "KamusEntryDoc",
+      "description": "A user's saved Arabic vocabulary word, phrase, or idiom with spaced-repetition (SRS) state and contextual metadata, synced across Android and Web.",
+      "type": "object",
+      "properties": {
+        "arabic": {
+          "type": "string",
+          "description": "Vocalized Arabic word, phrase, or idiom (1 to 500 characters)."
+        },
+        "transliteration": {
+          "type": "string",
+          "description": "Latin transliteration (optional, max 500 characters)."
+        },
+        "meaning": {
+          "type": "string",
+          "description": "Indonesian meaning or explanation (optional, max 2000 characters)."
+        },
+        "turatsOrigin": {
+          "type": "string",
+          "description": "Classical Arabic / turats root or origin note (optional, max 1000 characters)."
+        },
+        "synonymNote": {
+          "type": "string",
+          "description": "Synonym or semantic nuance note (optional, max 1500 characters)."
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["word", "phrase", "idiom"],
+          "description": "Entry classification: word, phrase, or idiom."
+        },
+        "lessonId": {
+          "type": "string",
+          "description": "Source lesson or course block identifier (optional, max 200 characters)."
+        },
+        "lessonTitle": {
+          "type": "string",
+          "description": "Human-readable source lesson title (optional, max 300 characters)."
+        },
+        "segmentLabel": {
+          "type": "string",
+          "description": "Video timestamp segment label (optional, max 200 characters)."
+        },
+        "segmentStartSec": {
+          "type": "integer",
+          "description": "Video start timestamp in seconds (optional, 0 to 86400)."
+        },
+        "contextSentence": {
+          "type": "string",
+          "description": "Original Arabic context sentence (optional, max 2000 characters)."
+        },
+        "personalNote": {
+          "type": "string",
+          "description": "User's personal study note (optional, max 2000 characters)."
+        },
+        "masteryStage": {
+          "type": "integer",
+          "description": "Spaced-repetition mastery stage from 0 to 5."
+        },
+        "nextReviewEpochDay": {
+          "type": "integer",
+          "description": "Epoch day scheduled for next SRS review (>= 0)."
+        },
+        "createdAtMillis": {
+          "type": "integer",
+          "description": "Original creation timestamp in epoch milliseconds (>= 0), immutable after creation."
+        },
+        "reviewCount": {
+          "type": "integer",
+          "description": "Total number of SRS review attempts (>= 0)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Firestore server timestamp written via FieldValue.serverTimestamp(); immutable after creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Firestore server timestamp written via FieldValue.serverTimestamp() on every create and update."
+        }
+      },
+      "required": [
+        "arabic",
+        "kind",
+        "masteryStage",
+        "nextReviewEpochDay",
+        "createdAtMillis",
+        "reviewCount",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "LearningProgressDoc": {
+      "title": "LearningProgressDoc",
+      "description": "User's synced learning completion and favorite module state across Android and Web.",
+      "type": "object",
+      "properties": {
+        "completedArabicIds": {
+          "type": "array",
+          "description": "List of completed Arabic lesson IDs (max 500 items)."
+        },
+        "favoriteArabicIds": {
+          "type": "array",
+          "description": "List of favorited Arabic lesson IDs (max 500 items)."
+        },
+        "completedCourseBlockIds": {
+          "type": "array",
+          "description": "List of completed series course topic block IDs (max 500 items)."
+        },
+        "lastOpenedLessonId": {
+          "type": "string",
+          "description": "Most recently opened Arabic lesson ID (optional, max 200 characters)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Firestore server timestamp written via FieldValue.serverTimestamp(); immutable after creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Firestore server timestamp written via FieldValue.serverTimestamp() on every create and update."
+        }
+      },
+      "required": [
+        "completedArabicIds",
+        "favoriteArabicIds",
+        "completedCourseBlockIds",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/kamus/{entryId}": {
+      "schema": {
+        "$ref": "#/entities/KamusEntryDoc"
+      },
+      "description": "Per-user private Kamus Saya vocabulary entries synced in real time between Android and Web."
+    },
+    "/users/{userId}/progress/{progressId}": {
+      "schema": {
+        "$ref": "#/entities/LearningProgressDoc"
+      },
+      "description": "Per-user private learning completion and favorite lesson progress document (e.g. progressId = 'learning_v1')."
+    }
+  }
+}

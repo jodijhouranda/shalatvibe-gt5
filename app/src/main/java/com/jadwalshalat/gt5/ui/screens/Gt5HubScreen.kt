@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -70,6 +71,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jadwalshalat.gt5.notification.PhoneVibrationPattern
 import com.jadwalshalat.gt5.ui.ShalatVibeUiState
+import com.jadwalshalat.gt5.ui.components.AdaptiveBreakpoints
 import com.jadwalshalat.gt5.ui.components.DailyWorkManagerCard
 import com.jadwalshalat.gt5.ui.components.PhoneVibrationSettingsCard
 import com.jadwalshalat.gt5.ui.theme.LocalShalatVibePalette
@@ -103,13 +105,19 @@ fun Gt5HubScreen(
 ) {
     val palette = LocalShalatVibePalette.current
 
-    LazyColumn(
+    Box(
         modifier = modifier
             .fillMaxSize()
             .background(palette.background),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+        contentAlignment = Alignment.TopCenter
     ) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .widthIn(max = AdaptiveBreakpoints.SingleColumnMaxWidth),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
         item(key = "hub_header") {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -346,6 +354,7 @@ fun Gt5HubScreen(
                 }
             }
         }
+    }
     }
 }
 

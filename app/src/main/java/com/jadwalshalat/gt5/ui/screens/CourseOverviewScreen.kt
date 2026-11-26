@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -108,11 +109,17 @@ fun CourseOverviewScreen(
     val doneBlocks = course.allBlocks.count { (_, block) -> completedBlockIds.contains(block.id) }
     val progressFraction = if (totalBlocks > 0) doneBlocks.toFloat() / totalBlocks.toFloat() else 0f
 
-    Column(
+    Box(
         modifier = modifier
             .fillMaxSize()
-            .background(palette.background)
+            .background(palette.background),
+        contentAlignment = Alignment.TopCenter
     ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .widthIn(max = 920.dp)
+        ) {
         // Sleek Borderless Header
         Row(
             modifier = Modifier
@@ -309,6 +316,7 @@ fun CourseOverviewScreen(
                 )
             }
         }
+    }
     }
 
     if (showGlossaryBrowser) {

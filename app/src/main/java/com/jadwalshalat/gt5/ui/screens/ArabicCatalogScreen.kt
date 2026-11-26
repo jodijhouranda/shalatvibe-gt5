@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -60,6 +62,8 @@ import androidx.compose.ui.unit.sp
 import com.jadwalshalat.gt5.arabic.ArabicLesson
 import com.jadwalshalat.gt5.arabic.ArabicStudyUiState
 import com.jadwalshalat.gt5.arabic.LessonFilter
+import com.jadwalshalat.gt5.ui.components.AdaptiveBreakpoints
+import com.jadwalshalat.gt5.ui.components.AdaptivePairRow
 import com.jadwalshalat.gt5.ui.theme.LocalShalatVibePalette
 
 @Composable
@@ -80,13 +84,22 @@ fun ArabicCatalogScreen(
         BackHandler(onBack = onBack)
     }
 
-    LazyColumn(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
             .background(palette.background),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        contentAlignment = Alignment.TopCenter
     ) {
+        val useTwoColumns = AdaptiveBreakpoints.useTwoColumnGrid(maxWidth)
+        val horizontalPad = if (useTwoColumns) 24.dp else 16.dp
+
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .widthIn(max = AdaptiveBreakpoints.WideCatalogMaxWidth),
+            contentPadding = PaddingValues(start = horizontalPad, end = horizontalPad, top = 14.dp, bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
         // Header
         item(key = "arabic_header") {
             Row(
@@ -382,6 +395,18 @@ fun ArabicCatalogScreen(
                     }
                 }
             }
+        } else if (useTwoColumns) {
+            items(state.filteredLessons.chunked(2), key = { pair -> "lesson_row_${pair.first().id}" }) { pair ->
+                AdaptivePairRow(pair = pair, horizontalSpacing = 12.dp) { lesson ->
+                    ArabicLessonCard(
+                        lesson = lesson,
+                        isCompleted = state.completedIds.contains(lesson.id),
+                        isFavorite = state.favoriteIds.contains(lesson.id),
+                        onClick = { onOpenLesson(lesson) },
+                        onToggleFavorite = { onToggleFavorite(lesson.id) }
+                    )
+                }
+            }
         } else {
             items(state.filteredLessons, key = { it.id }) { lesson ->
                 ArabicLessonCard(
@@ -393,6 +418,7 @@ fun ArabicCatalogScreen(
                 )
             }
         }
+    }
     }
 }
 
