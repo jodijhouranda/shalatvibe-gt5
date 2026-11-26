@@ -3,6 +3,108 @@
   "updatedAt": "2026-11-26",
   "lessons": [
     {
+      "id": "video_podcast_finjan_psikologi",
+      "category": "VIDEO_ANALYSIS",
+      "dayLabel": "Video 16",
+      "dateLabel": "26 Nov 2026",
+      "title": "Psikologi Refleksi Diri: Teknik Tabel Situasi & Kepekaan Kritik",
+      "subtitle": "Psikologi Klinis, Introspeksi Harian, & Pola Emosi",
+      "sourceName": "إذاعة ثمانية",
+      "level": "CEFR B2–C1",
+      "youtubeVideoId": "hdTdev3GVCw",
+      "startSeconds": 4142,
+      "endSeconds": 4467,
+      "pdfFileName": "Bahasa_Arab_Analisis_Video_Podcast_Finjan_Psikologi_TAFL.pdf",
+      "jsonFileName": "Bahasa_Arab_Analisis_Video_Podcast_Finjan_Psikologi_TAFL.json",
+      "jsonUrl": "https://raw.githubusercontent.com/jodijhouranda/shalatvibe-gt5/main/lessons/arabic_content/Bahasa_Arab_Analisis_Video_Podcast_Finjan_Psikologi_TAFL.json",
+      "segments": [
+        {
+          "label": "01:09:02 – 01:10:17",
+          "startSec": 4142,
+          "endSec": 4217
+        },
+        {
+          "label": "01:10:17 – 01:12:28",
+          "startSec": 4217,
+          "endSec": 4348
+        },
+        {
+          "label": "01:12:28 – 01:14:27",
+          "startSec": 4348,
+          "endSec": 4467
+        }
+      ],
+      "updatedAt": "2026-11-26"
+    },
+    {
+      "id": "video_kota_nol_limbah_china",
+      "category": "VIDEO_ANALYSIS",
+      "dayLabel": "Video 15",
+      "dateLabel": "26 Nov 2026",
+      "title": "Kota Berkelanjutan Tanpa Limbah: Proyek Percontohan Tiongkok",
+      "subtitle": "Ekonomi Sirkular, Pengolahan Limbah, & Kebijakan Lingkungan",
+      "sourceName": "AlJazeera Arabic قناة الجزيرة",
+      "level": "CEFR B2–C1",
+      "youtubeVideoId": "cVVvpDxUz-g",
+      "startSeconds": 1,
+      "endSeconds": 139,
+      "pdfFileName": "Bahasa_Arab_Analisis_Video_Kota_Nol_Limbah_China_TAFL.pdf",
+      "jsonFileName": "Bahasa_Arab_Analisis_Video_Kota_Nol_Limbah_China_TAFL.json",
+      "jsonUrl": "https://raw.githubusercontent.com/jodijhouranda/shalatvibe-gt5/main/lessons/arabic_content/Bahasa_Arab_Analisis_Video_Kota_Nol_Limbah_China_TAFL.json",
+      "segments": [
+        {
+          "label": "00:01 – 00:57",
+          "startSec": 1,
+          "endSec": 57
+        },
+        {
+          "label": "00:58 – 01:32",
+          "startSec": 58,
+          "endSec": 92
+        },
+        {
+          "label": "01:33 – 02:19",
+          "startSec": 93,
+          "endSec": 139
+        }
+      ],
+      "updatedAt": "2026-11-26"
+    },
+    {
+      "id": "video_ai_otonom_anthropic",
+      "category": "VIDEO_ANALYSIS",
+      "dayLabel": "Video 15",
+      "dateLabel": "25 Nov 2026",
+      "title": "Peringatan Anthropic: AI Mengembangkan Diri & Risiko Lepas Kendali",
+      "subtitle": "Tata Kelola AI, Keamanan Global, & Geopolitik Teknologi",
+      "sourceName": "AlJazeera Arabic قناة الجزيرة",
+      "level": "CEFR B2–C1",
+      "youtubeVideoId": "p_-gM3au4R8",
+      "startSeconds": 1,
+      "endSeconds": 140,
+      "pdfFileName": "Bahasa_Arab_Analisis_Video_AI_Otonom_Anthropic_TAFL.pdf",
+      "jsonFileName": "Bahasa_Arab_Analisis_Video_AI_Otonom_Anthropic_TAFL.json",
+      "jsonUrl": "https://raw.githubusercontent.com/jodijhouranda/shalatvibe-gt5/main/lessons/arabic_content/Bahasa_Arab_Analisis_Video_AI_Otonom_Anthropic_TAFL.json",
+      "segments": [
+        {
+          "label": "00:01 – 00:54",
+          "startSec": 1,
+          "endSec": 54
+        },
+        {
+          "label": "00:55 – 01:40",
+          "startSec": 55,
+          "endSec": 100
+        },
+        {
+          "label": "01:41 – 02:20",
+          "startSec": 101,
+          "endSec": 140
+        }
+      ],
+      "updatedAt": "2026-11-26"
+    },
+    {
       "id": "video_ammiyah_saudi_dua_tetangga",
       "category": "VIDEO_ANALYSIS",
       "dayLabel": "Video 14",
@@ -35,39 +137,6 @@
         }
       ],
       "updatedAt": "2026-11-26"
-    },
-    {
-      "id": "video_ai_otonom_anthropic",
-      "category": "VIDEO_ANALYSIS",
-      "dayLabel": "Video 13",
-      "dateLabel": "25 Nov 2026",
-      "title": "Peringatan Anthropic: AI Mengembangkan Diri & Risiko Lepas Kendali",
-      "subtitle": "Tata Kelola AI, Keamanan Global, & Geopolitik Teknologi",
-      "sourceName": "AlJazeera Arabic قناة الجزيرة",
-      "level": "CEFR B2–C1",
-      "youtubeVideoId": "p_-gM3au4R8",
-      "startSeconds": 1,
-      "endSeconds": 140,
-      "pdfFileName": "Bahasa_Arab_Analisis_Video_AI_Otonom_Anthropic_TAFL.pdf",
-      "pdfUrl": "https://raw.githubusercontent.com/jodijhouranda/shalatvibe-gt5/main/lessons/pdfs/Bahasa_Arab_Analisis_Video_AI_Otonom_Anthropic_TAFL.pdf",
-      "driveFileId": "1qBvehzEW-OzzwotXAZjdUnObepYObxB3",
-      "segments": [
-        {
-          "label": "00:01 – 00:54",
-          "startSec": 1,
-          "endSec": 54
-        },
-        {
-          "label": "00:55 – 01:40",
-          "startSec": 55,
-          "endSec": 100
-        },
-        {
-          "label": "01:41 – 02:20",
-          "startSec": 101,
-          "endSec": 140
-        }
-      ]
     },
     {
       "id": "video_podcast_finjan_sejarah_sains_v2",
