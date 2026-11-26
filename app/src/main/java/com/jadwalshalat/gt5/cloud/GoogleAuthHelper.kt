@@ -29,7 +29,31 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 
+import android.content.pm.PackageManager
+import android.os.Build
+import java.security.MessageDigest
+
 private const val AUTH_TAG = "Auth"
+private const val REGISTERED_DEBUG_SHA1 = "D6:30:AB:BD:16:E6:4E:D6:FC:D9:A4:DA:8D:26:F8:57:AA:AF:FC:69"
+
+fun getAppSigningSha1(context: Context): String? {
+    return runCatching {
+        val pm = context.packageManager
+        val signatures = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            val info = pm.getPackageInfo(context.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
+            val signingInfo = info.signingInfo
+            if (signingInfo == null) null
+            else if (signingInfo.hasMultipleSigners()) signingInfo.apkContentsSigners
+            else signingInfo.signingCertificateHistory
+        } else {
+            @Suppress("DEPRECATION")
+            pm.getPackageInfo(context.packageName, PackageManager.GET_SIGNATURES).signatures
+        }
+        val certBytes = signatures?.firstOrNull()?.toByteArray() ?: return@runCatching null
+        val digest = MessageDigest.getInstance("SHA-1").digest(certBytes)
+        digest.joinToString(":") { b -> "%02X".format(b) }
+    }.getOrNull()
+}
 
 fun FirebaseAuth.authStateFlow(): Flow<FirebaseUser?> = callbackFlow {
     val listener = FirebaseAuth.AuthStateListener { firebaseAuth ->
@@ -156,18 +180,20 @@ fun onGoogleSignInClicked(
             }
         } catch (e: GetCredentialCancellationException) {
             val detail = e.errorMessage?.toString().orEmpty()
-            Log.w(AUTH_TAG, "Google Sign-In cancelled/dismissed: $detail", e)
-            val looksLikeConfigError = detail.contains("28436", ignoreCase = true) ||
-                detail.contains("developer", ignoreCase = true) ||
-                detail.contains("whitelist", ignoreCase = true) ||
-                detail.contains("sha", ignoreCase = true)
-            if (looksLikeConfigError) {
-                onAuthError("Login Google ditolak Google Play Services. Pastikan SHA-1 keystore APK terdaftar di Firebase Console.")
+            val sha1 = getAppSigningSha1(context)
+            val isUnregisteredReleaseKey = sha1 != null && !sha1.equals(REGISTERED_DEBUG_SHA1, ignoreCase = true)
+            Log.w(AUTH_TAG, "Google Sign-In cancelled/dismissed: $detail | sha1=$sha1", e)
+            if (isUnregisteredReleaseKey) {
+                onAuthError(
+                    "Login Google ditolak karena SHA-1 keystore APK rilis ini belum didaftarkan di Firebase Console (gen-lang-client-0567297449). Salin SHA-1 di bawah lalu tambahkan di Firebase → Project Settings → Add fingerprint."
+                )
             } else {
-                onAuthCancelled("Login Google dibatalkan atau ditutup sebelum selesai.")
+                val hint = detail.takeIf { it.isNotBlank() }?.let { " ($it)" }.orEmpty()
+                onAuthCancelled("Login Google dibatalkan atau ditolak Play Services$hint.")
             }
         } catch (e: NoCredentialException) {
-            Log.w(AUTH_TAG, "No Google credential available: ${e.errorMessage}", e)
+            val sha1 = getAppSigningSha1(context)
+            Log.w(AUTH_TAG, "No Google credential available: ${e.errorMessage} | sha1=$sha1", e)
             onAuthError("Akun Google belum tersedia di perangkat ini atau SHA-1 APK belum terdaftar di Firebase Console.")
         } catch (e: GetCredentialException) {
             Log.e(AUTH_TAG, "CredentialManager error [${e.type}]: ${e.errorMessage}", e)

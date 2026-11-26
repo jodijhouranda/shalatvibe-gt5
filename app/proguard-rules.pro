@@ -4,3 +4,8 @@
     @android.webkit.JavascriptInterface <methods>;
 }
 -keepattributes *Annotation*
+
+# Pertahankan Credential Manager & Google Identity Services untuk Google Sign-In pada Release APK
+-keep class androidx.credentials.** { *; }
+-keep class com.google.android.libraries.identity.googleid.** { *; }
+

@@ -194,6 +194,49 @@ fun CloudSyncBannerCard(
                             lineHeight = 15.sp,
                             modifier = Modifier.testTag("cloud_sync_inline_status")
                         )
+                        val apkSha1 = remember(context) {
+                            com.jadwalshalat.gt5.cloud.getAppSigningSha1(context)
+                        }
+                        if (!apkSha1.isNullOrBlank()) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = "SHA-1 APK: $apkSha1",
+                                    color = palette.textSecondary,
+                                    fontSize = 10.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                OutlinedButton(
+                                    onClick = {
+                                        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                                            as? android.content.ClipboardManager
+                                        clipboard?.setPrimaryClip(
+                                            android.content.ClipData.newPlainText("APK SHA-1", apkSha1)
+                                        )
+                                        onAuthFeedback("SHA-1 APK disalin. Tempel di Firebase Console → Project Settings → Add fingerprint.")
+                                    },
+                                    shape = RoundedCornerShape(8.dp),
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                    border = BorderStroke(1.dp, palette.hairline),
+                                    modifier = Modifier
+                                        .height(28.dp)
+                                        .testTag("copy_apk_sha1_button")
+                                ) {
+                                    Text(
+                                        text = "Salin SHA-1",
+                                        color = palette.emeraldPrimary,
+                                        fontSize = 10.5.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
