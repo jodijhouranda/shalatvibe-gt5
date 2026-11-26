@@ -86,6 +86,7 @@ fun LearningLibraryScreen(
     onOpenArabicKamus: () -> Unit = {},
     cloudSyncState: CloudSyncState = CloudSyncState.SignedOut,
     onBeforeSignOut: () -> Unit = {},
+    onSignedIn: (com.google.firebase.auth.FirebaseUser) -> Unit = {},
     onAuthFeedback: (String) -> Unit = {}
 ) {
     val palette = LocalShalatVibePalette.current
@@ -220,7 +221,8 @@ fun LearningLibraryScreen(
                     syncState = cloudSyncState,
                     onBeforeSignOut = onBeforeSignOut,
                     onAuthFeedback = onAuthFeedback,
-                    compact = true
+                    compact = true,
+                    onSignedIn = onSignedIn
                 )
             }
         }

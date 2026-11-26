@@ -146,6 +146,7 @@ fun ArabicKamusScreen(
     onClearKamusAiState: () -> Unit = {},
     cloudSyncState: CloudSyncState = CloudSyncState.SignedOut,
     onBeforeSignOut: () -> Unit = {},
+    onSignedIn: (com.google.firebase.auth.FirebaseUser) -> Unit = {},
     onAuthFeedback: (String) -> Unit = {},
     onBack: () -> Unit
 ) {
@@ -385,10 +386,11 @@ fun ArabicKamusScreen(
             syncState = cloudSyncState,
             onBeforeSignOut = onBeforeSignOut,
             onAuthFeedback = { msg ->
-                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
                 onAuthFeedback(msg)
             },
             compact = true,
+            onSignedIn = onSignedIn,
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp)
         )
 

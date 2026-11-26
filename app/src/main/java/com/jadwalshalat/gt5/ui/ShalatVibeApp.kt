@@ -124,18 +124,24 @@ fun ShalatVibeApp(
         )
     }
 
-    LaunchedEffect(currentUser?.uid) {
-        val user = currentUser
-        if (user != null && user.uid.isNotBlank()) {
+    val startSyncForUser: (com.google.firebase.auth.FirebaseUser) -> Unit = { user ->
+        if (user.uid.isNotBlank()) {
             arabicViewModel.startCloudSync(
                 userId = user.uid,
                 email = user.email.orEmpty(),
                 displayName = user.displayName.orEmpty(),
-                localCourseBlockIds = learningState.completedBlockIds,
+                localCourseBlockIds = learningViewModel.uiState.value.completedBlockIds,
                 onCloudCourseBlocksReceived = { cloudBlocks ->
                     learningViewModel.mergeCompletedBlocksFromCloud(cloudBlocks)
                 }
             )
+        }
+    }
+
+    LaunchedEffect(currentUser?.uid) {
+        val user = currentUser
+        if (user != null && user.uid.isNotBlank()) {
+            startSyncForUser(user)
         } else {
             arabicViewModel.stopCloudSync()
         }
@@ -193,7 +199,8 @@ fun ShalatVibeApp(
             onClearKamusAiState = { arabicViewModel.clearKamusAiState() },
             cloudSyncState = arabicState.cloudSyncState,
             onBeforeSignOut = { arabicViewModel.stopCloudSync() },
-            onAuthFeedback = { msg -> scope.launch { snackbarHostState.showSnackbar(msg) } },
+            onSignedIn = startSyncForUser,
+            onAuthFeedback = {},
             onBack = {
                 arabicViewModel.clearKamusAiState()
                 showArabicKamus = false
@@ -576,6 +583,7 @@ fun ShalatVibeApp(
                                         onOpenArabicKamus = { showArabicKamus = true },
                                         cloudSyncState = arabicState.cloudSyncState,
                                         onBeforeSignOut = { arabicViewModel.stopCloudSync() },
+                                        onSignedIn = startSyncForUser,
                                         onAuthFeedback = { msg -> scope.launch { snackbarHostState.showSnackbar(msg) } }
                                     )
                                 }
@@ -599,6 +607,7 @@ fun ShalatVibeApp(
                                 onOpenArabicKamus = { showArabicKamus = true },
                                 cloudSyncState = arabicState.cloudSyncState,
                                 onBeforeSignOut = { arabicViewModel.stopCloudSync() },
+                                onSignedIn = startSyncForUser,
                                 onAuthFeedback = { msg -> scope.launch { snackbarHostState.showSnackbar(msg) } }
                             )
                         }

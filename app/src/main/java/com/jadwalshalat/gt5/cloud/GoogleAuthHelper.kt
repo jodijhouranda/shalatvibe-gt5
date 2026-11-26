@@ -9,6 +9,8 @@ import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.exceptions.NoCredentialException
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
@@ -51,6 +53,9 @@ private fun resolveDefaultWebClientId(context: Context): String? {
 }
 
 private fun resolveFirebaseAuth(context: Context): FirebaseAuth? {
+    if (FirebaseApp.getApps(context).isEmpty()) {
+        runCatching { FirebaseApp.initializeApp(context) }
+    }
     if (FirebaseApp.getApps(context).isEmpty()) return null
     return runCatching { FirebaseAuth.getInstance() }.getOrNull()
 }
@@ -111,10 +116,10 @@ fun attemptAutoSignIn(
 fun onGoogleSignInClicked(
     context: Context,
     credentialManager: CredentialManager,
-    onAuthSuccess: () -> Unit,
+    onAuthSuccess: (FirebaseUser?) -> Unit,
     onAuthError: (String) -> Unit,
     scope: CoroutineScope,
-    onAuthCancelled: () -> Unit = {}
+    onAuthCancelled: (String?) -> Unit = {}
 ) {
     val firebaseAuth = resolveFirebaseAuth(context)
     if (firebaseAuth == null) {
@@ -142,14 +147,34 @@ fun onGoogleSignInClicked(
             val cred = credentialManager.getCredential(activity, request).credential
             if (cred is CustomCredential && cred.type == TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
                 val token = GoogleIdTokenCredential.createFrom(cred.data).idToken
-                firebaseAuth.signInWithCredential(GoogleAuthProvider.getCredential(token, null)).await()
-                onAuthSuccess()
+                val authResult = firebaseAuth
+                    .signInWithCredential(GoogleAuthProvider.getCredential(token, null))
+                    .await()
+                onAuthSuccess(authResult.user ?: firebaseAuth.currentUser)
             } else {
                 onAuthError("Tipe kredensial Google tidak dikenali.")
             }
         } catch (e: GetCredentialCancellationException) {
-            Log.w(AUTH_TAG, "Google Sign-In flow cancelled or dismissed: ${e.message}", e)
-            onAuthCancelled()
+            val detail = e.errorMessage?.toString().orEmpty()
+            Log.w(AUTH_TAG, "Google Sign-In cancelled/dismissed: $detail", e)
+            val looksLikeConfigError = detail.contains("28436", ignoreCase = true) ||
+                detail.contains("developer", ignoreCase = true) ||
+                detail.contains("whitelist", ignoreCase = true) ||
+                detail.contains("sha", ignoreCase = true)
+            if (looksLikeConfigError) {
+                onAuthError("Login Google ditolak Google Play Services. Pastikan SHA-1 keystore APK terdaftar di Firebase Console.")
+            } else {
+                onAuthCancelled("Login Google dibatalkan atau ditutup sebelum selesai.")
+            }
+        } catch (e: NoCredentialException) {
+            Log.w(AUTH_TAG, "No Google credential available: ${e.errorMessage}", e)
+            onAuthError("Akun Google belum tersedia di perangkat ini atau SHA-1 APK belum terdaftar di Firebase Console.")
+        } catch (e: GetCredentialException) {
+            Log.e(AUTH_TAG, "CredentialManager error [${e.type}]: ${e.errorMessage}", e)
+            val detail = e.errorMessage?.toString()?.takeIf { it.isNotBlank() }
+                ?: e.localizedMessage
+                ?: "Gagal membuka login Google."
+            onAuthError("Gagal login Google: $detail")
         } catch (e: Exception) {
             Log.e(AUTH_TAG, "Google Sign-In failed", e)
             onAuthError(e.localizedMessage ?: "Gagal masuk dengan Google.")

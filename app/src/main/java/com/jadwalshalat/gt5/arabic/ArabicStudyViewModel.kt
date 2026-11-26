@@ -321,8 +321,23 @@ class ArabicStudyViewModel(application: Application) : AndroidViewModel(applicat
             // 1. Unggah entri lokal yang belum ada di cloud agar data lama di HP tidak hilang
             val localSnapshot = withContext(Dispatchers.IO) { kamusRepository.loadEntries() }
             if (localSnapshot.isNotEmpty()) {
-                withContext(Dispatchers.IO) {
+                val uploadResult = withContext(Dispatchers.IO) {
                     cloudSyncRepository.uploadMissingLocalKamusEntries(userId, localSnapshot)
+                }
+                uploadResult.onFailure { err ->
+                    Log.w(TAG, "Initial local Kamus upload failed", err)
+                    if (cloudSyncUserId == userId) {
+                        _uiState.update {
+                            it.copy(
+                                cloudSyncState = CloudSyncState.Error(
+                                    userId = userId,
+                                    email = email,
+                                    displayName = displayName,
+                                    message = err.localizedMessage ?: "Gagal mengunggah Kamus lokal ke cloud."
+                                )
+                            )
+                        }
+                    }
                 }
             }
 

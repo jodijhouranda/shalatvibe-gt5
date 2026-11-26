@@ -15,11 +15,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Login
 import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material.icons.rounded.CloudDone
 import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.CloudSync
-import androidx.compose.material.icons.rounded.Login
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -43,6 +43,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.credentials.CredentialManager
+import com.google.firebase.auth.FirebaseUser
 import com.jadwalshalat.gt5.cloud.CloudSyncState
 import com.jadwalshalat.gt5.cloud.onGoogleSignInClicked
 import com.jadwalshalat.gt5.cloud.signOutGoogle
@@ -54,13 +55,15 @@ fun CloudSyncBannerCard(
     onBeforeSignOut: () -> Unit,
     onAuthFeedback: (String) -> Unit,
     modifier: Modifier = Modifier,
-    compact: Boolean = false
+    compact: Boolean = false,
+    onSignedIn: (FirebaseUser) -> Unit = {}
 ) {
     val palette = LocalShalatVibePalette.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val credentialManager = remember(context) { CredentialManager.create(context) }
     var isSigningIn by remember { mutableStateOf(false) }
+    var inlineStatusMessage by remember { mutableStateOf<String?>(null) }
 
     when (syncState) {
         CloudSyncState.SignedOut -> {
@@ -72,98 +75,125 @@ fun CloudSyncBannerCard(
                     .fillMaxWidth()
                     .testTag("cloud_sync_signed_out_card")
             ) {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = if (compact) 11.dp else 13.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        .padding(horizontal = 14.dp, vertical = if (compact) 11.dp else 13.dp)
                 ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = palette.emeraldSoft,
-                        modifier = Modifier.size(38.dp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Rounded.CloudSync,
-                                contentDescription = "Sinkronisasi Cloud",
-                                tint = palette.emeraldPrimary,
-                                modifier = Modifier.size(20.dp)
-                            )
+                        Surface(
+                            shape = CircleShape,
+                            color = palette.emeraldSoft,
+                            modifier = Modifier.size(38.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Rounded.CloudSync,
+                                    contentDescription = "Sinkronisasi Cloud",
+                                    tint = palette.emeraldPrimary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                         }
-                    }
 
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Sinkronkan Kamus ke Web",
-                            color = palette.textPrimary,
-                            fontSize = 13.5.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = "Masuk Google agar kata tersimpan & progres otomatis terhubung antar perangkat.",
-                            color = palette.textSecondary,
-                            fontSize = 11.5.sp,
-                            lineHeight = 15.sp,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-
-                    Button(
-                        onClick = {
-                            isSigningIn = true
-                            onGoogleSignInClicked(
-                                context = context,
-                                credentialManager = credentialManager,
-                                onAuthSuccess = {
-                                    isSigningIn = false
-                                    onAuthFeedback("Berhasil masuk Google. Sinkronisasi cloud aktif.")
-                                },
-                                onAuthError = { msg ->
-                                    isSigningIn = false
-                                    onAuthFeedback(msg)
-                                },
-                                scope = scope,
-                                onAuthCancelled = {
-                                    isSigningIn = false
-                                }
-                            )
-                        },
-                        enabled = !isSigningIn,
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = palette.emeraldPrimary,
-                            contentColor = if (palette.isDark) Color(0xFF03231D) else Color.White
-                        ),
-                        modifier = Modifier
-                            .height(40.dp)
-                            .testTag("google_sign_in_button")
-                    ) {
-                        if (isSigningIn) {
-                            CircularProgressIndicator(
-                                color = if (palette.isDark) Color(0xFF03231D) else Color.White,
-                                strokeWidth = 2.dp,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Icons.Rounded.Login,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(5.dp))
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Masuk",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold
+                                text = "Sinkronkan Kamus ke Web",
+                                color = palette.textPrimary,
+                                fontSize = 13.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Masuk Google agar kata tersimpan & progres otomatis terhubung antar perangkat.",
+                                color = palette.textSecondary,
+                                fontSize = 11.5.sp,
+                                lineHeight = 15.sp,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
+
+                        Button(
+                            onClick = {
+                                isSigningIn = true
+                                inlineStatusMessage = null
+                                onGoogleSignInClicked(
+                                    context = context,
+                                    credentialManager = credentialManager,
+                                    onAuthSuccess = { user ->
+                                        isSigningIn = false
+                                        inlineStatusMessage = null
+                                        if (user != null) {
+                                            onSignedIn(user)
+                                        }
+                                        val label = user?.email?.takeIf { it.isNotBlank() } ?: "Google"
+                                        onAuthFeedback("Berhasil masuk ($label). Menyinkronkan data cloud...")
+                                    },
+                                    onAuthError = { msg ->
+                                        isSigningIn = false
+                                        inlineStatusMessage = msg
+                                        onAuthFeedback(msg)
+                                    },
+                                    scope = scope,
+                                    onAuthCancelled = { msg ->
+                                        isSigningIn = false
+                                        if (!msg.isNullOrBlank()) {
+                                            inlineStatusMessage = msg
+                                            onAuthFeedback(msg)
+                                        }
+                                    }
+                                )
+                            },
+                            enabled = !isSigningIn,
+                            shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = palette.emeraldPrimary,
+                                contentColor = if (palette.isDark) Color(0xFF03231D) else Color.White
+                            ),
+                            modifier = Modifier
+                                .height(40.dp)
+                                .testTag("google_sign_in_button")
+                        ) {
+                            if (isSigningIn) {
+                                CircularProgressIndicator(
+                                    color = if (palette.isDark) Color(0xFF03231D) else Color.White,
+                                    strokeWidth = 2.dp,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Rounded.Login,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(5.dp))
+                                Text(
+                                    text = "Masuk",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+
+                    val statusMsg = inlineStatusMessage
+                    if (!statusMsg.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = statusMsg,
+                            color = palette.goldAccent,
+                            fontSize = 11.sp,
+                            lineHeight = 15.sp,
+                            modifier = Modifier.testTag("cloud_sync_inline_status")
+                        )
                     }
                 }
             }
