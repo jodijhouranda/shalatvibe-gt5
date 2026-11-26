@@ -3,6 +3,40 @@
   "updatedAt": "2026-11-26",
   "lessons": [
     {
+      "id": "video_podcast_finjan_inovasi_kreativitas",
+      "category": "VIDEO_ANALYSIS",
+      "dayLabel": "Video 17",
+      "dateLabel": "26 Nov 2026",
+      "title": "Podcast Finjan: Perbedaan Kreativitas & Inovasi Terstruktur",
+      "subtitle": "Penciptaan Ide, Kedisiplinan Inovasi, & Lingkungan Kreatif",
+      "sourceName": "إذاعة ثمانية",
+      "level": "CEFR B2–C1",
+      "youtubeVideoId": "nh8CzRVtTSg",
+      "startSeconds": 2710,
+      "endSeconds": 3028,
+      "pdfFileName": "Bahasa_Arab_Analisis_Video_Podcast_Finjan_Inovasi_Kreativitas_TAFL.pdf",
+      "jsonFileName": "Bahasa_Arab_Analisis_Video_Podcast_Finjan_Inovasi_Kreativitas_TAFL.json",
+      "jsonUrl": "https://raw.githubusercontent.com/jodijhouranda/shalatvibe-gt5/main/lessons/arabic_content/Bahasa_Arab_Analisis_Video_Podcast_Finjan_Inovasi_Kreativitas_TAFL.json",
+      "segments": [
+        {
+          "label": "45:10 – 47:14",
+          "startSec": 2710,
+          "endSec": 2834
+        },
+        {
+          "label": "47:14 – 48:44",
+          "startSec": 2834,
+          "endSec": 2924
+        },
+        {
+          "label": "48:44 – 50:28",
+          "startSec": 2924,
+          "endSec": 3028
+        }
+      ],
+      "updatedAt": "2026-11-26"
+    },
+    {
       "id": "video_podcast_finjan_psikologi",
       "category": "VIDEO_ANALYSIS",
       "dayLabel": "Video 16",
