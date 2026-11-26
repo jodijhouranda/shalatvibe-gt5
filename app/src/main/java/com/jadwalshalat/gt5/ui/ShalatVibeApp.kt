@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jadwalshalat.gt5.arabic.ArabicStudyUiState
 import com.jadwalshalat.gt5.arabic.ArabicStudyViewModel
+import com.jadwalshalat.gt5.learning.CourseKamusBridge
 import com.jadwalshalat.gt5.learning.LearningDestination
 import com.jadwalshalat.gt5.learning.LearningHubUiState
 import com.jadwalshalat.gt5.learning.LearningViewModel
@@ -109,7 +110,18 @@ fun ShalatVibeApp(
             onImportBackupJson = { raw -> arabicViewModel.importKamusBackupJson(raw) },
             onOpenLessonClip = { lessonId, startSec ->
                 showArabicKamus = false
-                arabicViewModel.openLessonClip(lessonId, startSec)
+                val courseRef = CourseKamusBridge.parseCourseLessonId(lessonId)
+                if (courseRef != null) {
+                    arabicViewModel.closeLesson()
+                    learningViewModel.openTopicBlock(
+                        courseRef.courseId,
+                        courseRef.episodeId,
+                        courseRef.blockId,
+                        startSec.takeIf { it > 0 }
+                    )
+                } else {
+                    arabicViewModel.openLessonClip(lessonId, startSec)
+                }
             },
             onSpeakArabic = { text ->
                 arabicViewModel.speakArabic(text)?.let { msg ->
@@ -192,7 +204,26 @@ fun ShalatVibeApp(
                     onSelectOtherBlock = { epId, blkId, seekSec ->
                         learningViewModel.openTopicBlock(course.id, epId, blkId, seekSec)
                     },
-                    onBack = { learningViewModel.navigateBack() }
+                    onBack = {
+                        arabicViewModel.clearKamusAiState()
+                        learningViewModel.navigateBack()
+                    },
+                    showHarakat = arabicState.showHarakat,
+                    onToggleHarakat = { arabicViewModel.toggleHarakat() },
+                    savedNormalizedKeys = arabicState.savedNormalizedKeys,
+                    kamusEntries = arabicState.kamusEntries,
+                    kamusCount = arabicState.kamusEntries.size,
+                    kamusAiState = arabicState.kamusAiState,
+                    onLookupKamusAi = { ar, ctx, title, force ->
+                        arabicViewModel.lookupKamusWithAi(ar, ctx, title, force)
+                    },
+                    onClearKamusAiState = { arabicViewModel.clearKamusAiState() },
+                    onSaveKamusEntry = { arabicViewModel.saveKamusEntry(it) },
+                    onOpenKamus = { showArabicKamus = true },
+                    onSpeakArabic = { text -> arabicViewModel.speakArabic(text) },
+                    onShowMessage = { msg ->
+                        android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+                    }
                 )
                 return
             }
@@ -352,6 +383,18 @@ fun ShalatVibeApp(
                                         },
                                         onToggleBlockCompleted = { blkId ->
                                             learningViewModel.toggleBlockCompleted(blkId)
+                                        },
+                                        savedNormalizedKeys = arabicState.savedNormalizedKeys,
+                                        kamusEntries = arabicState.kamusEntries,
+                                        kamusAiState = arabicState.kamusAiState,
+                                        onLookupKamusAi = { ar, ctx, title, force ->
+                                            arabicViewModel.lookupKamusWithAi(ar, ctx, title, force)
+                                        },
+                                        onClearKamusAiState = { arabicViewModel.clearKamusAiState() },
+                                        onSaveKamusEntry = { arabicViewModel.saveKamusEntry(it) },
+                                        onSpeakArabic = { text -> arabicViewModel.speakArabic(text) },
+                                        onShowMessage = { msg ->
+                                            scope.launch { snackbarHostState.showSnackbar(msg) }
                                         }
                                     )
                                 } else {

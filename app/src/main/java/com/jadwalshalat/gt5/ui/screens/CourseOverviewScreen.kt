@@ -61,7 +61,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
+import androidx.compose.material.icons.rounded.BookmarkAdd
+import androidx.compose.material.icons.rounded.BookmarkAdded
+import androidx.compose.ui.platform.testTag
+import com.jadwalshalat.gt5.arabic.ArabicTextUtils
+import com.jadwalshalat.gt5.arabic.KamusAiUiState
+import com.jadwalshalat.gt5.arabic.KamusEntry
 import com.jadwalshalat.gt5.learning.CourseEpisode
+import com.jadwalshalat.gt5.learning.CourseKamusBridge
 import com.jadwalshalat.gt5.learning.GlossaryTerm
 import com.jadwalshalat.gt5.learning.SeriesCourse
 import com.jadwalshalat.gt5.learning.TopicBlock
@@ -76,6 +84,14 @@ fun CourseOverviewScreen(
     onOpenBlock: (episodeId: String, blockId: String, initialTimeSec: Int?) -> Unit,
     onOpenFullBookPdf: (initialPage: Int) -> Unit,
     onToggleBlockCompleted: (blockId: String) -> Unit,
+    savedNormalizedKeys: Set<String> = emptySet(),
+    kamusEntries: List<KamusEntry> = emptyList(),
+    kamusAiState: KamusAiUiState = KamusAiUiState.Idle,
+    onLookupKamusAi: (arabic: String, contextSentence: String, lessonTitle: String, forceRefresh: Boolean) -> Unit = { _, _, _, _ -> },
+    onClearKamusAiState: () -> Unit = {},
+    onSaveKamusEntry: (KamusEntry) -> Unit = {},
+    onSpeakArabic: (String) -> String? = { null },
+    onShowMessage: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val palette = LocalShalatVibePalette.current
@@ -86,6 +102,7 @@ fun CourseOverviewScreen(
     }
     var showGlossaryBrowser by remember { mutableStateOf(false) }
     var selectedTerm by remember { mutableStateOf<GlossaryTerm?>(null) }
+    var pendingKamusDraft by remember { mutableStateOf<KamusEntry?>(null) }
 
     val totalBlocks = course.totalBlockCount
     val doneBlocks = course.allBlocks.count { (_, block) -> completedBlockIds.contains(block.id) }
@@ -306,9 +323,22 @@ fun CourseOverviewScreen(
     }
 
     selectedTerm?.let { term ->
+        val termNorm = remember(term.arabic) { ArabicTextUtils.normalizeForLookup(term.arabic) }
+        val isSaved = termNorm.isNotBlank() && savedNormalizedKeys.contains(termNorm)
         GlossaryTermBottomSheet(
             term = term,
+            isSavedInKamus = isSaved,
             onDismiss = { selectedTerm = null },
+            onSpeakArabic = { txt -> onSpeakArabic(txt)?.let(onShowMessage) },
+            onSaveToKamus = { targetTerm ->
+                selectedTerm = null
+                onClearKamusAiState()
+                pendingKamusDraft = CourseKamusBridge.buildDraftFromGlossaryTerm(
+                    term = targetTerm,
+                    course = course,
+                    existingEntries = kamusEntries
+                )
+            },
             onJumpToVideo = { targetTerm ->
                 selectedTerm = null
                 val found = course.findEpisodeAndBlock(targetTerm.blockId)
@@ -320,6 +350,26 @@ fun CourseOverviewScreen(
                     )
                 }
             }
+        )
+    }
+
+    pendingKamusDraft?.let { draft ->
+        KamusEntryEditorSheet(
+            initialEntry = draft,
+            aiState = kamusAiState,
+            onRequestAi = onLookupKamusAi,
+            onClearAiState = onClearKamusAiState,
+            onDismiss = {
+                onClearKamusAiState()
+                pendingKamusDraft = null
+            },
+            onSave = { entry ->
+                onSaveKamusEntry(entry)
+                onClearKamusAiState()
+                pendingKamusDraft = null
+                onShowMessage("Disimpan ke Kamus Saya: ${entry.arabic}")
+            },
+            onSpeakArabic = { txt -> onSpeakArabic(txt)?.let(onShowMessage) }
         )
     }
 }
@@ -717,7 +767,10 @@ fun GlossaryBrowserBottomSheet(
 @Composable
 fun GlossaryTermBottomSheet(
     term: GlossaryTerm,
+    isSavedInKamus: Boolean = false,
     onDismiss: () -> Unit,
+    onSaveToKamus: ((GlossaryTerm) -> Unit)? = null,
+    onSpeakArabic: ((String) -> Unit)? = null,
     onJumpToVideo: (GlossaryTerm) -> Unit
 ) {
     val palette = LocalShalatVibePalette.current
@@ -734,12 +787,45 @@ fun GlossaryTermBottomSheet(
                 .padding(bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Text(
-                text = term.arabic,
-                color = palette.goldAccent,
-                fontSize = 23.sp,
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = term.arabic,
+                    color = palette.goldAccent,
+                    fontSize = 23.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                if (onSpeakArabic != null && term.arabic.isNotBlank()) {
+                    Surface(
+                        onClick = { onSpeakArabic(term.arabic) },
+                        shape = CircleShape,
+                        color = palette.emeraldSoft
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.VolumeUp,
+                                contentDescription = "Dengar pelafalan",
+                                tint = palette.emeraldPrimary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Dengar",
+                                color = palette.emeraldPrimary,
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
             Column {
                 Text(
                     text = term.term,
@@ -819,6 +905,37 @@ fun GlossaryTermBottomSheet(
                             color = palette.textPrimary,
                             fontSize = 12.5.sp,
                             lineHeight = 18.sp
+                        )
+                    }
+                }
+            }
+
+            if (onSaveToKamus != null && term.arabic.isNotBlank()) {
+                Surface(
+                    onClick = { onSaveToKamus(term) },
+                    shape = RoundedCornerShape(16.dp),
+                    color = if (isSavedInKamus) palette.goldSoft else palette.emeraldSoft,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("glossary_save_to_kamus_button")
+                ) {
+                    Row(
+                        modifier = Modifier.padding(vertical = 13.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = if (isSavedInKamus) Icons.Rounded.BookmarkAdded else Icons.Rounded.BookmarkAdd,
+                            contentDescription = null,
+                            tint = if (isSavedInKamus) palette.goldAccent else palette.emeraldPrimary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (isSavedInKamus) "Tersimpan di Kamus Saya (Edit)" else "Simpan ke Kamus Saya",
+                            color = if (isSavedInKamus) palette.goldAccent else palette.emeraldPrimary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }

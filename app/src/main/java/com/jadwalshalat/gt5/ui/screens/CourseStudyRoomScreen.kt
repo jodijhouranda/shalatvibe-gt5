@@ -76,9 +76,25 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
+import androidx.compose.material.icons.rounded.BookmarkAdd
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextDecoration
 import com.jadwalshalat.gt5.arabic.ArabicCatalogParser
+import com.jadwalshalat.gt5.arabic.ArabicTextUtils
+import com.jadwalshalat.gt5.arabic.ArabicWordToken
+import com.jadwalshalat.gt5.arabic.KamusAiUiState
+import com.jadwalshalat.gt5.arabic.KamusEntry
+import com.jadwalshalat.gt5.arabic.KamusEntryKind
 import com.jadwalshalat.gt5.arabic.PdfReadingMode
 import com.jadwalshalat.gt5.learning.CourseEpisode
+import com.jadwalshalat.gt5.learning.CourseKamusBridge
 import com.jadwalshalat.gt5.learning.GlossaryTerm
 import com.jadwalshalat.gt5.learning.SeriesCourse
 import com.jadwalshalat.gt5.learning.TopicBlock
@@ -94,6 +110,12 @@ private enum class StudyPaneTab {
     TRANSCRIPT,
     PDF_BOOK
 }
+
+private data class CoursePhraseSelection(
+    val tokens: List<ArabicWordToken>,
+    val startIndex: Int,
+    val endIndex: Int
+)
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -112,11 +134,24 @@ fun CourseStudyRoomScreen(
     onToggleBlockCompleted: () -> Unit,
     onCompleteAndNext: () -> Unit,
     onSelectOtherBlock: (episodeId: String, blockId: String, seekSec: Int?) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    showHarakat: Boolean = true,
+    onToggleHarakat: () -> Unit = {},
+    savedNormalizedKeys: Set<String> = emptySet(),
+    kamusEntries: List<KamusEntry> = emptyList(),
+    kamusCount: Int = 0,
+    kamusAiState: KamusAiUiState = KamusAiUiState.Idle,
+    onLookupKamusAi: (arabic: String, contextSentence: String, lessonTitle: String, forceRefresh: Boolean) -> Unit = { _, _, _, _ -> },
+    onClearKamusAiState: () -> Unit = {},
+    onSaveKamusEntry: (KamusEntry) -> Unit = {},
+    onOpenKamus: () -> Unit = {},
+    onSpeakArabic: (String) -> String? = { null },
+    onShowMessage: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     val palette = LocalShalatVibePalette.current
     val scope = rememberCoroutineScope()
+    val haptics = LocalHapticFeedback.current
     BackHandler(onBack = onBack)
 
     // Continuous playback across block segments (loop disabled by default so segments flow naturally)
@@ -142,6 +177,42 @@ fun CourseStudyRoomScreen(
     var activePane by remember(block.id) { mutableStateOf(StudyPaneTab.TRANSCRIPT) }
     var isVideoCollapsed by remember { mutableStateOf(false) }
     var selectedTerm by remember { mutableStateOf<GlossaryTerm?>(null) }
+
+    // Interactive Arabic word/phrase collector state (shared Kamus Saya + AI Kamus)
+    var phraseMode by remember(block.id) { mutableStateOf(false) }
+    var phraseStartSegIdx by remember(block.id) { mutableIntStateOf(-1) }
+    var phraseStartWordIdx by remember(block.id) { mutableIntStateOf(-1) }
+    var phraseStartSegment by remember(block.id) { mutableStateOf<TranscriptSegment?>(null) }
+    var phraseStartTokens by remember(block.id) { mutableStateOf<List<ArabicWordToken>>(emptyList()) }
+    var pendingKamusDraft by remember { mutableStateOf<KamusEntry?>(null) }
+    var pendingPhraseSelection by remember { mutableStateOf<CoursePhraseSelection?>(null) }
+
+    fun resetPhraseSelection() {
+        phraseMode = false
+        phraseStartSegIdx = -1
+        phraseStartWordIdx = -1
+        phraseStartSegment = null
+        phraseStartTokens = emptyList()
+    }
+
+    fun openWordCollector(
+        arabicPhrase: String,
+        seg: TranscriptSegment?,
+        overrideKind: KamusEntryKind? = null,
+        selectionContext: CoursePhraseSelection? = null
+    ) {
+        onClearKamusAiState()
+        pendingPhraseSelection = selectionContext
+        pendingKamusDraft = CourseKamusBridge.buildDraftFromTranscriptWord(
+            arabicPhrase = arabicPhrase,
+            course = course,
+            episode = episode,
+            block = block,
+            segment = seg,
+            existingEntries = kamusEntries,
+            overrideKind = overrideKind
+        )
+    }
 
     // Live active segment tracking current video seconds
     val currentSec = ytController.currentSeconds
@@ -171,9 +242,9 @@ fun CourseStudyRoomScreen(
 
     // Auto-scroll smoothly when the active segment changes while playing/following
     LaunchedEffect(activeSegmentIndex, isAutoFollowEnabled, activePane) {
-        if (activePane == StudyPaneTab.TRANSCRIPT && isAutoFollowEnabled && activeSegmentIndex >= 0) {
-            // Item 0 in LazyColumn is the block summary strip; segment i is at index i + 1
-            val targetItemIndex = activeSegmentIndex + 1
+        if (activePane == StudyPaneTab.TRANSCRIPT && isAutoFollowEnabled && activeSegmentIndex >= 0 && !phraseMode && pendingKamusDraft == null) {
+            // Item 0: Kamus quick tools strip, Item 1: block summary strip; segment i is at index i + 2
+            val targetItemIndex = activeSegmentIndex + 2
             isProgrammaticScroll = true
             try {
                 transcriptListState.animateScrollToItem(targetItemIndex)
@@ -462,7 +533,121 @@ fun CourseStudyRoomScreen(
                         contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 2.dp, bottom = 28.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        // Compact Borderless Summary Strip & Key Glossary Pills
+                        // Item 0: Compact Kamus & Interactive Reader Tools Strip
+                        item(key = "course_kamus_tools") {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Surface(
+                                    onClick = onToggleHarakat,
+                                    shape = CircleShape,
+                                    color = if (showHarakat) palette.emeraldSoft else palette.pillBg,
+                                    modifier = Modifier.testTag("course_toggle_harakat_pill")
+                                ) {
+                                    Text(
+                                        text = if (showHarakat) "تَشْكِيل" else "Gundul",
+                                        color = if (showHarakat) palette.emeraldPrimary else palette.textSecondary,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                    )
+                                }
+
+                                Surface(
+                                    onClick = {
+                                        if (phraseMode) {
+                                            resetPhraseSelection()
+                                        } else {
+                                            phraseMode = true
+                                            phraseStartSegIdx = -1
+                                            phraseStartWordIdx = -1
+                                        }
+                                    },
+                                    shape = CircleShape,
+                                    color = if (phraseMode) palette.goldAccent else palette.goldSoft,
+                                    modifier = Modifier.testTag("course_phrase_mode_pill")
+                                ) {
+                                    Text(
+                                        text = if (phraseMode) "Batal Frase" else "+ Frase",
+                                        color = if (phraseMode) Color.White else palette.goldAccent,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                    )
+                                }
+
+                                Surface(
+                                    onClick = {
+                                        val currentSeg = block.segments.getOrNull(activeSegmentIndex.coerceAtLeast(0))
+                                        onClearKamusAiState()
+                                        pendingPhraseSelection = null
+                                        pendingKamusDraft = CourseKamusBridge.buildDraftFromTranscriptWord(
+                                            arabicPhrase = "",
+                                            course = course,
+                                            episode = episode,
+                                            block = block,
+                                            segment = currentSeg,
+                                            existingEntries = kamusEntries,
+                                            overrideKind = KamusEntryKind.WORD
+                                        ).copy(id = "", arabic = "")
+                                    },
+                                    shape = CircleShape,
+                                    color = palette.pillBg,
+                                    modifier = Modifier.testTag("course_manual_kamus_pill")
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Edit,
+                                            contentDescription = "Catat kosakata",
+                                            tint = palette.emeraldPrimary,
+                                            modifier = Modifier.size(13.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = "Catat",
+                                            color = palette.textPrimary,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.weight(1f))
+
+                                Surface(
+                                    onClick = onOpenKamus,
+                                    shape = CircleShape,
+                                    color = palette.emeraldSoft,
+                                    modifier = Modifier.testTag("course_open_kamus_pill")
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.BookmarkAdd,
+                                            contentDescription = "Buka Kamus Saya",
+                                            tint = palette.emeraldPrimary,
+                                            modifier = Modifier.size(13.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = "Kamus ($kamusCount)",
+                                            color = palette.emeraldPrimary,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Item 1: Compact Borderless Summary Strip & Key Glossary Pills
                         item(key = "block_summary") {
                             Surface(
                                 shape = RoundedCornerShape(18.dp),
@@ -471,11 +656,11 @@ fun CourseStudyRoomScreen(
                             ) {
                                 Column(modifier = Modifier.padding(14.dp)) {
                                     Text(
-                                        text = "RINGKASAN BAHASAN • TAFRIGH RESMI",
+                                        text = "RINGKASAN BAHASAN • KETUK KATA ARAB UNTUK KAMUS & AI",
                                         color = palette.emeraldPrimary,
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
-                                        letterSpacing = 0.8.sp
+                                        letterSpacing = 0.6.sp
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
@@ -506,16 +691,61 @@ fun CourseStudyRoomScreen(
                             }
                         }
 
-                        // Continuous Timestamped Transcript Cards (Auto-Highlight + Auto-Scroll)
+                        // Continuous Timestamped Transcript Cards (Auto-Highlight + Interactive Arabic Words)
                         itemsIndexed(block.segments, key = { _, seg -> seg.id }) { idx, segment ->
                             val isActive = idx == activeSegmentIndex
                             TranscriptSegmentCard(
                                 segment = segment,
+                                segmentIndex = idx,
                                 course = course,
                                 isActive = isActive,
+                                showHarakat = showHarakat,
+                                savedNormalizedKeys = savedNormalizedKeys,
+                                phraseMode = phraseMode,
+                                phraseStartSegIdx = phraseStartSegIdx,
+                                phraseStartWordIdx = phraseStartWordIdx,
                                 onPlaySegment = {
                                     isAutoFollowEnabled = true
                                     ytController.seekTo(segment.startSec, autoPlay = true)
+                                },
+                                onSpeakSegment = {
+                                    onSpeakArabic(segment.arabic)?.let(onShowMessage)
+                                },
+                                onTapWord = { tok, tokens ->
+                                    if (!phraseMode) {
+                                        openWordCollector(
+                                            arabicPhrase = tok.cleanArabic,
+                                            seg = segment,
+                                            overrideKind = KamusEntryKind.WORD,
+                                            selectionContext = CoursePhraseSelection(tokens, tok.index, tok.index)
+                                        )
+                                    } else if (phraseStartWordIdx < 0 || phraseStartSegIdx != idx) {
+                                        phraseStartSegIdx = idx
+                                        phraseStartWordIdx = tok.index
+                                        phraseStartSegment = segment
+                                        phraseStartTokens = tokens
+                                    } else {
+                                        val startIdx = minOf(phraseStartWordIdx, tok.index)
+                                        val endIdx = maxOf(phraseStartWordIdx, tok.index)
+                                        val phrase = ArabicTextUtils.buildPhraseFromRange(tokens, startIdx, endIdx)
+                                        resetPhraseSelection()
+                                        if (phrase.isNotBlank()) {
+                                            openWordCollector(
+                                                arabicPhrase = phrase,
+                                                seg = segment,
+                                                overrideKind = if (endIdx > startIdx) KamusEntryKind.PHRASE else KamusEntryKind.WORD,
+                                                selectionContext = CoursePhraseSelection(tokens, startIdx, endIdx)
+                                            )
+                                        }
+                                    }
+                                },
+                                onLongPressWord = { tok, tokens ->
+                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    phraseMode = true
+                                    phraseStartSegIdx = idx
+                                    phraseStartWordIdx = tok.index
+                                    phraseStartSegment = segment
+                                    phraseStartTokens = tokens
                                 },
                                 onTapGlossaryTerm = { term -> selectedTerm = term }
                             )
@@ -532,9 +762,80 @@ fun CourseStudyRoomScreen(
                         }
                     }
 
+                    // Floating Banner saat Mode Pilih Frase aktif
+                    if (phraseMode) {
+                        Surface(
+                            shape = CircleShape,
+                            color = palette.goldAccent,
+                            shadowElevation = 6.dp,
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .padding(horizontal = 12.dp, vertical = 10.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    text = if (phraseStartWordIdx < 0) {
+                                        "Ketuk KATA AWAL frase"
+                                    } else {
+                                        "Ketuk KATA AKHIR frase"
+                                    },
+                                    color = Color.White,
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                if (phraseStartWordIdx >= 0 && phraseStartTokens.isNotEmpty()) {
+                                    Surface(
+                                        onClick = {
+                                            val seg = phraseStartSegment
+                                            val tokens = phraseStartTokens
+                                            val startIdx = phraseStartWordIdx
+                                            val single = ArabicTextUtils.buildPhraseFromRange(tokens, startIdx, startIdx)
+                                            resetPhraseSelection()
+                                            if (single.isNotBlank()) {
+                                                openWordCollector(
+                                                    arabicPhrase = single,
+                                                    seg = seg,
+                                                    overrideKind = KamusEntryKind.WORD,
+                                                    selectionContext = CoursePhraseSelection(tokens, startIdx, startIdx)
+                                                )
+                                            }
+                                        },
+                                        shape = CircleShape,
+                                        color = palette.emeraldPrimary
+                                    ) {
+                                        Text(
+                                            text = "1 Kata",
+                                            color = Color.White,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                        )
+                                    }
+                                }
+                                Surface(
+                                    onClick = { resetPhraseSelection() },
+                                    shape = CircleShape,
+                                    color = Color.White.copy(alpha = 0.22f)
+                                ) {
+                                    Text(
+                                        text = "Batal",
+                                        color = Color.White,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
                     // Floating "Ikuti Video" pill when user manually scrolled away
                     androidx.compose.animation.AnimatedVisibility(
-                        visible = !isAutoFollowEnabled && activeSegmentIndex >= 0,
+                        visible = !isAutoFollowEnabled && activeSegmentIndex >= 0 && !phraseMode,
                         enter = fadeIn(),
                         exit = fadeOut(),
                         modifier = Modifier
@@ -547,7 +848,7 @@ fun CourseStudyRoomScreen(
                                 scope.launch {
                                     isProgrammaticScroll = true
                                     try {
-                                        transcriptListState.animateScrollToItem(activeSegmentIndex + 1)
+                                        transcriptListState.animateScrollToItem(activeSegmentIndex + 2)
                                     } finally {
                                         isProgrammaticScroll = false
                                     }
@@ -635,9 +936,25 @@ fun CourseStudyRoomScreen(
     }
 
     selectedTerm?.let { term ->
+        val termNorm = remember(term.arabic) { ArabicTextUtils.normalizeForLookup(term.arabic) }
+        val isSaved = termNorm.isNotBlank() && savedNormalizedKeys.contains(termNorm)
         GlossaryTermBottomSheet(
             term = term,
+            isSavedInKamus = isSaved,
             onDismiss = { selectedTerm = null },
+            onSpeakArabic = { txt -> onSpeakArabic(txt)?.let(onShowMessage) },
+            onSaveToKamus = { targetTerm ->
+                selectedTerm = null
+                onClearKamusAiState()
+                pendingPhraseSelection = null
+                pendingKamusDraft = CourseKamusBridge.buildDraftFromGlossaryTerm(
+                    term = targetTerm,
+                    course = course,
+                    fallbackEpisode = episode,
+                    fallbackBlock = block,
+                    existingEntries = kamusEntries
+                )
+            },
             onJumpToVideo = { target ->
                 selectedTerm = null
                 if (target.blockId == block.id && target.exampleTimeSec > 0) {
@@ -654,6 +971,32 @@ fun CourseStudyRoomScreen(
                     }
                 }
             }
+        )
+    }
+
+    pendingKamusDraft?.let { draft ->
+        val selCtx = pendingPhraseSelection
+        KamusEntryEditorSheet(
+            initialEntry = draft,
+            aiState = kamusAiState,
+            onRequestAi = onLookupKamusAi,
+            onClearAiState = onClearKamusAiState,
+            segmentTokens = selCtx?.tokens.orEmpty(),
+            initialRangeStart = selCtx?.startIndex ?: -1,
+            initialRangeEnd = selCtx?.endIndex ?: -1,
+            onDismiss = {
+                onClearKamusAiState()
+                pendingKamusDraft = null
+                pendingPhraseSelection = null
+            },
+            onSave = { entry ->
+                onSaveKamusEntry(entry)
+                onClearKamusAiState()
+                pendingKamusDraft = null
+                pendingPhraseSelection = null
+                onShowMessage("Disimpan ke Kamus Saya: ${entry.arabic}")
+            },
+            onSpeakArabic = { txt -> onSpeakArabic(txt)?.let(onShowMessage) }
         )
     }
 }
@@ -804,16 +1147,26 @@ private fun SegmentedModeButton(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 private fun TranscriptSegmentCard(
     segment: TranscriptSegment,
+    segmentIndex: Int,
     course: SeriesCourse,
     isActive: Boolean,
+    showHarakat: Boolean,
+    savedNormalizedKeys: Set<String>,
+    phraseMode: Boolean,
+    phraseStartSegIdx: Int,
+    phraseStartWordIdx: Int,
     onPlaySegment: () -> Unit,
+    onSpeakSegment: () -> Unit,
+    onTapWord: (ArabicWordToken, List<ArabicWordToken>) -> Unit,
+    onLongPressWord: (ArabicWordToken, List<ArabicWordToken>) -> Unit,
     onTapGlossaryTerm: (GlossaryTerm) -> Unit
 ) {
     val palette = LocalShalatVibePalette.current
+    val tokens = remember(segment.arabic) { ArabicTextUtils.tokenizeSentenceWords(segment.arabic) }
     val containerColor by animateColorAsState(
         targetValue = if (isActive) palette.highlightSurface else palette.cardSurface,
         animationSpec = tween(220),
@@ -825,7 +1178,6 @@ private fun TranscriptSegmentCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
             .background(containerColor)
-            .clickable(onClick = onPlaySegment)
     ) {
         Row(
             modifier = Modifier
@@ -859,6 +1211,7 @@ private fun TranscriptSegmentCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Surface(
+                        onClick = onPlaySegment,
                         shape = CircleShape,
                         color = if (isActive) palette.emeraldPrimary else palette.pillBg
                     ) {
@@ -901,20 +1254,91 @@ private fun TranscriptSegmentCard(
                             )
                         }
                     }
+
+                    Surface(
+                        onClick = onSpeakSegment,
+                        shape = CircleShape,
+                        color = palette.emeraldSoft
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.VolumeUp,
+                                contentDescription = "Dengar pengucapan Arab",
+                                tint = palette.emeraldPrimary,
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Dengar",
+                                color = palette.emeraldPrimary,
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(10.dp))
 
+                // Kata-kata Arab interaktif (ketuk untuk Kamus + AI, tekan lama untuk pilih frase)
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                    Text(
-                        text = segment.arabic,
-                        color = palette.textPrimary,
-                        fontSize = 19.sp,
-                        lineHeight = 32.sp,
-                        fontWeight = FontWeight.Medium,
+                    FlowRow(
                         modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Start
-                    )
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        tokens.forEach { tok ->
+                            val isSaved = tok.hasArabicLetters &&
+                                tok.normalizedKey.length >= 2 &&
+                                savedNormalizedKeys.contains(tok.normalizedKey)
+                            val isPhraseStart = phraseStartSegIdx == segmentIndex && phraseStartWordIdx == tok.index
+                            val displayWord = remember(tok.raw, showHarakat) {
+                                if (showHarakat) tok.raw else ArabicTextUtils.stripHarakat(tok.raw)
+                            }
+                            val isSamePhraseSegment = phraseMode && phraseStartSegIdx == segmentIndex
+                            val chipBg = when {
+                                isPhraseStart -> palette.emeraldPrimary
+                                isSaved -> palette.goldSoft
+                                isSamePhraseSegment && tok.hasArabicLetters -> palette.emeraldSoft.copy(alpha = 0.45f)
+                                else -> Color.Transparent
+                            }
+                            val chipFg = when {
+                                isPhraseStart -> Color.White
+                                isSaved -> palette.goldAccent
+                                else -> palette.textPrimary
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(chipBg)
+                                    .then(
+                                        if (tok.hasArabicLetters && tok.cleanArabic.isNotBlank()) {
+                                            Modifier.combinedClickable(
+                                                onClick = { onTapWord(tok, tokens) },
+                                                onLongClick = { onLongPressWord(tok, tokens) }
+                                            )
+                                        } else Modifier
+                                    )
+                                    .padding(
+                                        horizontal = if (isSaved || isPhraseStart || isSamePhraseSegment) 4.dp else 1.dp,
+                                        vertical = 0.dp
+                                    )
+                            ) {
+                                Text(
+                                    text = displayWord,
+                                    color = chipFg,
+                                    fontSize = 19.sp,
+                                    lineHeight = 30.sp,
+                                    fontWeight = if (isSaved || isPhraseStart) FontWeight.Bold else FontWeight.Medium,
+                                    textDecoration = if (isSaved) TextDecoration.Underline else TextDecoration.None
+                                )
+                            }
+                        }
+                    }
                 }
 
                 if (segment.indonesian.isNotBlank()) {
@@ -923,7 +1347,10 @@ private fun TranscriptSegmentCard(
                         text = segment.indonesian,
                         color = if (isActive) palette.textPrimary.copy(alpha = 0.88f) else palette.textSecondary,
                         fontSize = 13.sp,
-                        lineHeight = 20.sp
+                        lineHeight = 20.sp,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(onClick = onPlaySegment)
                     )
                 }
 
