@@ -22,7 +22,7 @@ class ArabicContentRepository(context: Context) {
     private val pdfExtractor by lazy { ArabicPdfContentExtractor(appContext) }
 
     suspend fun loadLessonContent(lesson: ArabicLesson): ArabicLessonContent? = withContext(Dispatchers.IO) {
-        val fileName = ArabicContentParser.contentFileNameForPdf(lesson.pdfFileName)
+        val fileName = ArabicContentParser.contentFileNameForLesson(lesson)
         val cached = File(cacheDir, fileName)
 
         if (cached.exists() && cached.length() > 30L) {
@@ -42,7 +42,7 @@ class ArabicContentRepository(context: Context) {
             if (parsed != null) return@withContext parsed
         }
 
-        // Modul baru dari GitHub sync -> coba ambil versi JSON interaktifnya secara senyap
+        // Modul baru dari GitHub sync -> unduh file JSON interaktifnya langsung dari GitHub
         val remoteUrl = ArabicContentParser.inferContentUrl(lesson)
         val fetched = runCatching { fetchText(remoteUrl) }.getOrNull()
         if (!fetched.isNullOrBlank()) {
@@ -55,11 +55,53 @@ class ArabicContentRepository(context: Context) {
         null
     }
 
+    /**
+     * Mengunduh & menyimpan cache lokal JSON konten dari GitHub saat sinkronisasi katalog
+     * agar modul baru maupun pembaruan JSON langsung tersedia offline.
+     * Mengembalikan `true` jika file JSON baru/terbaru berhasil diunduh dan disimpan.
+     */
+    suspend fun prefetchLessonContent(
+        lesson: ArabicLesson,
+        refreshExisting: Boolean = false
+    ): Boolean = withContext(Dispatchers.IO) {
+        val fileName = ArabicContentParser.contentFileNameForLesson(lesson)
+        val cached = File(cacheDir, fileName)
+        val hasCached = cached.exists() && cached.length() > 30L
+        val hasBundled = !hasCached && runCatching {
+            appContext.assets.open("arabic_lessons/content/$fileName").use { true }
+        }.getOrDefault(false)
+
+        if (!refreshExisting && (hasCached || hasBundled)) {
+            return@withContext false
+        }
+
+        val remoteUrl = ArabicContentParser.inferContentUrl(lesson)
+        val fetched = runCatching { fetchText(remoteUrl) }.getOrNull() ?: return@withContext false
+        val parsed = ArabicContentParser.parseContentJson(fetched) ?: return@withContext false
+        if (parsed.transcriptSegments.isEmpty() && parsed.totalGlossaryItems == 0) {
+            return@withContext false
+        }
+
+        val existingText = when {
+            hasCached -> runCatching { cached.readText(Charsets.UTF_8) }.getOrNull()
+            hasBundled -> runCatching {
+                appContext.assets.open("arabic_lessons/content/$fileName").bufferedReader(Charsets.UTF_8).use { it.readText() }
+            }.getOrNull()
+            else -> null
+        }
+        if (existingText != null && existingText.trim() == fetched.trim()) {
+            return@withContext false
+        }
+
+        writeCacheAtomically(cached, fileName, fetched)
+        true
+    }
+
     suspend fun extractAndCacheFromPdf(
         lesson: ArabicLesson,
         pdfFile: File
     ): ArabicLessonContent = withContext(Dispatchers.IO) {
-        val fileName = ArabicContentParser.contentFileNameForPdf(lesson.pdfFileName)
+        val fileName = ArabicContentParser.contentFileNameForLesson(lesson)
         val cached = File(cacheDir, fileName)
         if (cached.exists() && cached.length() > 30L) {
             val raw = runCatching { cached.readText(Charsets.UTF_8) }.getOrNull()

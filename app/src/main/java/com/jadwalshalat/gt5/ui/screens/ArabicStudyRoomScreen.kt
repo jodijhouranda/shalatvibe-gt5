@@ -205,6 +205,21 @@ fun ArabicStudyRoomScreen(
                 modifier = Modifier.fillMaxSize()
             )
         } else when {
+            isLoadingContent -> {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    CircularProgressIndicator(color = palette.emeraldPrimary)
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = "Memuat materi interaktif...",
+                        color = palette.textSecondary,
+                        fontSize = 13.sp
+                    )
+                }
+            }
             isLoadingPdf -> {
                 Column(
                     modifier = Modifier.fillMaxSize(),
@@ -262,7 +277,7 @@ fun ArabicStudyRoomScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = pdfErrorMessage ?: "File PDF belum tersedia.",
+                        text = pdfErrorMessage ?: "Konten modul JSON belum tersedia. Tekan Sync (↻) saat terhubung ke internet.",
                         color = palette.textSecondary,
                         fontSize = 13.sp
                     )
@@ -350,9 +365,9 @@ fun ArabicStudyRoomScreen(
 
             Spacer(modifier = Modifier.width(5.dp))
 
-            // Teks Interaktif <-> PDF Asli single compact toggle pill (atau status ekstraksi AI)
+            // Teks Interaktif <-> PDF Asli toggle pill (hanya tampil jika modul punya PDF)
             when {
-                lessonContent != null -> {
+                lessonContent != null && pdfFile != null -> {
                     Surface(
                         onClick = { useInteractiveMode = !useInteractiveMode },
                         shape = CircleShape,
@@ -422,8 +437,8 @@ fun ArabicStudyRoomScreen(
                 }
             }
 
-            // Saat mode PDF Asli: kontras + catat kata manual
-            if (!useInteractiveMode || lessonContent == null) {
+            // Saat mode PDF Asli aktif: kontras + catat kata manual
+            if (pdfFile != null && (!useInteractiveMode || lessonContent == null)) {
                 Spacer(modifier = Modifier.width(5.dp))
                 Surface(
                     onClick = onCycleReadingMode,

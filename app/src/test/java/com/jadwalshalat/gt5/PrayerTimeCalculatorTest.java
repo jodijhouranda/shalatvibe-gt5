@@ -420,28 +420,39 @@ public class PrayerTimeCalculatorTest {
         java.util.Set<String> validatedNames = new java.util.HashSet<>();
         for (java.io.File repoJson : repoFiles) {
             String jsonName = repoJson.getName();
-            java.io.File assetJson = new java.io.File(assetContentDir, jsonName);
-            org.junit.Assert.assertTrue("Missing asset JSON: " + jsonName, assetJson.exists());
-
-            byte[] repoBytes = java.nio.file.Files.readAllBytes(repoJson.toPath());
-            byte[] assetBytes = java.nio.file.Files.readAllBytes(assetJson.toPath());
-            org.junit.Assert.assertArrayEquals("Byte parity mismatch for " + jsonName, repoBytes, assetBytes);
-
-            String raw = new String(assetBytes, java.nio.charset.StandardCharsets.UTF_8);
+            String repoRaw = new String(
+                    java.nio.file.Files.readAllBytes(repoJson.toPath()),
+                    java.nio.charset.StandardCharsets.UTF_8
+            );
             com.jadwalshalat.gt5.arabic.ArabicLessonContent parsed =
-                    com.jadwalshalat.gt5.arabic.ArabicContentParser.INSTANCE.parseContentJson(raw);
+                    com.jadwalshalat.gt5.arabic.ArabicContentParser.INSTANCE.parseContentJson(repoRaw);
             org.junit.Assert.assertNotNull("Failed parsing " + jsonName, parsed);
             org.junit.Assert.assertTrue("No transcript segments in " + jsonName, parsed.getTranscriptSegments().size() >= 3);
             org.junit.Assert.assertTrue("No vocab items in " + jsonName, parsed.getTotalGlossaryItems() >= 10);
+
+            // Jika JSON juga dibundel offline di assets, pastikan isinya tetap sinkron
+            java.io.File assetJson = new java.io.File(assetContentDir, jsonName);
+            if (assetJson.exists()) {
+                String raw = new String(
+                        java.nio.file.Files.readAllBytes(assetJson.toPath()),
+                        java.nio.charset.StandardCharsets.UTF_8
+                );
+                org.junit.Assert.assertEquals("Content parity mismatch for " + jsonName, repoRaw.trim(), raw.trim());
+            }
             validatedNames.add(jsonName);
         }
 
         int matchedInCatalog = 0;
         for (Object lObj : lessons) {
             java.util.Map<String, Object> l = (java.util.Map<String, Object>) lObj;
+            String jsonFile = (String) l.get("jsonFileName");
             String pdf = (String) l.get("pdfFileName");
-            org.junit.Assert.assertNotNull(pdf);
-            String jsonName = com.jadwalshalat.gt5.arabic.ArabicContentParser.INSTANCE.contentFileNameForPdf(pdf);
+            String jsonName = (jsonFile != null && !jsonFile.trim().isEmpty())
+                    ? jsonFile.trim()
+                    : (pdf != null && !pdf.trim().isEmpty()
+                            ? com.jadwalshalat.gt5.arabic.ArabicContentParser.INSTANCE.contentFileNameForPdf(pdf)
+                            : "");
+            org.junit.Assert.assertFalse("Lesson missing jsonFileName/pdfFileName: " + l.get("id"), jsonName.isEmpty());
             if (validatedNames.contains(jsonName)) matchedInCatalog++;
         }
         org.junit.Assert.assertTrue("Expected at least 11 catalog lessons with interactive JSON", matchedInCatalog >= 11);

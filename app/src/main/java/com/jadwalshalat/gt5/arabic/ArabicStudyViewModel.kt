@@ -146,12 +146,13 @@ class ArabicStudyViewModel(application: Application) : AndroidViewModel(applicat
         lessonLoadJob?.cancel()
         pdfExtractJob?.cancel()
         repository.setLastOpenedLessonId(lesson.id)
+        val shouldAttemptPdf = lesson.hasPdfSource || repository.hasBundledOrCachedPdf(lesson)
         _uiState.update {
             it.copy(
                 activeLesson = lesson,
                 lastOpenedLessonId = lesson.id,
                 activePdfFile = null,
-                isLoadingPdf = true,
+                isLoadingPdf = shouldAttemptPdf,
                 pdfErrorMessage = null,
                 activeLessonContent = null,
                 isLoadingContent = true,
@@ -160,31 +161,47 @@ class ArabicStudyViewModel(application: Application) : AndroidViewModel(applicat
                 activeSeekSec = initialSeekSec
             )
         }
+        cloudSyncUserId?.let { uid ->
+            val state = _uiState.value
+            pushProgressToCloud(uid, state.completedIds, state.favoriteIds, latestCourseBlockIds, lesson.id)
+        }
         lessonLoadJob = viewModelScope.launch {
-            val pdfDeferred = async { repository.resolvePdfFile(lesson) }
             val contentDeferred = async { contentRepository.loadLessonContent(lesson) }
+            val pdfDeferred = if (shouldAttemptPdf) {
+                async { repository.resolvePdfFile(lesson) }
+            } else {
+                null
+            }
 
-            launch {
-                val file = pdfDeferred.await()
-                _uiState.update { state ->
-                    if (state.activeLesson?.id != lesson.id) state
-                    else state.copy(
-                        activePdfFile = file,
-                        isLoadingPdf = false,
-                        pdfErrorMessage = if (file == null) {
-                            "File PDF tidak ditemukan. Coba tekan Sync saat terhubung ke internet."
-                        } else null
-                    )
+            if (pdfDeferred != null) {
+                launch {
+                    val file = pdfDeferred.await()
+                    _uiState.update { state ->
+                        if (state.activeLesson?.id != lesson.id) state
+                        else state.copy(
+                            activePdfFile = file,
+                            isLoadingPdf = false,
+                            pdfErrorMessage = if (file == null && state.activeLessonContent == null && !state.isLoadingContent) {
+                                "Konten modul belum tersedia. Coba tekan Sync saat terhubung ke internet."
+                            } else null
+                        )
+                    }
                 }
             }
 
             val content = contentDeferred.await()
             _uiState.update { state ->
                 if (state.activeLesson?.id != lesson.id) state
-                else state.copy(activeLessonContent = content, isLoadingContent = false)
+                else state.copy(
+                    activeLessonContent = content,
+                    isLoadingContent = false,
+                    pdfErrorMessage = if (content == null && pdfDeferred == null) {
+                        "Konten modul JSON belum tersedia. Coba tekan Sync saat terhubung ke internet."
+                    } else state.pdfErrorMessage
+                )
             }
 
-            if (content == null) {
+            if (content == null && pdfDeferred != null) {
                 val file = pdfDeferred.await()
                 if (file != null && file.exists() && file.length() > 100L && _uiState.value.activeLesson?.id == lesson.id) {
                     triggerPdfContentExtraction(lesson, file)
@@ -364,6 +381,7 @@ class ArabicStudyViewModel(application: Application) : AndroidViewModel(applicat
                     val cloudCompleted = doc?.completedArabicIds?.toSet().orEmpty()
                     val cloudFavorites = doc?.favoriteArabicIds?.toSet().orEmpty()
                     val cloudBlocks = doc?.completedCourseBlockIds?.toSet().orEmpty()
+                    val cloudLastOpened = doc?.lastOpenedLessonId?.takeIf { it.isNotBlank() }
 
                     val (mergedCompleted, mergedFavorites) = repository.mergeProgressFromCloud(
                         cloudCompleted = cloudCompleted,
@@ -375,19 +393,34 @@ class ArabicStudyViewModel(application: Application) : AndroidViewModel(applicat
                         onCloudCourseBlocksReceived(cloudBlocks)
                     }
 
+                    val effectiveLastOpened = if (_uiState.value.activeLesson == null && cloudLastOpened != null) {
+                        repository.setLastOpenedLessonId(cloudLastOpened)
+                        cloudLastOpened
+                    } else {
+                        _uiState.value.lastOpenedLessonId ?: cloudLastOpened
+                    }
+
                     _uiState.update {
                         it.copy(
                             completedIds = mergedCompleted,
-                            favoriteIds = mergedFavorites
+                            favoriteIds = mergedFavorites,
+                            lastOpenedLessonId = effectiveLastOpened
                         )
                     }
 
                     val localHadNewer = doc == null ||
                         mergedCompleted.size > cloudCompleted.size ||
                         mergedFavorites.size > cloudFavorites.size ||
-                        mergedBlocks.size > cloudBlocks.size
-                    if (localHadNewer && (mergedCompleted.isNotEmpty() || mergedFavorites.isNotEmpty() || mergedBlocks.isNotEmpty())) {
-                        pushProgressToCloud(userId, mergedCompleted, mergedFavorites, mergedBlocks, _uiState.value.lastOpenedLessonId)
+                        mergedBlocks.size > cloudBlocks.size ||
+                        (cloudLastOpened == null && effectiveLastOpened != null)
+                    if (localHadNewer && (
+                            mergedCompleted.isNotEmpty() ||
+                                mergedFavorites.isNotEmpty() ||
+                                mergedBlocks.isNotEmpty() ||
+                                effectiveLastOpened != null
+                            )
+                    ) {
+                        pushProgressToCloud(userId, mergedCompleted, mergedFavorites, mergedBlocks, effectiveLastOpened)
                     }
                 }
         }
@@ -637,7 +670,7 @@ class ArabicStudyViewModel(application: Application) : AndroidViewModel(applicat
         if (_uiState.value.isSyncing) return
         _uiState.update { it.copy(isSyncing = true) }
         viewModelScope.launch {
-            val result = repository.syncFromRemote()
+            val result = repository.syncFromRemote(refreshContentJson = true)
             _uiState.update {
                 it.copy(
                     isSyncing = false,

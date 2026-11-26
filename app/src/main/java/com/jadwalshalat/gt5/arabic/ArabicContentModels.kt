@@ -87,8 +87,28 @@ object ArabicContentParser {
         return "$base.json"
     }
 
+    fun contentFileNameForLesson(lesson: ArabicLesson): String {
+        val explicit = lesson.jsonFileName.trim()
+        if (explicit.isNotEmpty()) {
+            return if (explicit.endsWith(".json", ignoreCase = true)) explicit else "$explicit.json"
+        }
+        val fromPdf = lesson.pdfFileName.trim()
+        if (fromPdf.isNotEmpty()) {
+            return contentFileNameForPdf(fromPdf)
+        }
+        val fromUrl = lesson.jsonUrl.trim().substringAfterLast('/').substringBefore('?')
+        if (fromUrl.endsWith(".json", ignoreCase = true)) {
+            return fromUrl
+        }
+        return "${lesson.id.trim().ifEmpty { "lesson" }}.json"
+    }
+
     fun inferContentUrl(lesson: ArabicLesson): String {
-        val fn = contentFileNameForPdf(lesson.pdfFileName)
+        val explicitUrl = lesson.jsonUrl.trim()
+        if (explicitUrl.isNotEmpty()) {
+            return ArabicCatalogParser.normalizeDownloadUrl(explicitUrl)
+        }
+        val fn = contentFileNameForLesson(lesson)
         val url = lesson.pdfUrl
         if (url.contains("/lessons/pdfs/")) {
             return url.substringBeforeLast("/lessons/pdfs/") + "/lessons/arabic_content/" + fn

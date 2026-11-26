@@ -1,6 +1,5 @@
 package com.jadwalshalat.gt5.cloud
 
-import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -18,6 +17,7 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
+import com.jadwalshalat.gt5.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.awaitClose
@@ -43,17 +43,11 @@ private tailrec fun Context.findActivity(): Activity? = when (this) {
     else -> null
 }
 
-@SuppressLint("DiscouragedApi")
 private fun resolveDefaultWebClientId(context: Context): String? {
-    val resId = context.resources.getIdentifier(
-        "default_web_client_id",
-        "string",
-        context.packageName
-    )
-    if (resId == 0) return null
-    return runCatching { context.getString(resId) }
+    return runCatching { context.getString(R.string.default_web_client_id) }
         .getOrNull()
-        ?.takeIf { it.isNotBlank() }
+        ?.trim()
+        ?.takeIf { it.isNotEmpty() }
 }
 
 private fun resolveFirebaseAuth(context: Context): FirebaseAuth? {
@@ -129,7 +123,7 @@ fun onGoogleSignInClicked(
     }
     val clientId = resolveDefaultWebClientId(context)
     if (clientId == null) {
-        onAuthError("Konfigurasi Google Sign-In belum tersedia (default_web_client_id).")
+        onAuthError("Konfigurasi Google Sign-In belum tersedia. Perbarui google-services.json (OAuth Web Client ID) lalu build ulang APK.")
         return
     }
     val activity = context.findActivity()

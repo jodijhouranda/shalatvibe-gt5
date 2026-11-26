@@ -828,7 +828,7 @@ fun ArabicSyncSettingsBottomSheet(
             Spacer(modifier = Modifier.height(10.dp))
 
             Text(
-                text = "Tips: Saat ada PDF harian baru, tambahkan file PDF ke folder lessons/pdfs/ dan entri JSON ke lessons/catalog.json di GitHub (atau file catalog.json di Google Drive yang di-share Viewer), lalu tekan tombol Sync (↻) di tab Belajar — tanpa perlu build ulang APK.",
+                text = "Tips: Saat ada materi harian baru, cukup unggah file JSON ke lessons/arabic_content/ dan perbarui lessons/catalog.json di GitHub (tanpa perlu file PDF), lalu tekan tombol Sync (↻) di tab Belajar — tanpa perlu build ulang APK.",
                 color = palette.textSecondary,
                 fontSize = 11.sp,
                 lineHeight = 16.sp

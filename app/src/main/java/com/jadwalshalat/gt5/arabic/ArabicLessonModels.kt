@@ -62,10 +62,15 @@ data class ArabicLesson(
     val pdfFileName: String,
     val pdfUrl: String,
     val driveFileId: String,
-    val segments: List<LessonSegment>
+    val segments: List<LessonSegment>,
+    val jsonFileName: String = "",
+    val jsonUrl: String = ""
 ) {
     val hasVideo: Boolean
         get() = youtubeVideoId.isNotBlank()
+
+    val hasPdfSource: Boolean
+        get() = pdfUrl.isNotBlank() || driveFileId.isNotBlank()
 
     val segmentRangeLabel: String
         get() = if (endSeconds > startSeconds) {
@@ -152,7 +157,9 @@ object ArabicCatalogParser {
                     pdfFileName = obj.optString("pdfFileName", "").trim(),
                     pdfUrl = obj.optString("pdfUrl", "").trim(),
                     driveFileId = obj.optString("driveFileId", "").trim(),
-                    segments = segments
+                    segments = segments,
+                    jsonFileName = obj.optString("jsonFileName", "").trim(),
+                    jsonUrl = obj.optString("jsonUrl", "").trim()
                 )
             )
         }

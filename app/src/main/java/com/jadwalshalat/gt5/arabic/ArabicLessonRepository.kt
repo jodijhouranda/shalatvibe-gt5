@@ -63,6 +63,15 @@ class ArabicLessonRepository(context: Context) {
         return merged.values.toList()
     }
 
+    fun hasBundledOrCachedPdf(lesson: ArabicLesson): Boolean {
+        if (lesson.pdfFileName.isBlank()) return false
+        val cached = File(pdfCacheDir, lesson.pdfFileName)
+        if (cached.exists() && cached.length() > 1024L) return true
+        return runCatching {
+            appContext.assets.open("$ASSET_DIR/${lesson.pdfFileName}").use { true }
+        }.getOrDefault(false)
+    }
+
     suspend fun resolvePdfFile(lesson: ArabicLesson): File? = withContext(Dispatchers.IO) {
         if (lesson.pdfFileName.isBlank()) return@withContext null
 
@@ -85,7 +94,7 @@ class ArabicLessonRepository(context: Context) {
             return@withContext cached
         }
 
-        // 2. Jika modul baru dari Sync, unduh dari pdfUrl atau Google Drive direct link
+        // 2. Jika modul lama masih punya pdfUrl atau Google Drive link, unduh hanya saat diminta
         val downloadUrl = when {
             lesson.pdfUrl.isNotBlank() -> ArabicCatalogParser.normalizeDownloadUrl(lesson.pdfUrl)
             lesson.driveFileId.isNotBlank() -> "https://drive.google.com/uc?export=download&id=${lesson.driveFileId}"
@@ -97,7 +106,10 @@ class ArabicLessonRepository(context: Context) {
         if (downloaded && cached.length() > 1024L) cached else null
     }
 
-    suspend fun syncFromRemote(urlOverride: String? = null): SyncResult = withContext(Dispatchers.IO) {
+    suspend fun syncFromRemote(
+        urlOverride: String? = null,
+        refreshContentJson: Boolean = false
+    ): SyncResult = withContext(Dispatchers.IO) {
         val rawUrl = (urlOverride ?: getSyncManifestUrl()).trim()
         if (rawUrl.isBlank()) {
             return@withContext SyncResult(false, loadLessons().size, 0, "URL manifest sinkronisasi masih kosong.")
@@ -122,7 +134,7 @@ class ArabicLessonRepository(context: Context) {
             )
         }
 
-        val mergedJsonText = mergeAutoDiscoveredGitHubPdfs(normalizedUrl, jsonText, parsed)
+        val mergedJsonText = mergeAutoDiscoveredGitHubJsonLessons(normalizedUrl, jsonText, parsed)
         val finalParsed = runCatching { ArabicCatalogParser.parseCatalogJson(mergedJsonText) }
             .getOrNull()
             ?.takeIf { it.isNotEmpty() }
@@ -130,14 +142,15 @@ class ArabicLessonRepository(context: Context) {
 
         syncedCatalogFile.writeText(mergedJsonText)
 
-        var newlyCached = 0
+        // Pre-cache konten JSON interaktif dari GitHub agar langsung siap dibuka offline (tanpa unduh PDF)
+        val contentRepo = ArabicContentRepository(appContext)
+        var newlyCachedJson = 0
         for (lesson in finalParsed) {
-            if (lesson.pdfFileName.isBlank()) continue
-            val target = File(pdfCacheDir, lesson.pdfFileName)
-            if (!target.exists() || target.length() < 1024L) {
-                val resolved = resolvePdfFile(lesson)
-                if (resolved != null) newlyCached++
-            }
+            val updated = contentRepo.prefetchLessonContent(
+                lesson = lesson,
+                refreshExisting = refreshContentJson
+            )
+            if (updated) newlyCachedJson++
         }
 
         val stamp = ZonedDateTime.now().format(DateTimeFormatter.ofPattern("dd MMM HH:mm", Locale("id", "ID")))
@@ -147,21 +160,21 @@ class ArabicLessonRepository(context: Context) {
         SyncResult(
             success = true,
             totalLessons = all.size,
-            newlyCachedPdfs = newlyCached,
-            message = if (newlyCached > 0) {
-                "Sinkronisasi selesai: ${all.size} modul ($newlyCached PDF baru tersimpan offline)."
+            newlyCachedPdfs = newlyCachedJson,
+            message = if (newlyCachedJson > 0) {
+                "Sinkronisasi selesai: ${all.size} modul ($newlyCachedJson konten JSON baru tersimpan offline)."
             } else {
-                "Katalog mutakhir: ${all.size} modul siap dipelajari."
+                "Katalog mutakhir: ${all.size} modul JSON siap dipelajari."
             }
         )
     }
 
     /**
      * Jika URL sinkronisasi menunjuk ke `raw.githubusercontent.com/<owner>/<repo>/<branch>/<dir>/catalog.json`,
-     * periksa juga isi folder `<dir>/pdfs` melalui GitHub Contents API agar file `.pdf` baru yang
-     * belum sempat dicantumkan di `catalog.json` tetap langsung muncul di aplikasi.
+     * periksa juga isi folder `<dir>/arabic_content` melalui GitHub Contents API agar file `.json` baru yang
+     * belum sempat dicantumkan di `catalog.json` tetap otomatis muncul di aplikasi.
      */
-    private fun mergeAutoDiscoveredGitHubPdfs(
+    private fun mergeAutoDiscoveredGitHubJsonLessons(
         catalogUrl: String,
         originalCatalogJson: String,
         existingLessons: List<ArabicLesson>
@@ -175,15 +188,15 @@ class ArabicLessonRepository(context: Context) {
             val repo = match.groupValues[2]
             val branch = match.groupValues[3]
             val baseDir = match.groupValues[4].trim('/')
-            val pdfsDir = "$baseDir/pdfs"
-            val apiUrl = "https://api.github.com/repos/$owner/$repo/contents/$pdfsDir?ref=$branch"
+            val contentDir = "$baseDir/arabic_content"
+            val apiUrl = "https://api.github.com/repos/$owner/$repo/contents/$contentDir?ref=$branch"
 
             val listingRaw = fetchText(apiUrl) ?: return originalCatalogJson
             val filesArray = JSONArray(listingRaw)
             if (filesArray.length() == 0) return originalCatalogJson
 
-            val knownPdfNames = existingLessons
-                .map { it.pdfFileName.trim().lowercase(Locale.US) }
+            val knownJsonNames = existingLessons
+                .map { ArabicContentParser.contentFileNameForLesson(it).trim().lowercase(Locale.US) }
                 .filter { it.isNotEmpty() }
                 .toHashSet()
 
@@ -192,30 +205,32 @@ class ArabicLessonRepository(context: Context) {
                 val item = filesArray.optJSONObject(i) ?: continue
                 if (!item.optString("type").equals("file", ignoreCase = true)) continue
                 val name = item.optString("name").trim()
-                if (!name.endsWith(".pdf", ignoreCase = true)) continue
+                if (!name.endsWith(".json", ignoreCase = true)) continue
                 val sizeBytes = item.optLong("size", 0L)
-                if (sizeBytes <= 100L) continue
-                if (knownPdfNames.contains(name.lowercase(Locale.US))) continue
+                if (sizeBytes <= 30L) continue
+                if (knownJsonNames.contains(name.lowercase(Locale.US))) continue
 
                 val downloadUrl = item.optString("download_url").trim().ifBlank {
                     val encodedName = URLEncoder.encode(name, "UTF-8").replace("+", "%20")
-                    "https://raw.githubusercontent.com/$owner/$repo/$branch/$pdfsDir/$encodedName"
+                    "https://raw.githubusercontent.com/$owner/$repo/$branch/$contentDir/$encodedName"
                 }
 
-                val stem = name.removeSuffix(".pdf").removeSuffix(".PDF")
-                val safeId = "auto_pdf_" + stem.lowercase(Locale.US)
+                val stem = name.removeSuffix(".json").removeSuffix(".JSON")
+                val safeId = "auto_json_" + stem.lowercase(Locale.US)
                     .replace(Regex("[^a-z0-9]+"), "_")
                     .trim('_')
                     .take(64)
 
                 val prettyTitle = stem
+                    .replace("Bahasa_Arab_Analisis_Video_", "", ignoreCase = true)
+                    .replace("_TAFL", "", ignoreCase = true)
                     .replace('_', ' ')
                     .replace('-', ' ')
                     .replace(Regex("\\s+"), " ")
                     .trim()
                     .ifBlank { name }
 
-                val category = if (prettyTitle.contains("video", ignoreCase = true)) {
+                val category = if (stem.contains("video", ignoreCase = true)) {
                     "VIDEO_ANALYSIS"
                 } else {
                     "DAILY_LEXICAL"
@@ -225,18 +240,20 @@ class ArabicLessonRepository(context: Context) {
                     JSONObject().apply {
                         put("id", safeId)
                         put("category", category)
-                        put("dayLabel", "PDF Baru")
+                        put("dayLabel", "Materi Baru")
                         put("dateLabel", "Auto GitHub")
                         put("title", prettyTitle)
-                        put("subtitle", "PDF baru terdeteksi otomatis dari GitHub — teks interaktif diekstrak oleh AI.")
-                        put("sourceName", "GitHub PDF")
+                        put("subtitle", "Konten JSON interaktif terbaru dari GitHub.")
+                        put("sourceName", "GitHub JSON")
                         put("level", "CEFR B2–C1")
                         put("youtubeVideoId", "")
                         put("startSeconds", 0)
                         put("endSeconds", 0)
-                        put("pdfFileName", name)
-                        put("pdfUrl", downloadUrl)
+                        put("pdfFileName", "")
+                        put("pdfUrl", "")
                         put("driveFileId", "")
+                        put("jsonFileName", name)
+                        put("jsonUrl", downloadUrl)
                         put("segments", JSONArray())
                     }
                 )
@@ -247,7 +264,7 @@ class ArabicLessonRepository(context: Context) {
             val root = JSONObject(originalCatalogJson)
             val existingArr = root.optJSONArray("lessons") ?: JSONArray()
             val combinedArr = JSONArray()
-            // Taruh PDF baru paling atas agar langsung terlihat
+            // Taruh materi JSON baru paling atas agar langsung terlihat
             for (entry in discoveredEntries) {
                 combinedArr.put(entry)
             }

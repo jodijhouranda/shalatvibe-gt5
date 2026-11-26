@@ -6,7 +6,10 @@ plugins {
 
 // Terapkan Google Services plugin otomatis saat app/google-services.json tersedia
 // (di AI Studio atau di GitHub Actions saat secret GOOGLE_SERVICES_JSON diisi)
-if (file('google-services.json').exists()) {
+def googleServicesFile = file('google-services.json')
+def hasWebOauthClient = googleServicesFile.exists() &&
+    (googleServicesFile.text =~ /"client_type"\s*:\s*3/).find()
+if (googleServicesFile.exists()) {
     apply plugin: 'com.google.gms.google-services'
 }
 
@@ -22,6 +25,9 @@ android {
         versionName "2.5.1"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        if (!hasWebOauthClient) {
+            resValue "string", "default_web_client_id", ""
+        }
     }
 
     signingConfigs {
