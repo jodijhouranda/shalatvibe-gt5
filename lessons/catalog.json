@@ -3,6 +3,55 @@
   "updatedAt": "2026-11-27",
   "lessons": [
     {
+      "id": "video_podcast_finjan_andalusia",
+      "category": "VIDEO_ANALYSIS",
+      "dayLabel": "Video 19",
+      "dateLabel": "27 Nov 2026",
+      "title": "Podcast Finjan: Simbolisme Andalusia & Pelajaran Peradaban Islam",
+      "subtitle": "Historiografi, Dialog Peradaban, & Memori Kolektif Andalusia",
+      "sourceName": "إذاعة ثمانية",
+      "level": "CEFR B2–C1",
+      "youtubeVideoId": "hnPVEa6Cweo",
+      "startSeconds": 122,
+      "endSeconds": 378,
+      "pdfFileName": "Bahasa_Arab_Analisis_Video_Podcast_Finjan_Andalusia_TAFL.pdf",
+      "jsonFileName": "Bahasa_Arab_Analisis_Video_Podcast_Finjan_Andalusia_TAFL.json",
+      "jsonUrl": "https://raw.githubusercontent.com/jodijhouranda/shalatvibe-gt5/main/lessons/arabic_content/Bahasa_Arab_Analisis_Video_Podcast_Finjan_Andalusia_TAFL.json",
+      "segments": [
+        {
+          "label": "02:02 – 02:55",
+          "startSec": 122,
+          "endSec": 175
+        },
+        {
+          "label": "02:55 – 03:39",
+          "startSec": 175,
+          "endSec": 219
+        },
+        {
+          "label": "03:39 – 04:15",
+          "startSec": 219,
+          "endSec": 255
+        },
+        {
+          "label": "04:15 – 04:58",
+          "startSec": 255,
+          "endSec": 298
+        },
+        {
+          "label": "04:58 – 05:42",
+          "startSec": 298,
+          "endSec": 342
+        },
+        {
+          "label": "05:42 – 06:18",
+          "startSec": 342,
+          "endSec": 378
+        }
+      ],
+      "updatedAt": "2026-11-27"
+    },
+    {
       "id": "video_revolusi_microdrama",
       "category": "VIDEO_ANALYSIS",
       "dayLabel": "Video 18",
