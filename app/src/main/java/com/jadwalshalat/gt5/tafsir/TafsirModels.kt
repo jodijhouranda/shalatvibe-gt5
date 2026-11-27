@@ -140,6 +140,17 @@ data class TafsirLastRead(
 )
 
 @Immutable
+data class TafsirAyahSearchHit(
+    val surah: Int,
+    val ayah: Int,
+    val surahNameLatin: String,
+    val surahNameArabic: String,
+    val arabicSnippet: String,
+    val secondarySnippet: String = "",
+    val sourceLabel: String = ""
+)
+
+@Immutable
 data class TafsirUiState(
     val activeBook: TafsirBook = TafsirCatalog.defaultBook,
     val surahNumber: Int = 1,
@@ -153,7 +164,11 @@ data class TafsirUiState(
     val paperTheme: TafsirPaperTheme = TafsirPaperTheme.FOLLOW_THEME,
     val isAyahCollapsed: Boolean = false,
     val bookmarks: List<TafsirBookmark> = emptyList(),
-    val lastRead: TafsirLastRead? = null
+    val lastRead: TafsirLastRead? = null,
+    val ayahSearchQuery: String = "",
+    val ayahSearchResults: List<TafsirAyahSearchHit> = emptyList(),
+    val isSearchingAyah: Boolean = false,
+    val ayahSearchError: String? = null
 ) {
     val activeSurah: QuranSurahMeta
         get() = TafsirCatalog.surahByNumber(surahNumber)

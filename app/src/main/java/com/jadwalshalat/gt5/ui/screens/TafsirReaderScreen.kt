@@ -2,6 +2,7 @@ package com.jadwalshalat.gt5.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -19,8 +20,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
@@ -29,6 +32,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.MenuBook
@@ -42,6 +46,7 @@ import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -108,6 +113,7 @@ fun TafsirReaderScreen(
     kamusAiState: KamusAiUiState,
     onSelectBook: (TafsirBook) -> Unit,
     onSelectSurah: (Int) -> Unit,
+    onSelectSurahAndAyah: (surah: Int, ayah: Int) -> Unit,
     onSelectAyah: (Int) -> Unit,
     onOpenPreviousAyah: () -> Unit,
     onOpenNextAyah: () -> Unit,
@@ -119,14 +125,19 @@ fun TafsirReaderScreen(
     onToggleBookmark: () -> Boolean,
     onOpenBookmark: (TafsirBookmark) -> Unit,
     onRemoveBookmark: (String) -> Unit,
+    onSearchAyah: (String) -> Unit,
+    onClearAyahSearch: () -> Unit,
     onLookupKamusAi: (arabic: String, contextSentence: String, lessonTitle: String, forceRefresh: Boolean) -> Unit,
     onClearKamusAiState: () -> Unit,
     onSaveKamusEntry: (KamusEntry) -> Unit,
     onOpenKamus: () -> Unit,
     onSpeakArabic: (String) -> String?,
     onShowMessage: (String) -> Unit,
+    onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    BackHandler(onBack = onBack)
+
     val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
     val paper = rememberTafsirPaperColors(state.paperTheme)
@@ -272,12 +283,15 @@ fun TafsirReaderScreen(
         modifier = modifier
             .fillMaxSize()
             .background(paper.background)
+            .statusBarsPadding()
+            .navigationBarsPadding()
     ) {
-        // 1. Bilah Atas Ringkas 1 Baris (Surah | Ayat ◀ n ▶ | Kitab Aktif | + Frase | Bookmark | Tampilan)
+        // 1. Bilah Atas Ringkas 1 Baris (Kembali | Surah & Cari Ayat | Ayat ◀ n ▶ | Kitab | +Frase | Bookmark | Tampilan)
         TafsirCompactTopBar(
             state = state,
             paper = paper,
             phraseMode = phraseMode,
+            onBack = onBack,
             onOpenSurahPicker = { showSurahSheet = true },
             onOpenAyahPicker = { showAyahSheet = true },
             onPreviousAyah = onOpenPreviousAyah,
@@ -679,7 +693,14 @@ fun TafsirReaderScreen(
     if (showSurahSheet) {
         TafsirSurahPickerSheet(
             activeSurah = state.surahNumber,
+            showHarakat = state.showHarakat,
+            ayahSearchResults = state.ayahSearchResults,
+            isSearchingAyah = state.isSearchingAyah,
+            ayahSearchError = state.ayahSearchError,
+            onSearchAyah = onSearchAyah,
+            onClearAyahSearch = onClearAyahSearch,
             onSelectSurah = onSelectSurah,
+            onSelectSurahAndAyah = onSelectSurahAndAyah,
             onDismiss = { showSurahSheet = false }
         )
     }
@@ -744,6 +765,7 @@ private fun TafsirCompactTopBar(
     state: TafsirUiState,
     paper: TafsirPaperColors,
     phraseMode: Boolean,
+    onBack: () -> Unit,
     onOpenSurahPicker: () -> Unit,
     onOpenAyahPicker: () -> Unit,
     onPreviousAyah: () -> Unit,
@@ -757,38 +779,58 @@ private fun TafsirCompactTopBar(
         modifier = Modifier
             .fillMaxWidth()
             .background(paper.topBarBg)
-            .padding(horizontal = 8.dp, vertical = 7.dp),
+            .padding(horizontal = 6.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+        horizontalArrangement = Arrangement.spacedBy(3.dp)
     ) {
-        // 1. Pemilih Surah
+        // 0. Tombol Kembali ke Pustaka
+        Surface(
+            onClick = onBack,
+            shape = CircleShape,
+            color = Color.Transparent,
+            modifier = Modifier
+                .size(32.dp)
+                .testTag("tafsir_back_button")
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                    contentDescription = "Kembali ke Pustaka",
+                    tint = paper.inkPrimary,
+                    modifier = Modifier.size(19.dp)
+                )
+            }
+        }
+
+        // 1. Pemilih Surah & Pencarian Potongan Ayat
         Surface(
             onClick = onOpenSurahPicker,
             shape = RoundedCornerShape(10.dp),
             color = paper.pillBg,
             modifier = Modifier
-                .weight(0.95f)
+                .weight(0.96f)
                 .height(36.dp)
                 .testTag("tafsir_surah_picker_button")
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.padding(horizontal = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(3.dp)
             ) {
+                Icon(
+                    imageVector = Icons.Rounded.Search,
+                    contentDescription = "Cari surah atau potongan ayat",
+                    tint = paper.inkMuted,
+                    modifier = Modifier.size(13.dp)
+                )
                 Text(
                     text = "${state.surahNumber}. ${state.activeSurah.nameLatin}",
                     color = paper.inkPrimary,
-                    fontSize = 11.5.sp,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
-                )
-                Icon(
-                    imageVector = Icons.Rounded.KeyboardArrowDown,
-                    contentDescription = "Pilih Surah",
-                    tint = paper.inkMuted,
-                    modifier = Modifier.size(14.dp)
                 )
             }
         }
@@ -802,7 +844,7 @@ private fun TafsirCompactTopBar(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
-                        .size(width = 24.dp, height = 36.dp)
+                        .size(width = 22.dp, height = 36.dp)
                         .clickable(enabled = state.hasPreviousAyah, onClick = onPreviousAyah)
                         .testTag("tafsir_prev_ayah_button"),
                     contentAlignment = Alignment.Center
@@ -811,7 +853,7 @@ private fun TafsirCompactTopBar(
                         imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowLeft,
                         contentDescription = "Ayat sebelumnya",
                         tint = if (state.hasPreviousAyah) paper.inkPrimary else paper.inkMuted.copy(alpha = 0.45f),
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(15.dp)
                     )
                 }
 
@@ -819,21 +861,21 @@ private fun TafsirCompactTopBar(
                     modifier = Modifier
                         .height(36.dp)
                         .clickable(onClick = onOpenAyahPicker)
-                        .padding(horizontal = 4.dp)
+                        .padding(horizontal = 3.dp)
                         .testTag("tafsir_ayah_picker_button"),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = TafsirTextProcessor.toArabicDigits(state.ayahNumber),
                         color = paper.accent,
-                        fontSize = 13.sp,
+                        fontSize = 12.5.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
 
                 Box(
                     modifier = Modifier
-                        .size(width = 24.dp, height = 36.dp)
+                        .size(width = 22.dp, height = 36.dp)
                         .clickable(enabled = state.hasNextAyah, onClick = onNextAyah)
                         .testTag("tafsir_next_ayah_button"),
                     contentAlignment = Alignment.Center
@@ -842,7 +884,7 @@ private fun TafsirCompactTopBar(
                         imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                         contentDescription = "Ayat berikutnya",
                         tint = if (state.hasNextAyah) paper.inkPrimary else paper.inkMuted.copy(alpha = 0.45f),
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(15.dp)
                     )
                 }
             }
@@ -854,18 +896,18 @@ private fun TafsirCompactTopBar(
             shape = RoundedCornerShape(10.dp),
             color = paper.accentSoft,
             modifier = Modifier
-                .weight(1.05f)
+                .weight(1.04f)
                 .height(36.dp)
                 .testTag("tafsir_book_picker_button")
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 8.dp),
+                modifier = Modifier.padding(horizontal = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = state.activeBook.nameLatin,
                     color = paper.accent,
-                    fontSize = 11.5.sp,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -875,7 +917,7 @@ private fun TafsirCompactTopBar(
                     imageVector = Icons.Rounded.KeyboardArrowDown,
                     contentDescription = "Ganti Kitab Tafsir",
                     tint = paper.accent,
-                    modifier = Modifier.size(14.dp)
+                    modifier = Modifier.size(13.dp)
                 )
             }
         }
@@ -890,13 +932,13 @@ private fun TafsirCompactTopBar(
                 .testTag("tafsir_phrase_mode_button")
         ) {
             Box(
-                modifier = Modifier.padding(horizontal = 7.dp),
+                modifier = Modifier.padding(horizontal = 6.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "+Frase",
                     color = if (phraseMode) Color.White else paper.ornamentGold,
-                    fontSize = 10.5.sp,
+                    fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1
                 )
@@ -909,7 +951,7 @@ private fun TafsirCompactTopBar(
             shape = CircleShape,
             color = if (state.isCurrentBookmarked) paper.savedWordBg else Color.Transparent,
             modifier = Modifier
-                .size(34.dp)
+                .size(30.dp)
                 .testTag("tafsir_bookmark_button")
         ) {
             Box(contentAlignment = Alignment.Center) {
@@ -917,7 +959,7 @@ private fun TafsirCompactTopBar(
                     imageVector = if (state.isCurrentBookmarked) Icons.Rounded.Bookmark else Icons.Outlined.BookmarkBorder,
                     contentDescription = if (state.isCurrentBookmarked) "Hapus bookmark" else "Simpan bookmark",
                     tint = if (state.isCurrentBookmarked) paper.ornamentGold else paper.inkSecondary,
-                    modifier = Modifier.size(19.dp)
+                    modifier = Modifier.size(18.dp)
                 )
             }
         }
@@ -928,7 +970,7 @@ private fun TafsirCompactTopBar(
             shape = CircleShape,
             color = Color.Transparent,
             modifier = Modifier
-                .size(34.dp)
+                .size(30.dp)
                 .testTag("tafsir_display_settings_button")
         ) {
             Box(contentAlignment = Alignment.Center) {
@@ -936,7 +978,7 @@ private fun TafsirCompactTopBar(
                     imageVector = Icons.Rounded.Tune,
                     contentDescription = "Pengaturan tampilan & bookmark",
                     tint = paper.inkSecondary,
-                    modifier = Modifier.size(19.dp)
+                    modifier = Modifier.size(18.dp)
                 )
             }
         }

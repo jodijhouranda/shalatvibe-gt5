@@ -34,6 +34,7 @@ import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -46,6 +47,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -65,6 +67,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jadwalshalat.gt5.tafsir.QuranSurahMeta
+import com.jadwalshalat.gt5.tafsir.TafsirAyahSearchHit
 import com.jadwalshalat.gt5.tafsir.TafsirBook
 import com.jadwalshalat.gt5.tafsir.TafsirBookmark
 import com.jadwalshalat.gt5.tafsir.TafsirCatalog
@@ -298,12 +301,23 @@ fun TafsirBookPickerSheet(
 @Composable
 fun TafsirSurahPickerSheet(
     activeSurah: Int,
+    showHarakat: Boolean,
+    ayahSearchResults: List<TafsirAyahSearchHit>,
+    isSearchingAyah: Boolean,
+    ayahSearchError: String?,
+    onSearchAyah: (String) -> Unit,
+    onClearAyahSearch: () -> Unit,
     onSelectSurah: (Int) -> Unit,
+    onSelectSurahAndAyah: (surah: Int, ayah: Int) -> Unit,
     onDismiss: () -> Unit
 ) {
     val palette = LocalShalatVibePalette.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var query by remember { mutableStateOf("") }
+
+    DisposableEffect(Unit) {
+        onDispose { onClearAyahSearch() }
+    }
 
     val filteredSurahs = remember(query) {
         val q = query.trim().lowercase()
@@ -327,22 +341,30 @@ fun TafsirSurahPickerSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.84f)
+                .fillMaxHeight(0.86f)
                 .navigationBarsPadding()
                 .padding(horizontal = 16.dp)
         ) {
             Text(
-                text = "Pilih Surah (1–114)",
+                text = "Cari Surah & Potongan Ayat",
                 color = palette.textPrimary,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "Ketik nama/nomor surah, 2:255, atau potongan ayat Arab/arti",
+                color = palette.textSecondary,
+                fontSize = 12.sp
             )
             Spacer(modifier = Modifier.height(10.dp))
 
             SheetSearchBar(
                 value = query,
-                onValueChange = { query = it },
-                placeholder = "Cari nomor, nama Latin, atau Arab (mis. 18, Kahfi, الكهف)...",
+                onValueChange = { next ->
+                    query = next
+                    onSearchAyah(next)
+                },
+                placeholder = "Mis. 2:255, Kahfi, ربنا آتنا, الله لا إله إلا هو...",
                 testTag = "tafsir_surah_search_input"
             )
 
@@ -353,61 +375,227 @@ fun TafsirSurahPickerSheet(
                 contentPadding = PaddingValues(bottom = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                items(filteredSurahs, key = { it.number }) { surah ->
-                    val isSelected = surah.number == activeSurah
-                    Surface(
-                        onClick = {
-                            onSelectSurah(surah.number)
-                            onDismiss()
-                        },
-                        shape = RoundedCornerShape(14.dp),
-                        color = if (isSelected) palette.highlightSurface else palette.cardSurfaceElevated,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("tafsir_surah_item_${surah.number}")
-                    ) {
+                val hasQuery = query.trim().length >= 2
+
+                // 1. Autocomplete Potongan Ayat (muncul otomatis saat mengetik >= 2 karakter)
+                if (hasQuery && (isSearchingAyah || ayahSearchResults.isNotEmpty() || ayahSearchError != null)) {
+                    item(key = "ayah_hits_header") {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                                .padding(top = 2.dp, bottom = 2.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(
+                            Text(
+                                text = "COCOKAN POTONGAN AYAT",
+                                color = palette.goldAccent,
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.8.sp
+                            )
+                            if (isSearchingAyah) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    CircularProgressIndicator(
+                                        color = palette.emeraldPrimary,
+                                        strokeWidth = 2.dp,
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                    Text(
+                                        text = "Mencari ayat...",
+                                        color = palette.textMuted,
+                                        fontSize = 11.sp
+                                    )
+                                }
+                            } else if (ayahSearchResults.isNotEmpty()) {
+                                Text(
+                                    text = "${ayahSearchResults.size} ayat",
+                                    color = palette.textMuted,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                    }
+
+                    if (ayahSearchResults.isNotEmpty()) {
+                        items(
+                            items = ayahSearchResults,
+                            key = { "ayah_hit_${it.surah}_${it.ayah}" }
+                        ) { hit ->
+                            val ornament = TafsirTextProcessor.formatAyahOrnament(hit.ayah)
+                            Surface(
+                                onClick = {
+                                    onSelectSurahAndAyah(hit.surah, hit.ayah)
+                                    onDismiss()
+                                },
+                                shape = RoundedCornerShape(14.dp),
+                                color = palette.highlightSurface,
                                 modifier = Modifier
-                                    .size(34.dp)
-                                    .clip(CircleShape)
-                                    .background(if (isSelected) palette.emeraldPrimary else palette.pillBg),
-                                contentAlignment = Alignment.Center
+                                    .fillMaxWidth()
+                                    .testTag("tafsir_ayah_hit_${hit.surah}_${hit.ayah}")
                             ) {
-                                Text(
-                                    text = surah.number.toString(),
-                                    color = if (isSelected) Color.White else palette.textPrimary,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "QS ${hit.surahNameLatin} ${hit.surah}:${hit.ayah}",
+                                            color = palette.emeraldPrimary,
+                                            fontSize = 12.5.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            if (hit.sourceLabel.isNotBlank()) {
+                                                MiniTag(hit.sourceLabel, palette.cardSurface, palette.textSecondary)
+                                            }
+                                            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                                                Text(
+                                                    text = "${hit.surahNameArabic} $ornament",
+                                                    color = palette.textPrimary,
+                                                    fontSize = 13.5.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    if (hit.arabicSnippet.isNotBlank()) {
+                                        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                                            Text(
+                                                text = TafsirTextProcessor.formatArabicForDisplay(hit.arabicSnippet, showHarakat),
+                                                color = palette.textPrimary,
+                                                fontSize = 15.5.sp,
+                                                lineHeight = 26.sp,
+                                                maxLines = 2,
+                                                overflow = TextOverflow.Ellipsis,
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                        }
+                                    }
+
+                                    if (hit.secondarySnippet.isNotBlank()) {
+                                        Text(
+                                            text = hit.secondarySnippet,
+                                            color = palette.textSecondary,
+                                            fontSize = 11.5.sp,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
                             }
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = surah.nameLatin,
-                                    color = if (isSelected) palette.emeraldPrimary else palette.textPrimary,
-                                    fontSize = 14.5.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = "${surah.revelationType} • ${surah.ayahCount} ayat",
-                                    color = palette.textSecondary,
-                                    fontSize = 11.5.sp
-                                )
+                        }
+                    } else if (!isSearchingAyah && ayahSearchError != null) {
+                        item(key = "ayah_search_error") {
+                            Text(
+                                text = ayahSearchError,
+                                color = palette.textMuted,
+                                fontSize = 11.5.sp,
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            )
+                        }
+                    }
+                }
+
+                // 2. Daftar Surah (1–114)
+                if (filteredSurahs.isNotEmpty()) {
+                    if (hasQuery && (ayahSearchResults.isNotEmpty() || isSearchingAyah)) {
+                        item(key = "surah_list_header") {
+                            Text(
+                                text = "DAFTAR SURAH",
+                                color = palette.emeraldPrimary,
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.8.sp,
+                                modifier = Modifier.padding(top = 8.dp, bottom = 2.dp)
+                            )
+                        }
+                    }
+
+                    items(filteredSurahs, key = { it.number }) { surah ->
+                        val isSelected = surah.number == activeSurah
+                        Surface(
+                            onClick = {
+                                onSelectSurah(surah.number)
+                                onDismiss()
+                            },
+                            shape = RoundedCornerShape(14.dp),
+                            color = if (isSelected) palette.highlightSurface else palette.cardSurfaceElevated,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("tafsir_surah_item_${surah.number}")
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(34.dp)
+                                        .clip(CircleShape)
+                                        .background(if (isSelected) palette.emeraldPrimary else palette.pillBg),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = surah.number.toString(),
+                                        color = if (isSelected) Color.White else palette.textPrimary,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = surah.nameLatin,
+                                        color = if (isSelected) palette.emeraldPrimary else palette.textPrimary,
+                                        fontSize = 14.5.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = "${surah.revelationType} • ${surah.ayahCount} ayat",
+                                        color = palette.textSecondary,
+                                        fontSize = 11.5.sp
+                                    )
+                                }
+                                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                                    Text(
+                                        text = surah.nameArabic,
+                                        color = if (isSelected) palette.emeraldPrimary else palette.textPrimary,
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                             }
-                            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                                Text(
-                                    text = surah.nameArabic,
-                                    color = if (isSelected) palette.emeraldPrimary else palette.textPrimary,
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
+                        }
+                    }
+                } else if (!isSearchingAyah && ayahSearchResults.isEmpty() && hasQuery) {
+                    item(key = "surah_and_ayah_empty") {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Tidak ditemukan surah atau potongan ayat untuk \"${query.trim()}\"",
+                                color = palette.textMuted,
+                                fontSize = 12.5.sp
+                            )
                         }
                     }
                 }

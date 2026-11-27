@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,6 +22,7 @@ class TafsirViewModel(application: Application) : AndroidViewModel(application) 
 
     private var activeLoadJob: Job? = null
     private var prefetchJob: Job? = null
+    private var ayahSearchJob: Job? = null
 
     init {
         val initial = _uiState.value
@@ -160,6 +162,71 @@ class TafsirViewModel(application: Application) : AndroidViewModel(application) 
         val updated = _uiState.value.bookmarks.filterNot { it.id == bookmarkId }
         prefsStore.saveBookmarks(updated)
         _uiState.update { it.copy(bookmarks = updated) }
+    }
+
+    fun searchAyahAutocomplete(query: String) {
+        ayahSearchJob?.cancel()
+        val trimmed = query.trim()
+        if (trimmed.length < 2) {
+            _uiState.update {
+                it.copy(
+                    ayahSearchQuery = query,
+                    ayahSearchResults = emptyList(),
+                    isSearchingAyah = false,
+                    ayahSearchError = null
+                )
+            }
+            return
+        }
+
+        // Cek referensi langsung secara instan tanpa delay
+        val isDirectRef = TafsirRepository.parseDirectReference(trimmed) != null
+        _uiState.update {
+            it.copy(
+                ayahSearchQuery = query,
+                isSearchingAyah = !isDirectRef,
+                ayahSearchError = null
+            )
+        }
+
+        ayahSearchJob = viewModelScope.launch {
+            if (!isDirectRef) delay(280L)
+            val result = repository.searchAyahSnippets(trimmed)
+            _uiState.update { cur ->
+                if (cur.ayahSearchQuery.trim() != trimmed) {
+                    cur
+                } else {
+                    result.fold(
+                        onSuccess = { hits ->
+                            cur.copy(
+                                ayahSearchResults = hits,
+                                isSearchingAyah = false,
+                                ayahSearchError = null
+                            )
+                        },
+                        onFailure = { err ->
+                            cur.copy(
+                                ayahSearchResults = emptyList(),
+                                isSearchingAyah = false,
+                                ayahSearchError = err.message ?: "Pencarian ayat memerlukan koneksi internet."
+                            )
+                        }
+                    )
+                }
+            }
+        }
+    }
+
+    fun clearAyahSearch() {
+        ayahSearchJob?.cancel()
+        _uiState.update {
+            it.copy(
+                ayahSearchQuery = "",
+                ayahSearchResults = emptyList(),
+                isSearchingAyah = false,
+                ayahSearchError = null
+            )
+        }
     }
 
     private fun loadCurrent(

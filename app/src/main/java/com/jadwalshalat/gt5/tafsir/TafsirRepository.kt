@@ -1,6 +1,7 @@
 package com.jadwalshalat.gt5.tafsir
 
 import android.content.Context
+import com.jadwalshalat.gt5.arabic.ArabicTextUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -8,6 +9,7 @@ import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.URLEncoder
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 
@@ -227,6 +229,185 @@ class TafsirRepository(context: Context) {
         }
     }
 
+    /**
+     * Pencarian autocomplete potongan ayat Al-Qur'an (mendukung:
+     * 1) Referensi langsung seperti "2:255" atau "baqarah 255"
+     * 2) Pencarian cepat pada surah yang sudah tersimpan di cache lokal (Arab tanpa harakat)
+     * 3) Autocomplete daring cepat via api.quran.com/api/v4/search (Arab & arti Indonesia)
+     *    dengan cadangan api.alquran.cloud/v1/search).
+     */
+    suspend fun searchAyahSnippets(query: String): Result<List<TafsirAyahSearchHit>> = withContext(Dispatchers.IO) {
+        val trimmed = query.trim()
+        if (trimmed.length < 2) return@withContext Result.success(emptyList())
+
+        val hits = LinkedHashMap<String, TafsirAyahSearchHit>()
+
+        // 1. Referensi langsung mis. "2:255" atau "kahfi 10"
+        parseDirectReference(trimmed)?.let { (surahNum, ayahNum) ->
+            val meta = TafsirCatalog.surahByNumber(surahNum)
+            val cachedText = surahMemoryCache[surahNum]?.get(ayahNum)
+                ?: readSurahCacheFile(File(surahCacheDir, "surah_$surahNum.json"))?.get(ayahNum)
+                ?: ""
+            hits["$surahNum:$ayahNum"] = TafsirAyahSearchHit(
+                surah = surahNum,
+                ayah = ayahNum,
+                surahNameLatin = meta.nameLatin,
+                surahNameArabic = meta.nameArabic,
+                arabicSnippet = cachedText,
+                secondarySnippet = "Lompat langsung ke QS ${meta.nameLatin} $surahNum:$ayahNum",
+                sourceLabel = "Langsung"
+            )
+            return@withContext Result.success(hits.values.toList())
+        }
+
+        val isArabicQuery = ArabicTextUtils.hasArabicLetters(trimmed)
+        val normArabicQuery = if (isArabicQuery) ArabicTextUtils.normalizeForLookup(trimmed) else ""
+
+        // 2. Pencarian instan pada cache lokal (memori + disk) bila query berbahasa Arab >= 3 huruf
+        if (isArabicQuery && normArabicQuery.length >= 3) {
+            searchLocalCachedSurahs(normArabicQuery, limit = 8).forEach { hit ->
+                hits["${hit.surah}:${hit.ayah}"] = hit
+            }
+        }
+
+        // 3. Pencarian daring autocomplete jika query cukup spesifik (>= 3 karakter)
+        if (trimmed.length >= 3) {
+            val encoded = runCatching { URLEncoder.encode(trimmed, "UTF-8") }.getOrDefault(trimmed)
+            var remoteError: Exception? = null
+
+            // Utama: Quran.com v4 search (mendukung potongan ayat Arab tanpa harakat & terjemahan ID)
+            val quranComUrl = "https://api.quran.com/api/v4/search?q=$encoded&size=12&language=id"
+            val quranComHits = runCatching {
+                val resp = httpGet(quranComUrl)
+                if (resp.code in 200..299) parseQuranComSearch(resp.body) else emptyList()
+            }.onFailure { remoteError = it as? Exception }.getOrNull().orEmpty()
+
+            quranComHits.forEach { hit ->
+                hits.putIfAbsent("${hit.surah}:${hit.ayah}", hit)
+            }
+
+            // Cadangan: AlQuran.cloud search (jika Quran.com kosong/gagal)
+            if (hits.isEmpty()) {
+                val edition = if (isArabicQuery) "quran-simple-clean" else "id.indonesian"
+                val alQuranQuery = if (isArabicQuery) {
+                    TafsirTextProcessor.formatArabicForDisplay(trimmed, showHarakat = false)
+                } else {
+                    trimmed
+                }
+                val encodedFallback = runCatching { URLEncoder.encode(alQuranQuery, "UTF-8") }.getOrDefault(alQuranQuery)
+                val fallbackUrl = "https://api.alquran.cloud/v1/search/$encodedFallback/all/$edition"
+                val fallbackHits = runCatching {
+                    val resp = httpGet(fallbackUrl)
+                    if (resp.code in 200..299) parseAlQuranCloudSearch(resp.body, isArabicQuery) else emptyList()
+                }.onFailure { if (remoteError == null) remoteError = it as? Exception }.getOrNull().orEmpty()
+
+                fallbackHits.forEach { hit ->
+                    hits.putIfAbsent("${hit.surah}:${hit.ayah}", hit)
+                }
+            }
+
+            if (hits.isEmpty() && remoteError != null) {
+                return@withContext Result.failure(remoteError!!)
+            }
+        }
+
+        Result.success(hits.values.take(15))
+    }
+
+    private fun searchLocalCachedSurahs(normQuery: String, limit: Int): List<TafsirAyahSearchHit> {
+        val out = ArrayList<TafsirAyahSearchHit>()
+        val checkedSurahs = HashSet<Int>()
+
+        fun scanMap(surahNum: Int, verses: Map<Int, String>) {
+            if (!checkedSurahs.add(surahNum)) return
+            val meta = TafsirCatalog.surahByNumber(surahNum)
+            for ((ayahNum, text) in verses) {
+                if (ArabicTextUtils.normalizeForLookup(text).contains(normQuery)) {
+                    out += TafsirAyahSearchHit(
+                        surah = surahNum,
+                        ayah = ayahNum,
+                        surahNameLatin = meta.nameLatin,
+                        surahNameArabic = meta.nameArabic,
+                        arabicSnippet = text,
+                        sourceLabel = "Cache Lokal"
+                    )
+                    if (out.size >= limit) return
+                }
+            }
+        }
+
+        for ((surahNum, verses) in surahMemoryCache) {
+            scanMap(surahNum, verses)
+            if (out.size >= limit) return out
+        }
+
+        val files = surahCacheDir.listFiles().orEmpty()
+        for (file in files) {
+            val surahNum = file.name.removePrefix("surah_").removeSuffix(".json").toIntOrNull() ?: continue
+            if (surahNum in checkedSurahs) continue
+            val verses = readSurahCacheFile(file) ?: continue
+            scanMap(surahNum, verses)
+            if (out.size >= limit) return out
+        }
+        return out
+    }
+
+    private fun parseQuranComSearch(raw: String): List<TafsirAyahSearchHit> {
+        val root = JSONObject(raw)
+        val searchObj = root.optJSONObject("search") ?: return emptyList()
+        val results = searchObj.optJSONArray("results") ?: return emptyList()
+        val list = ArrayList<TafsirAyahSearchHit>(results.length())
+        for (i in 0 until results.length()) {
+            val item = results.optJSONObject(i) ?: continue
+            val key = item.optString("verse_key", "")
+            val parts = key.split(":")
+            if (parts.size != 2) continue
+            val surah = parts[0].toIntOrNull()?.takeIf { it in 1..114 } ?: continue
+            val meta = TafsirCatalog.surahByNumber(surah)
+            val ayah = parts[1].toIntOrNull()?.takeIf { it in 1..meta.ayahCount } ?: continue
+            val arabicText = TafsirTextProcessor.cleanHtmlToPlainText(item.optString("text", ""))
+            val translations = item.optJSONArray("translations")
+            val transText = if (translations != null && translations.length() > 0) {
+                TafsirTextProcessor.cleanHtmlToPlainText(translations.optJSONObject(0)?.optString("text", "").orEmpty())
+            } else ""
+            list += TafsirAyahSearchHit(
+                surah = surah,
+                ayah = ayah,
+                surahNameLatin = meta.nameLatin,
+                surahNameArabic = meta.nameArabic,
+                arabicSnippet = arabicText,
+                secondarySnippet = transText,
+                sourceLabel = "Quran.com"
+            )
+        }
+        return list
+    }
+
+    private fun parseAlQuranCloudSearch(raw: String, isArabicEdition: Boolean): List<TafsirAyahSearchHit> {
+        val root = JSONObject(raw)
+        val data = root.optJSONObject("data") ?: return emptyList()
+        val matches = data.optJSONArray("matches") ?: return emptyList()
+        val list = ArrayList<TafsirAyahSearchHit>(minOf(matches.length(), 15))
+        for (i in 0 until minOf(matches.length(), 15)) {
+            val item = matches.optJSONObject(i) ?: continue
+            val surahObj = item.optJSONObject("surah") ?: continue
+            val surah = surahObj.optInt("number", -1).takeIf { it in 1..114 } ?: continue
+            val meta = TafsirCatalog.surahByNumber(surah)
+            val ayah = item.optInt("numberInSurah", -1).takeIf { it in 1..meta.ayahCount } ?: continue
+            val text = TafsirTextProcessor.cleanHtmlToPlainText(item.optString("text", ""))
+            list += TafsirAyahSearchHit(
+                surah = surah,
+                ayah = ayah,
+                surahNameLatin = meta.nameLatin,
+                surahNameArabic = meta.nameArabic,
+                arabicSnippet = if (isArabicEdition) text else "",
+                secondarySnippet = if (isArabicEdition) "" else text,
+                sourceLabel = "AlQuran"
+            )
+        }
+        return list
+    }
+
     private sealed interface FetchAttempt {
         data class Success(val rawText: String) : FetchAttempt
         data object Empty : FetchAttempt
@@ -410,5 +591,41 @@ class TafsirRepository(context: Context) {
     companion object {
         private const val CONNECT_TIMEOUT_MS = 6500
         private const val READ_TIMEOUT_MS = 9000
+
+        private val COLON_REF_REGEX = Regex("^(\\d{1,3})\\s*[:\\-/.\\s]\\s*(\\d{1,3})$")
+        private val NAME_AND_AYAH_REGEX = Regex("^(.+?)\\s+(\\d{1,3})$")
+
+        /**
+         * Mengenali input referensi langsung seperti "2:255", "18 10", atau "baqarah 255".
+         */
+        fun parseDirectReference(input: String): Pair<Int, Int>? {
+            val trimmed = input.trim()
+            if (trimmed.isEmpty()) return null
+
+            COLON_REF_REGEX.matchEntire(trimmed)?.let { m ->
+                val s = m.groupValues[1].toIntOrNull() ?: return null
+                val a = m.groupValues[2].toIntOrNull() ?: return null
+                if (s in 1..114) {
+                    val max = TafsirCatalog.surahByNumber(s).ayahCount
+                    if (a in 1..max) return s to a
+                }
+            }
+
+            NAME_AND_AYAH_REGEX.matchEntire(trimmed)?.let { m ->
+                val surahPart = m.groupValues[1].trim()
+                val ayah = m.groupValues[2].toIntOrNull() ?: return null
+                if (surahPart.all { it.isDigit() }) return null
+                val cleanPart = surahPart.lowercase().replace("-", "").replace("'", "").replace(" ", "")
+                val matchedSurah = TafsirCatalog.surahs.firstOrNull { s ->
+                    val latinNorm = s.nameLatin.lowercase().replace("-", "").replace("'", "").replace(" ", "")
+                    latinNorm.contains(cleanPart) || s.nameArabic.contains(surahPart)
+                }
+                if (matchedSurah != null && ayah in 1..matchedSurah.ayahCount) {
+                    return matchedSurah.number to ayah
+                }
+            }
+
+            return null
+        }
     }
 }

@@ -89,4 +89,14 @@ class TafsirModuleTest {
         assertEquals(Triple("ibn-katheer", 2, 255), parsed)
         assertNull(TafsirViewModel.parseTafsirKamusLessonId("arabic_day_1"))
     }
+
+    @Test
+    fun directSurahAyahReferenceParsingWorksForNumbersAndNames() {
+        assertEquals(2 to 255, com.jadwalshalat.gt5.tafsir.TafsirRepository.parseDirectReference("2:255"))
+        assertEquals(18 to 10, com.jadwalshalat.gt5.tafsir.TafsirRepository.parseDirectReference("18 10"))
+        assertEquals(2 to 255, com.jadwalshalat.gt5.tafsir.TafsirRepository.parseDirectReference("baqarah 255"))
+        assertEquals(18 to 10, com.jadwalshalat.gt5.tafsir.TafsirRepository.parseDirectReference("الكهف 10"))
+        assertNull(com.jadwalshalat.gt5.tafsir.TafsirRepository.parseDirectReference("1:99"))
+        assertNull(com.jadwalshalat.gt5.tafsir.TafsirRepository.parseDirectReference("115:1"))
+    }
 }
