@@ -1,7 +1,56 @@
 {
   "version": 1,
-  "updatedAt": "2026-11-26",
+  "updatedAt": "2026-11-27",
   "lessons": [
+    {
+      "id": "video_revolusi_microdrama",
+      "category": "VIDEO_ANALYSIS",
+      "dayLabel": "Video 18",
+      "dateLabel": "27 Nov 2026",
+      "title": "Revolusi Micro-Drama Tiongkok & Transformasi Industri Hiburan",
+      "subtitle": "Media Digital, Kelincahan Produksi, & Ekonomi Perhatian",
+      "sourceName": "AlJazeera Arabic قناة الجزيرة",
+      "level": "CEFR B2–C1",
+      "youtubeVideoId": "jjDeNBjqzDc",
+      "startSeconds": 0,
+      "endSeconds": 171,
+      "pdfFileName": "Bahasa_Arab_Analisis_Video_Revolusi_Microdrama_TAFL.pdf",
+      "jsonFileName": "Bahasa_Arab_Analisis_Video_Revolusi_Microdrama_TAFL.json",
+      "jsonUrl": "https://raw.githubusercontent.com/jodijhouranda/shalatvibe-gt5/main/lessons/arabic_content/Bahasa_Arab_Analisis_Video_Revolusi_Microdrama_TAFL.json",
+      "segments": [
+        {
+          "label": "00:00 – 00:26",
+          "startSec": 0,
+          "endSec": 26
+        },
+        {
+          "label": "00:27 – 00:44",
+          "startSec": 27,
+          "endSec": 44
+        },
+        {
+          "label": "00:45 – 01:15",
+          "startSec": 45,
+          "endSec": 75
+        },
+        {
+          "label": "01:15 – 01:47",
+          "startSec": 75,
+          "endSec": 107
+        },
+        {
+          "label": "01:47 – 02:16",
+          "startSec": 107,
+          "endSec": 136
+        },
+        {
+          "label": "02:17 – 02:51",
+          "startSec": 137,
+          "endSec": 171
+        }
+      ],
+      "updatedAt": "2026-11-27"
+    },
     {
       "id": "video_podcast_finjan_inovasi_kreativitas",
       "category": "VIDEO_ANALYSIS",
