@@ -99,4 +99,42 @@ class TafsirModuleTest {
         assertNull(com.jadwalshalat.gt5.tafsir.TafsirRepository.parseDirectReference("1:99"))
         assertNull(com.jadwalshalat.gt5.tafsir.TafsirRepository.parseDirectReference("115:1"))
     }
+
+    @Test
+    fun focusedContextWindowSlicesLongTafsirToConciseSentenceAroundTappedWord() {
+        val filler = "قال الإمام الطبري في تفسيره للآية الكريمة وهذا قول مشهور عند أهل العلم والتفسير "
+        val targetSentence = "فإنَّ التَّدَبُّرَ يَفْتَحُ أَبْوَابَ الْهِدَايَةِ لِلْقَلْبِ السَّلِيمِ."
+        val longTafsir = filler.repeat(12) + " " + targetSentence + " " + filler.repeat(12)
+        val tokens = com.jadwalshalat.gt5.arabic.ArabicTextUtils.tokenizeSentenceWords(longTafsir)
+        assertTrue(tokens.size > 200)
+
+        val tappedIdx = tokens.indexOfFirst { it.normalizedKey == "التدبر" }
+        assertTrue(tappedIdx > 100)
+
+        val focused = TafsirTextProcessor.buildFocusedContextWindow(
+            allTokens = tokens,
+            startIndex = tappedIdx,
+            endIndex = tappedIdx
+        )
+
+        assertTrue("Konteks terlalu panjang: ${focused.contextSentence.length}", focused.contextSentence.length <= 185)
+        assertTrue(focused.tokens.size <= 20)
+        assertEquals("التدبر", focused.tokens[focused.startIndex].normalizedKey)
+        assertEquals(focused.startIndex, focused.endIndex)
+        assertTrue(focused.contextSentence.contains("التَّدَبُّرَ"))
+    }
+
+    @Test
+    fun extractContextSnippetMatchesGundulWordInsideVocalizedLongTafsir() {
+        val filler = "وَقَالَ الْمُفَسِّرُونَ فِي مَعْنَى هَذِهِ الْآيَةِ كَلَامًا كَثِيرًا مَبْسُوطًا "
+        val targetSentence = "وَالمَقْصُودُ بِالِاسْتِقَامَةِ لُزُومُ الطَّاعَةِ وَالثَّبَاتُ عَلَيْهَا."
+        val longTafsir = filler.repeat(10) + " " + targetSentence + " " + filler.repeat(10)
+
+        val snippet = TafsirTextProcessor.extractContextSnippet(
+            fullParagraph = longTafsir,
+            tappedWord = "بالاستقامة"
+        )
+        assertTrue("Snippet terlalu panjang: ${snippet.length}", snippet.length <= 185)
+        assertTrue(snippet.contains("بِالِاسْتِقَامَةِ"))
+    }
 }

@@ -61,36 +61,100 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: gradle testDebugUnitTest assembleRelease --stacktrace
 
-      - name: Rename Release APK
+      - name: Inspect APK Signing Certificate (SHA-1 & SHA-256)
+        id: cert
         run: |
-          TAG_NAME="${GITHUB_REF_NAME:-latest}"
-          cp app/build/outputs/apk/release/app-release.apk "Jadwal-${TAG_NAME}-release.apk"
-          ls -lh "Jadwal-${TAG_NAME}-release.apk"
+          APK_PATH="app/build/outputs/apk/release/app-release.apk"
+          SDK_DIR="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          APKSIGNER="$(ls -1 "$SDK_DIR"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -n 1 || true)"
+          SHA1=""
+          SHA256=""
+          OWNER=""
 
-      - name: Upload Jadwal Release APK Artifact
+          if [ -n "$APKSIGNER" ] && [ -x "$APKSIGNER" ]; then
+            CERT_OUT="$("$APKSIGNER" verify --print-certs "$APK_PATH" || true)"
+            RAW_SHA1="$(printf '%s\n' "$CERT_OUT" | grep -m1 'SHA-1 digest:' | sed 's/.*SHA-1 digest:[[:space:]]*//')"
+            RAW_SHA256="$(printf '%s\n' "$CERT_OUT" | grep -m1 'SHA-256 digest:' | sed 's/.*SHA-256 digest:[[:space:]]*//')"
+            OWNER="$(printf '%s\n' "$CERT_OUT" | grep -m1 'certificate DN:' | sed 's/.*certificate DN:[[:space:]]*//')"
+            if [ -n "$RAW_SHA1" ]; then
+              SHA1="$(printf '%s' "$RAW_SHA1" | tr '[:lower:]' '[:upper:]' | sed 's/../&:/g; s/:$//')"
+            fi
+            if [ -n "$RAW_SHA256" ]; then
+              SHA256="$(printf '%s' "$RAW_SHA256" | tr '[:lower:]' '[:upper:]' | sed 's/../&:/g; s/:$//')"
+            fi
+          fi
+
+          if [ -z "$SHA1" ]; then
+            CERT_OUT="$(keytool -printcert -jarfile "$APK_PATH" 2>/dev/null || true)"
+            SHA1="$(printf '%s\n' "$CERT_OUT" | grep -m1 'SHA1:' | sed 's/.*SHA1:[[:space:]]*//')"
+            SHA256="$(printf '%s\n' "$CERT_OUT" | grep -m1 'SHA256:' | sed 's/.*SHA256:[[:space:]]*//')"
+            OWNER="${OWNER:-$(printf '%s\n' "$CERT_OUT" | grep -m1 'Owner:' | sed 's/.*Owner:[[:space:]]*//')}"
+          fi
+
+          echo "=== APK Signing Certificate ==="
+          echo "Owner  : ${OWNER:-unknown}"
+          echo "SHA-1  : ${SHA1:-unavailable}"
+          echo "SHA-256: ${SHA256:-unavailable}"
+          {
+            echo "sha1=${SHA1:-unavailable}"
+            echo "sha256=${SHA256:-unavailable}"
+            echo "owner=${OWNER:-unknown}"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "### Sidik Jari Sertifikat APK Rilis"
+            printf -- '- **Owner:** `%s`\n' "${OWNER:-unknown}"
+            printf -- '- **SHA-1 (Google Sign-In):** `%s`\n' "${SHA1:-unavailable}"
+            printf -- '- **SHA-256 (Firebase App Check):** `%s`\n' "${SHA256:-unavailable}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Determine Release Tag and Rename APK
+        id: meta
+        run: |
+          APP_VER="$(grep -m1 'versionName' app/build.gradle | sed -E 's/.*"([^"]+)".*/\1/')"
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            TAG="${GITHUB_REF_NAME}"
+          elif [ -n "$APP_VER" ]; then
+            TAG="v${APP_VER}"
+          else
+            TAG="latest"
+          fi
+          APK_FILE="Nida-${TAG}-release.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$APK_FILE"
+          ls -lh "$APK_FILE"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "apk_file=$APK_FILE" >> "$GITHUB_OUTPUT"
+
+      - name: Upload Release APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Jadwal-release-apk
-          path: Jadwal-*-release.apk
+          name: Nida-release-apk
+          path: Nida-*-release.apk
           retention-days: 30
 
-      - name: Publish GitHub Release on version tag
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Publish GitHub Release automatically on push to main or version tag
+        if: github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.meta.outputs.tag }}
+          APK_FILE: ${{ steps.meta.outputs.apk_file }}
+          APK_SHA1: ${{ steps.cert.outputs.sha1 }}
+          APK_SHA256: ${{ steps.cert.outputs.sha256 }}
         run: |
-          TAG="${GITHUB_REF_NAME}"
-          APK_FILE="Jadwal-${TAG}-release.apk"
-          cat > /tmp/release_notes.md <<'NOTES'
-          Rilis resmi **Jadwal** (Release APK teroptimasi R8 + *signed keystore* permanen):
-          - **Belajar Arab Interaktif (`Teks` ↔ `PDF Asli` + Ruang Baca Lega)**: *Toggle* PDF langsung di *Top Bar*, *toolbar* ringkas ikut tergulung + tombol melayang, tipografi rapat nyaman, serta proteksi *navigation bar* & *Back* — ketuk kata mana saja atau pakai **`+ Frase`** & **تَشْكِيل ↔ Gundul** untuk menyimpan ke **Kamus Saya**
-          - **Kamus Saya + Spaced Repetition (SRS)**: Kartu review terjadwal (+1, +3, +7, +14 hari), *Flashcard* bolak-balik, *Kuis Kalimat Konteks*, pelafalan suara Arab *offline* (`TextToSpeech`), tombol **`▶ Klip`** lompat ke detik video aslinya, & ekspor/impor **CSV siap Anki / JSON**
-          - **Kursus Fiqh Muamalah Terkalibrasi**: Seluruh 5 seri kajian Syaikh Abdussalam asy-Syuwai'ir tersinkron kata demi kata dengan kitab *Tafrigh Daurah Tabuk* & *auto-highlight* / *auto-scroll*
-          - **Desain Tonal Modern & Fitur Inti**: *Atmosphere Hero Card*, *Solar Arc*, kompas Kiblat GT 5, kalender Hijriah offline, 52 kota Indonesia, override getar per shalat, & *Home Screen Widget*
-          - Ikon **Jadwal** (huruf **ج** + sabit & titik matahari emas)
+          {
+            printf 'Rilis resmi **Nida %s** (Release APK teroptimasi R8 + *signed keystore*):\n' "$TAG"
+            cat <<'NOTES'
+          - **Pustaka Tafsir (22 Kitab Arab Asli)**: Mode baca 1 kitab fokus, pemilih kitab berkategori, pencarian surah & *autocomplete* potongan ayat Al-Qur'an, kartu ayat bisa dilipat, mode Harakat/Gundul, 3 tema kertas, bookmark & cache lokal
+          - **Kamus AI & Kamus Saya**: Ketuk kata atau pilih rentang `+ Frase` langsung dari teks Tafsir & pelajaran Arab — konteks otomatis diringkas ke 1 kalimat di sekitar kata yang diketuk agar cepat & hemat token, tersinkron cloud dengan Google Sign-In
+          - **Belajar Arab Interaktif, Fiqh Muamalah, Jadwal Shalat & GT 5**: Fitur inti lengkap dengan *Home Screen Widget* & kompas Kiblat
+
+          ### Sidik Jari Sertifikat APK (untuk Firebase Console)
           NOTES
+            printf -- '- **SHA-1 (Google Sign-In):** `%s`\n' "$APK_SHA1"
+            printf -- '- **SHA-256 (Firebase App Check):** `%s`\n' "$APK_SHA256"
+          } > /tmp/release_notes.md
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "$APK_FILE" --clobber
+            gh release edit "$TAG" --title "Nida ${TAG}" --notes-file /tmp/release_notes.md
           else
-            gh release create "$TAG" "$APK_FILE" --title "Jadwal ${TAG}" --notes-file /tmp/release_notes.md
+            gh release create "$TAG" "$APK_FILE" --title "Nida ${TAG}" --notes-file /tmp/release_notes.md
           fi

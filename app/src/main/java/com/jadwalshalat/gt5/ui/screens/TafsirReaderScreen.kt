@@ -198,14 +198,30 @@ fun TafsirReaderScreen(
         val lessonId = "tafsir:${state.activeBook.id}:${state.surahNumber}:${state.ayahNumber}"
         val surahMeta = state.activeSurah
         val lessonTitle = "${state.activeBook.nameLatin} • ${surahMeta.nameLatin}:${state.ayahNumber}"
-        val snippet = TafsirTextProcessor.extractContextSnippet(fullBlockText, clean)
+        val focusedWindow = if (selection != null && selection.tokens.isNotEmpty()) {
+            TafsirTextProcessor.buildFocusedContextWindow(
+                allTokens = selection.tokens,
+                startIndex = selection.startIndex,
+                endIndex = selection.endIndex
+            )
+        } else {
+            null
+        }
+        val snippet = focusedWindow?.contextSentence?.ifBlank { null }
+            ?: TafsirTextProcessor.extractContextSnippet(fullBlockText, clean)
         val inferredKind = overrideKind ?: existingSaved?.kind ?: if (clean.contains(' ')) {
             KamusEntryKind.PHRASE
         } else {
             KamusEntryKind.WORD
         }
 
-        pendingPhraseSelection = selection
+        pendingPhraseSelection = focusedWindow?.let {
+            TafsirPhraseDraftSelection(
+                tokens = it.tokens,
+                startIndex = it.startIndex,
+                endIndex = it.endIndex
+            )
+        }
         pendingDraft = KamusEntry(
             id = existingSaved?.id ?: KamusCodec.createStableId(clean, lessonId),
             arabic = existingSaved?.arabic?.ifBlank { clean } ?: clean,

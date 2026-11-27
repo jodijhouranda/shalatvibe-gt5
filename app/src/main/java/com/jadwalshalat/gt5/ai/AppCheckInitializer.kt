@@ -8,6 +8,7 @@ import com.google.firebase.appcheck.FirebaseAppCheck
 import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
 import com.google.firebase.appcheck.recaptcha.RecaptchaAppCheckProviderFactory
 import com.jadwalshalat.gt5.BuildConfig
+import java.util.concurrent.atomic.AtomicBoolean
 
 private const val TAG = "AppCheckInit"
 
@@ -15,6 +16,23 @@ private const val DEBUG_TOKEN_EXTRA = "FIREBASE_APPCHECK_DEBUG_TOKEN"
 private const val DEBUG_STORE_PREFIX = "com.google.firebase.appcheck.debug.store."
 private const val DEBUG_SECRET_KEY = "com.google.firebase.appcheck.debug.DEBUG_SECRET"
 private const val RECAPTCHA_SITE_KEY_RES = "recaptcha_site_key"
+
+enum class AppCheckInitStatus {
+    NOT_INITIALIZED,
+    DEBUG_WITH_TOKEN,
+    DEBUG_NO_TOKEN,
+    RELEASE_RECAPTCHA_INSTALLED,
+    RELEASE_KEY_MISSING,
+    FAILED
+}
+
+object AppCheckDiagnostics {
+    @Volatile
+    var status: AppCheckInitStatus = AppCheckInitStatus.NOT_INITIALIZED
+        internal set
+
+    internal val releaseProviderInstalled = AtomicBoolean(false)
+}
 
 /**
  * Mengonfigurasi Firebase App Check sebelum UI, ViewModel, atau operasi Firebase dijalankan.
@@ -38,8 +56,12 @@ fun configureAppCheck(context: Context, intent: Intent?) {
                 prefs.edit()
                     .putString(DEBUG_SECRET_KEY, debugToken)
                     .commit()
+                AppCheckDiagnostics.status = AppCheckInitStatus.DEBUG_WITH_TOKEN
                 Log.d(TAG, "App Check debug secret configured successfully.")
             } else {
+                if (AppCheckDiagnostics.status == AppCheckInitStatus.NOT_INITIALIZED) {
+                    AppCheckDiagnostics.status = AppCheckInitStatus.DEBUG_NO_TOKEN
+                }
                 Log.w(TAG, "No debug token found in Intent extra.")
             }
 
@@ -48,6 +70,9 @@ fun configureAppCheck(context: Context, intent: Intent?) {
             )
             Log.d(TAG, "DebugAppCheckProviderFactory installed.")
         } else {
+            if (AppCheckDiagnostics.releaseProviderInstalled.get()) {
+                return
+            }
             val resId = context.resources.getIdentifier(
                 RECAPTCHA_SITE_KEY_RES,
                 "string",
@@ -59,15 +84,20 @@ fun configureAppCheck(context: Context, intent: Intent?) {
                     FirebaseAppCheck.getInstance().installAppCheckProviderFactory(
                         RecaptchaAppCheckProviderFactory.getInstance(siteKey)
                     )
+                    AppCheckDiagnostics.releaseProviderInstalled.set(true)
+                    AppCheckDiagnostics.status = AppCheckInitStatus.RELEASE_RECAPTCHA_INSTALLED
                     Log.d(TAG, "RecaptchaAppCheckProviderFactory installed.")
                 } else {
+                    AppCheckDiagnostics.status = AppCheckInitStatus.RELEASE_KEY_MISSING
                     Log.e(TAG, "recaptcha_site_key resource string is blank.")
                 }
             } else {
+                AppCheckDiagnostics.status = AppCheckInitStatus.RELEASE_KEY_MISSING
                 Log.e(TAG, "recaptcha_site_key string resource not found in package.")
             }
         }
     } catch (e: Exception) {
+        AppCheckDiagnostics.status = AppCheckInitStatus.FAILED
         Log.e(TAG, "Failed to initialize Firebase App Check", e)
     }
 }

@@ -9,3 +9,7 @@
 -keep class androidx.credentials.** { *; }
 -keep class com.google.android.libraries.identity.googleid.** { *; }
 
+# Pertahankan Firebase App Check & reCAPTCHA Enterprise agar token valid pada Release APK
+-keep class com.google.firebase.appcheck.** { *; }
+-keep class com.google.android.recaptcha.** { *; }
+

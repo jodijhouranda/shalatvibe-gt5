@@ -2198,12 +2198,21 @@ fun KamusEntryEditorSheet(
 
                         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                             if (hasValidRange && rangeStart in segmentTokens.indices && rangeEnd in segmentTokens.indices) {
+                                val visibleTokens = remember(segmentTokens, rangeStart, rangeEnd) {
+                                    if (segmentTokens.size <= 24) {
+                                        segmentTokens
+                                    } else {
+                                        val lo = (rangeStart - 9).coerceAtLeast(0)
+                                        val hi = (rangeEnd + 9).coerceAtMost(segmentTokens.lastIndex)
+                                        segmentTokens.subList(lo, hi + 1)
+                                    }
+                                }
                                 FlowRow(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                                     verticalArrangement = Arrangement.spacedBy(3.dp)
                                 ) {
-                                    segmentTokens.forEach { tok ->
+                                    visibleTokens.forEach { tok ->
                                         val inRange = tok.index in rangeStart..rangeEnd
                                         Box(
                                             modifier = Modifier

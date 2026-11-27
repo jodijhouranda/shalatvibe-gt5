@@ -10,6 +10,9 @@ import com.google.firebase.ai.type.GenerativeBackend
 import com.google.firebase.ai.type.Schema
 import com.google.firebase.ai.type.content
 import com.google.firebase.ai.type.generationConfig
+import com.jadwalshalat.gt5.ai.AppCheckDiagnostics
+import com.jadwalshalat.gt5.ai.AppCheckInitStatus
+import com.jadwalshalat.gt5.tafsir.TafsirTextProcessor
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withTimeout
 import org.json.JSONArray
@@ -106,8 +109,10 @@ class KamusAiRepository(context: Context) {
         val cleanArabic = ArabicTextUtils.stripOuterPunctuation(arabic).ifBlank { arabic.trim() }
         require(cleanArabic.isNotBlank()) { "Kata atau frase Arab masih kosong." }
 
+        val trimmedContext = trimContextForAi(contextSentence, cleanArabic)
+
         if (!forceRefresh) {
-            getCached(cleanArabic, contextSentence)?.let { return it }
+            getCached(cleanArabic, trimmedContext)?.let { return it }
         }
 
         if (FirebaseApp.getApps(appContext).isEmpty()) {
@@ -118,7 +123,7 @@ class KamusAiRepository(context: Context) {
 
         val prompt = buildPrompt(
             arabic = cleanArabic,
-            contextSentence = contextSentence.trim(),
+            contextSentence = trimmedContext,
             lessonTitle = lessonTitle.trim()
         )
 
@@ -132,7 +137,7 @@ class KamusAiRepository(context: Context) {
         }
 
         val analysis = parseAnalysisJson(rawJson, fallbackArabic = cleanArabic)
-        saveToCache(cleanArabic, contextSentence, analysis)
+        saveToCache(cleanArabic, trimmedContext, analysis)
         return analysis
     }
 
@@ -175,6 +180,22 @@ class KamusAiRepository(context: Context) {
                 "Vertex AI / Agent Platform Gemini API belum aktif di Firebase Console. Buka Firebase Console → AI Logic → aktifkan Vertex AI / Agent Platform API untuk project ini.",
                 error
             )
+            msg.contains("invalid token") ||
+                msg.contains("app check") ||
+                msg.contains("attestation") ||
+                msg.contains("firebase app") -> {
+                val hint = when (AppCheckDiagnostics.status) {
+                    AppCheckInitStatus.RELEASE_KEY_MISSING ->
+                        "Token App Check tidak tersedia (recaptcha_site_key tidak ditemukan pada APK ini)."
+                    AppCheckInitStatus.DEBUG_NO_TOKEN ->
+                        "Token App Check ditolak karena APK Debug dijalankan di luar preview AI Studio tanpa debug token terdaftar. Gunakan APK Release atau daftarkan debug token perangkat di Firebase Console → App Check."
+                    AppCheckInitStatus.RELEASE_RECAPTCHA_INSTALLED ->
+                        "Token App Check ditolak Firebase (invalid token). Untuk APK rilis GitHub, pastikan sidik jari SHA-256 keystore rilis sudah didaftarkan di Firebase Console → Project Settings → com.jadwalshalat.gt5, serta cek status reCAPTCHA Enterprise / Enforcement di Firebase Console → App Check → Firebase AI Logic."
+                    else ->
+                        "Token Firebase App Check tidak valid. Pastikan SHA-256 keystore rilis & konfigurasi App Check di Firebase Console sesuai dengan APK yang terpasang."
+                }
+                IllegalStateException(hint, error)
+            }
             else -> error
         }
     }
@@ -201,17 +222,32 @@ class KamusAiRepository(context: Context) {
         error.cause?.message?.let { append(' ').append(it) }
     }.lowercase()
 
+    private fun trimContextForAi(contextSentence: String, targetArabic: String): String {
+        val normalized = contextSentence.replace(Regex("\\s+"), " ").trim()
+        if (normalized.isBlank()) return ""
+        return if (normalized.length <= MAX_CONTEXT_CHARS) {
+            normalized
+        } else {
+            TafsirTextProcessor.extractContextSnippet(
+                fullParagraph = normalized,
+                tappedWord = targetArabic,
+                maxChars = MAX_CONTEXT_CHARS
+            )
+        }
+    }
+
     private fun buildPrompt(
         arabic: String,
         contextSentence: String,
         lessonTitle: String
     ): String = buildString {
         append("Target: ").append(arabic)
-        if (contextSentence.isNotBlank()) {
-            append("\nKonteks: ").append(contextSentence)
+        val safeContext = trimContextForAi(contextSentence, arabic)
+        if (safeContext.isNotBlank()) {
+            append("\nKonteks: ").append(safeContext)
         }
         if (lessonTitle.isNotBlank()) {
-            append("\nTopik: ").append(lessonTitle)
+            append("\nTopik: ").append(lessonTitle.take(MAX_TOPIC_CHARS))
         }
     }
 
@@ -347,6 +383,8 @@ class KamusAiRepository(context: Context) {
         private const val FALLBACK_MODEL_NAME = "gemini-3.8-flash"
         private const val CACHE_FILE_NAME = "kamus_ai_cache_v1.json"
         private const val MAX_CACHE_ENTRIES = 300
+        private const val MAX_CONTEXT_CHARS = 200
+        private const val MAX_TOPIC_CHARS = 80
         private const val TIMEOUT_MILLIS = 45_000L
     }
 }
