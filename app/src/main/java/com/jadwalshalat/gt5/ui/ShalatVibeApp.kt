@@ -16,9 +16,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.automirrored.rounded.MenuBook
+import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Watch
+import androidx.compose.material.icons.rounded.AutoStories
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.Watch
@@ -77,9 +79,12 @@ import com.jadwalshalat.gt5.ui.screens.CourseFullBookPdfScreen
 import com.jadwalshalat.gt5.ui.screens.CourseOverviewScreen
 import com.jadwalshalat.gt5.ui.screens.CourseStudyRoomScreen
 import com.jadwalshalat.gt5.ui.screens.Gt5HubScreen
+import com.jadwalshalat.gt5.tafsir.TafsirUiState
+import com.jadwalshalat.gt5.tafsir.TafsirViewModel
 import com.jadwalshalat.gt5.ui.screens.LearningLibraryScreen
 import com.jadwalshalat.gt5.ui.screens.QiblaScreen
 import com.jadwalshalat.gt5.ui.screens.ScheduleScreen
+import com.jadwalshalat.gt5.ui.screens.TafsirReaderScreen
 import com.jadwalshalat.gt5.ui.theme.LocalShalatVibePalette
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
@@ -92,6 +97,8 @@ fun ShalatVibeApp(
     arabicViewModel: ArabicStudyViewModel,
     learningState: LearningHubUiState,
     learningViewModel: LearningViewModel,
+    tafsirState: TafsirUiState,
+    tafsirViewModel: TafsirViewModel,
     onRequestNotificationPermission: () -> Unit,
     onOpenExactAlarmSettings: () -> Unit,
     onRequestIgnoreBattery: () -> Unit,
@@ -174,8 +181,13 @@ fun ShalatVibeApp(
             onImportBackupJson = { raw -> arabicViewModel.importKamusBackupJson(raw) },
             onOpenLessonClip = { lessonId, startSec ->
                 showArabicKamus = false
+                val tafsirRef = TafsirViewModel.parseTafsirKamusLessonId(lessonId)
                 val courseRef = CourseKamusBridge.parseCourseLessonId(lessonId)
-                if (courseRef != null) {
+                if (tafsirRef != null) {
+                    arabicViewModel.closeLesson()
+                    tafsirViewModel.openReference(tafsirRef.first, tafsirRef.second, tafsirRef.third)
+                    currentTab = MainTab.TAFSIR
+                } else if (courseRef != null) {
                     arabicViewModel.closeLesson()
                     learningViewModel.openTopicBlock(
                         courseRef.courseId,
@@ -352,12 +364,14 @@ fun ShalatVibeApp(
                                 val selectedIcon = when (tab) {
                                     MainTab.SCHEDULE -> Icons.Rounded.CalendarMonth
                                     MainTab.ARABIC -> Icons.AutoMirrored.Rounded.MenuBook
+                                    MainTab.TAFSIR -> Icons.Rounded.AutoStories
                                     MainTab.QIBLA -> Icons.Rounded.Explore
                                     MainTab.GT5_HUB -> Icons.Rounded.Watch
                                 }
                                 val unselectedIcon = when (tab) {
                                     MainTab.SCHEDULE -> Icons.Outlined.CalendarMonth
                                     MainTab.ARABIC -> Icons.AutoMirrored.Outlined.MenuBook
+                                    MainTab.TAFSIR -> Icons.Outlined.AutoStories
                                     MainTab.QIBLA -> Icons.Outlined.Explore
                                     MainTab.GT5_HUB -> Icons.Outlined.Watch
                                 }
@@ -429,12 +443,14 @@ fun ShalatVibeApp(
                             val selectedIcon = when (tab) {
                                 MainTab.SCHEDULE -> Icons.Rounded.CalendarMonth
                                 MainTab.ARABIC -> Icons.AutoMirrored.Rounded.MenuBook
+                                MainTab.TAFSIR -> Icons.Rounded.AutoStories
                                 MainTab.QIBLA -> Icons.Rounded.Explore
                                 MainTab.GT5_HUB -> Icons.Rounded.Watch
                             }
                             val unselectedIcon = when (tab) {
                                 MainTab.SCHEDULE -> Icons.Outlined.CalendarMonth
                                 MainTab.ARABIC -> Icons.AutoMirrored.Outlined.MenuBook
+                                MainTab.TAFSIR -> Icons.Outlined.AutoStories
                                 MainTab.QIBLA -> Icons.Outlined.Explore
                                 MainTab.GT5_HUB -> Icons.Outlined.Watch
                             }
@@ -581,6 +597,13 @@ fun ShalatVibeApp(
                                         },
                                         onOpenSyncSettings = { showArabicSyncSheet = true },
                                         onOpenArabicKamus = { showArabicKamus = true },
+                                        tafsirLastRead = tafsirState.lastRead,
+                                        tafsirBookmarkCount = tafsirState.bookmarks.size,
+                                        onOpenTafsir = { currentTab = MainTab.TAFSIR },
+                                        onOpenTafsirReference = { bookId, surah, ayah ->
+                                            tafsirViewModel.openReference(bookId, surah, ayah)
+                                            currentTab = MainTab.TAFSIR
+                                        },
                                         cloudSyncState = arabicState.cloudSyncState,
                                         onBeforeSignOut = { arabicViewModel.stopCloudSync() },
                                         onSignedIn = startSyncForUser,
@@ -605,6 +628,13 @@ fun ShalatVibeApp(
                                 },
                                 onOpenSyncSettings = { showArabicSyncSheet = true },
                                 onOpenArabicKamus = { showArabicKamus = true },
+                                tafsirLastRead = tafsirState.lastRead,
+                                tafsirBookmarkCount = tafsirState.bookmarks.size,
+                                onOpenTafsir = { currentTab = MainTab.TAFSIR },
+                                onOpenTafsirReference = { bookId, surah, ayah ->
+                                    tafsirViewModel.openReference(bookId, surah, ayah)
+                                    currentTab = MainTab.TAFSIR
+                                },
                                 cloudSyncState = arabicState.cloudSyncState,
                                 onBeforeSignOut = { arabicViewModel.stopCloudSync() },
                                 onSignedIn = startSyncForUser,
@@ -612,6 +642,37 @@ fun ShalatVibeApp(
                             )
                         }
                     }
+
+                    MainTab.TAFSIR -> TafsirReaderScreen(
+                        state = tafsirState,
+                        savedNormalizedKeys = arabicState.savedNormalizedKeys,
+                        kamusEntries = arabicState.kamusEntries,
+                        kamusCount = arabicState.kamusEntries.size,
+                        kamusAiState = arabicState.kamusAiState,
+                        onSelectBook = { tafsirViewModel.selectBook(it) },
+                        onSelectSurah = { tafsirViewModel.selectSurah(it) },
+                        onSelectAyah = { tafsirViewModel.selectAyah(it) },
+                        onOpenPreviousAyah = { tafsirViewModel.openPreviousAyah() },
+                        onOpenNextAyah = { tafsirViewModel.openNextAyah() },
+                        onRetry = { tafsirViewModel.retryCurrent(forceRefresh = true) },
+                        onSetShowHarakat = { tafsirViewModel.setShowHarakat(it) },
+                        onSetFontSize = { tafsirViewModel.setFontSize(it) },
+                        onSetPaperTheme = { tafsirViewModel.setPaperTheme(it) },
+                        onToggleAyahCollapsed = { tafsirViewModel.toggleAyahCollapsed() },
+                        onToggleBookmark = { tafsirViewModel.toggleCurrentBookmark() },
+                        onOpenBookmark = { bm -> tafsirViewModel.openReference(bm.bookId, bm.surah, bm.ayah) },
+                        onRemoveBookmark = { id -> tafsirViewModel.removeBookmark(id) },
+                        onLookupKamusAi = { ar, ctx, title, force ->
+                            arabicViewModel.lookupKamusWithAi(ar, ctx, title, force)
+                        },
+                        onClearKamusAiState = { arabicViewModel.clearKamusAiState() },
+                        onSaveKamusEntry = { arabicViewModel.saveKamusEntry(it) },
+                        onOpenKamus = { showArabicKamus = true },
+                        onSpeakArabic = { text -> arabicViewModel.speakArabic(text) },
+                        onShowMessage = { msg ->
+                            scope.launch { snackbarHostState.showSnackbar(msg) }
+                        }
+                    )
 
                     MainTab.QIBLA -> QiblaScreen(
                         state = state,

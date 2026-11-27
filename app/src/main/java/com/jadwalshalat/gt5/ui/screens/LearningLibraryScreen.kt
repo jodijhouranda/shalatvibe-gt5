@@ -24,6 +24,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.automirrored.rounded.MenuBook
+import androidx.compose.material.icons.rounded.AutoStories
 import androidx.compose.material.icons.rounded.Balance
 import androidx.compose.material.icons.rounded.Book
 import androidx.compose.material.icons.rounded.Bookmark
@@ -67,6 +68,9 @@ import com.jadwalshalat.gt5.learning.LearningSearchHit
 import com.jadwalshalat.gt5.learning.LearningTrackEntry
 import com.jadwalshalat.gt5.learning.LearningTrackType
 import com.jadwalshalat.gt5.cloud.CloudSyncState
+import com.jadwalshalat.gt5.tafsir.TafsirCatalog
+import com.jadwalshalat.gt5.tafsir.TafsirLastRead
+import com.jadwalshalat.gt5.tafsir.TafsirTextProcessor
 import com.jadwalshalat.gt5.ui.components.AdaptiveBreakpoints
 import com.jadwalshalat.gt5.ui.components.AdaptivePairRow
 import com.jadwalshalat.gt5.ui.components.CloudSyncBannerCard
@@ -84,6 +88,10 @@ fun LearningLibraryScreen(
     onOpenSyncSettings: () -> Unit,
     modifier: Modifier = Modifier,
     onOpenArabicKamus: () -> Unit = {},
+    tafsirLastRead: TafsirLastRead? = null,
+    tafsirBookmarkCount: Int = 0,
+    onOpenTafsir: () -> Unit = {},
+    onOpenTafsirReference: (bookId: String, surah: Int, ayah: Int) -> Unit = { _, _, _ -> },
     cloudSyncState: CloudSyncState = CloudSyncState.SignedOut,
     onBeforeSignOut: () -> Unit = {},
     onSignedIn: (com.google.firebase.auth.FirebaseUser) -> Unit = {},
@@ -151,7 +159,7 @@ fun LearningLibraryScreen(
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "Kajian berseri, transkrip tersinkron & kitab PDF",
+                        text = "Kajian berseri, tafsir 22 kitab Arab & kosakata",
                         color = palette.textSecondary,
                         fontSize = 12.5.sp
                     )
@@ -312,6 +320,89 @@ fun LearningLibraryScreen(
                 }
             }
 
+            // 3a. Lanjutkan Baca Tafsir (jika sudah pernah membaca di Pustaka Tafsir)
+            if (tafsirLastRead != null) {
+                item(key = "continue_tafsir_card") {
+                    val lastBook = remember(tafsirLastRead.bookId) {
+                        TafsirCatalog.bookById(tafsirLastRead.bookId)
+                    }
+                    val lastSurah = remember(tafsirLastRead.surah) {
+                        TafsirCatalog.surahByNumber(tafsirLastRead.surah)
+                    }
+                    val ornament = TafsirTextProcessor.formatAyahOrnament(tafsirLastRead.ayah)
+                    Surface(
+                        onClick = {
+                            onOpenTafsirReference(lastBook.id, tafsirLastRead.surah, tafsirLastRead.ayah)
+                        },
+                        shape = RoundedCornerShape(18.dp),
+                        color = palette.highlightSurface,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .clip(CircleShape)
+                                    .background(palette.emeraldPrimary),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.AutoStories,
+                                    contentDescription = "Lanjutkan baca tafsir",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(19.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "LANJUTKAN BACA TAFSIR",
+                                    color = palette.emeraldPrimary,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 0.8.sp
+                                )
+                                Text(
+                                    text = "${lastBook.nameLatin} • ${lastSurah.nameLatin}:${tafsirLastRead.ayah}",
+                                    color = palette.textPrimary,
+                                    fontSize = 13.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                                    Text(
+                                        text = "${lastBook.nameArabic} • ${lastSurah.nameArabic} $ornament",
+                                        color = palette.textSecondary,
+                                        fontSize = 12.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Surface(
+                                shape = CircleShape,
+                                color = palette.emeraldPrimary
+                            ) {
+                                Text(
+                                    text = "Lanjut",
+                                    color = Color.White,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             // 3b. Kamus Saya & Flashcard SRS Shortcut Card
             item(key = "kamus_saya_shortcut") {
                 Surface(
@@ -396,11 +487,20 @@ fun LearningLibraryScreen(
                         letterSpacing = (-0.2).sp
                     )
                     Text(
-                        text = "${hubState.tracks.size} Bidang • ${arabicState.lastSyncLabel}",
+                        text = "${hubState.tracks.size + 1} Bidang • ${arabicState.lastSyncLabel}",
                         color = palette.textMuted,
                         fontSize = 11.sp
                     )
                 }
+            }
+
+            // 4b. Kartu Editorial Pustaka Tafsir (22 Kitab Arab Asli)
+            item(key = "track_pustaka_tafsir") {
+                PustakaTafsirLibraryCard(
+                    lastRead = tafsirLastRead,
+                    bookmarkCount = tafsirBookmarkCount,
+                    onClick = onOpenTafsir
+                )
             }
 
             // 5. Editorial Course Showcase Cards (2-column grid on tablet, full-width stack on phone)
@@ -982,6 +1082,130 @@ private fun parseHexColor(hex: String, fallback: Color): Color {
     return runCatching {
         Color(android.graphics.Color.parseColor(hex))
     }.getOrDefault(fallback)
+}
+
+@Composable
+private fun PustakaTafsirLibraryCard(
+    lastRead: TafsirLastRead?,
+    bookmarkCount: Int,
+    onClick: () -> Unit
+) {
+    val palette = LocalShalatVibePalette.current
+    val accent = palette.emeraldPrimary
+    val statusText = remember(lastRead) {
+        if (lastRead == null) {
+            "22 kitab tafsir Arab asli"
+        } else {
+            val book = TafsirCatalog.bookById(lastRead.bookId)
+            val surah = TafsirCatalog.surahByNumber(lastRead.surah)
+            "Terakhir: ${book.nameLatin} • ${surah.nameLatin}:${lastRead.ayah}"
+        }
+    }
+    val detailText = if (bookmarkCount > 0) "$bookmarkCount bookmark" else "Mode Fokus & Kamus AI"
+
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(22.dp),
+        color = palette.cardSurface,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = accent.copy(alpha = if (palette.isDark) 0.16f else 0.11f)
+                ) {
+                    Text(
+                        text = "22 KITAB ARAB",
+                        color = accent,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                    )
+                }
+
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                    Text(
+                        text = "المكتبة التفسيرية",
+                        color = accent,
+                        fontSize = 14.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Text(
+                text = "Pustaka Tafsir",
+                color = palette.textPrimary,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = (-0.2).sp
+            )
+
+            Spacer(modifier = Modifier.height(3.dp))
+
+            Text(
+                text = "Baca tafsir berbahasa Arab asli tanpa terjemahan (Al-Muyassar hingga Ath-Thabari & Ibnu Asyur), ketuk kata langsung ke Kamus AI.",
+                color = palette.textSecondary,
+                fontSize = 12.5.sp,
+                lineHeight = 18.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = statusText,
+                        color = palette.textPrimary,
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = detailText,
+                        color = palette.textMuted,
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(CircleShape)
+                        .background(palette.emeraldSoft),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                        contentDescription = "Buka Pustaka Tafsir",
+                        tint = palette.emeraldPrimary,
+                        modifier = Modifier.size(17.dp)
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Suppress("unused")

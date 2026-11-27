@@ -23,6 +23,7 @@ import com.jadwalshalat.gt5.ai.configureAppCheck
 import com.jadwalshalat.gt5.arabic.ArabicStudyViewModel
 import com.jadwalshalat.gt5.learning.LearningViewModel
 import com.jadwalshalat.gt5.location.LocationHelper
+import com.jadwalshalat.gt5.tafsir.TafsirViewModel
 import com.jadwalshalat.gt5.ui.ShalatVibeApp
 import com.jadwalshalat.gt5.ui.ShalatVibeViewModel
 import com.jadwalshalat.gt5.ui.theme.ShalatVibeTheme
@@ -37,6 +38,7 @@ class MainActivity : ComponentActivity() {
     private val viewModel: ShalatVibeViewModel by viewModels()
     private val arabicViewModel: ArabicStudyViewModel by viewModels()
     private val learningViewModel: LearningViewModel by viewModels()
+    private val tafsirViewModel: TafsirViewModel by viewModels()
     private val snackbarHostState = SnackbarHostState()
 
     private val notificationPermissionLauncher =
@@ -72,6 +74,7 @@ class MainActivity : ComponentActivity() {
             val state by viewModel.uiState.collectAsStateWithLifecycle()
             val arabicState by arabicViewModel.uiState.collectAsStateWithLifecycle()
             val learningState by learningViewModel.uiState.collectAsStateWithLifecycle()
+            val tafsirState by tafsirViewModel.uiState.collectAsStateWithLifecycle()
             val systemDark = isSystemInDarkTheme()
             val isDark = when (state.themeMode) {
                 ThemeMode.SYSTEM -> systemDark
@@ -101,6 +104,8 @@ class MainActivity : ComponentActivity() {
                     arabicViewModel = arabicViewModel,
                     learningState = learningState,
                     learningViewModel = learningViewModel,
+                    tafsirState = tafsirState,
+                    tafsirViewModel = tafsirViewModel,
                     onRequestNotificationPermission = ::requestNotificationPermission,
                     onOpenExactAlarmSettings = ::openExactAlarmSettings,
                     onRequestIgnoreBattery = ::requestIgnoreBatteryOptimization,

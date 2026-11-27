@@ -14,6 +14,7 @@ import java.time.ZonedDateTime
 enum class MainTab(val label: String) {
     SCHEDULE("Jadwal"),
     ARABIC("Belajar"),
+    TAFSIR("Tafsir"),
     QIBLA("Kiblat"),
     GT5_HUB("GT 5")
 }
