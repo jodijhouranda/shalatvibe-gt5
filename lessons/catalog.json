@@ -1,7 +1,51 @@
 {
   "version": 1,
-  "updatedAt": "2026-11-27",
+  "updatedAt": "2026-11-28",
   "lessons": [
+    {
+      "id": "video_ammiyah_saudi_lahjah_baida",
+      "category": "VIDEO_ANALYSIS",
+      "dayLabel": "Video 20",
+      "dateLabel": "28 Nov 2026",
+      "title": "'Ammiyah Saudi: Jembatan Fusha ke Lahjah Baida'",
+      "subtitle": "Dialek Saudi Netral, Akuisisi Bahasa, & Ungkapan Harian",
+      "sourceName": "Arabic comprehensible",
+      "level": "CEFR B2–C1",
+      "youtubeVideoId": "S32XaVVXGSc",
+      "startSeconds": 277,
+      "endSeconds": 445,
+      "pdfFileName": "Bahasa_Arab_Analisis_Video_Ammiyah_Saudi_Lahjah_Baida_TAFL.pdf",
+      "jsonFileName": "Bahasa_Arab_Analisis_Video_Ammiyah_Saudi_Lahjah_Baida_TAFL.json",
+      "jsonUrl": "https://raw.githubusercontent.com/jodijhouranda/shalatvibe-gt5/main/lessons/arabic_content/Bahasa_Arab_Analisis_Video_Ammiyah_Saudi_Lahjah_Baida_TAFL.json",
+      "segments": [
+        {
+          "label": "04:37 – 05:11",
+          "startSec": 277,
+          "endSec": 311
+        },
+        {
+          "label": "05:11 – 05:44",
+          "startSec": 311,
+          "endSec": 344
+        },
+        {
+          "label": "05:44 – 06:20",
+          "startSec": 344,
+          "endSec": 380
+        },
+        {
+          "label": "06:20 – 06:55",
+          "startSec": 380,
+          "endSec": 415
+        },
+        {
+          "label": "06:55 – 07:25",
+          "startSec": 415,
+          "endSec": 445
+        }
+      ],
+      "updatedAt": "2026-11-28"
+    },
     {
       "id": "video_podcast_finjan_andalusia",
       "category": "VIDEO_ANALYSIS",
